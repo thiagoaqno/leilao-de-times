@@ -36,10 +36,12 @@ test("as pistas do calendário e as antigas montam com um teto de malhas", { tim
 test("o que se mexe não foi fundido nem congelado: bandeiras, barcos, bandos, gaivotas e checkpoints (e a roda-gigante, numa pista que tem uma: Mônaco não tem)", { timeout: 120000 }, async () => {
   const { montar } = await import("./ajuda-cena/index.mjs");
   const { tr, THREE } = await montar("monaco");
-  const dentro = (o) => { for (let p = o; p; p = p.parent) if (p === tr.grp) return true; return false; };
+  const dentroDe = (grupo, o) => { for (let p = o; p; p = p.parent) if (p === grupo) return true; return false; };
+  const dentro = (o) => dentroDe(tr.grp, o);
   const V = tr.vida;
-  assert.ok(V.panos.length > 0 && V.panos.every((p) => dentro(p.pano) && p.pano.matrixAutoUpdate), "as bandeiras do mastro ficam na cena e se mexem");
   const rio = (await montar("rio")).tr, Rd = rio.vida.rodas; // Mônaco não tem roda-gigante (não há uma no circuito): a do Rio serve de prova
+  assert.equal(V.panos.length, 0, "Mônaco não usa os mastros genéricos");
+  assert.ok(rio.vida.panos.length > 0 && rio.vida.panos.every((p) => dentroDe(rio.grp, p.pano) && p.pano.matrixAutoUpdate), "as bandeiras do Rio ficam na cena e se mexem");
   assert.equal(V.rodas.length, 0, "Mônaco não tem roda-gigante");
   assert.ok(Rd.length > 0 && Rd.every((w) => w.roda.parent && w.cabs.parent && w.roda.matrixAutoUpdate), "a roda-gigante gira");
   assert.ok(V.barcos.length === 8 && dentro(V.barcos[0].cascos), "os barcos são um InstancedMesh na cena");

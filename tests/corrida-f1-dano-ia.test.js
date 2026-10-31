@@ -213,7 +213,7 @@ test("IA: cada robô tem o seu jeito (traçado, frenagem, erros), sorteado pela 
 
 test("IA: o robô para a tempo atrás de um carro lento e não fecha a porta de quem está ao lado", () => {
   Robos.usarFonte(() => []);
-  const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
+  const agora = Date.now, aleatorio = Math.random; let relogio = agora(); Date.now = () => relogio; Math.random = F1.sorteio("transito-lado");
   try {
     const room = { config: { pista: "interlagos", regras: "f1", caixas: false, robos: 1, nivel: "medio", voltas: 3 }, players: {}, order: [], phase: "race", startAt: relogio - 5000, semente: 5, finishOrder: [] };
     Robos.preparar(room, ["#a"], () => "a");
@@ -234,9 +234,16 @@ test("IA: o robô para a tempo atrás de um carro lento e não fecha a porta de 
     assert.equal(contatos.filter((c) => c.forca >= F1.BATIDA_MIN).length, 0);
     assert.ok(oportunidade && ersNaPassagem, "usa ERS quando há espaço para ultrapassar o carro lento");
     // e ao lado: um carro encostado do lado de dentro da curva não é fechado
-    const p = pf.pts[Math.floor(bot.ia.s) % pf.n], lat0 = bot.ia.lat;
+    const p = pf.pts[Math.floor(bot.ia.s) % pf.n];
     room.players.h.pos = { x: bot.pos.x - p.ty * 30, y: bot.pos.y + p.tx * 30, z: bot.pos.z, a: bot.pos.a, v: bot.ia.v, prog: bot.pos.prog, at: relogio };
     bot.ia.desvio = 0;
-    for (let t = 0; t < 0.6; t += 0.05) { relogio += 50; room.players.h.pos.at = relogio; Robos.passo(room, 0.05, () => {}, () => {}); assert.ok(bot.ia.lat <= lat0 + 1, "foi para cima de quem estava ao lado"); }
-  } finally { Date.now = agora; }
+    for (let t = 0; t < 0.6; t += 0.05) {
+      relogio += 50;
+      // O humano emparelhado também anda: parado com velocidade positiva, seria um obstáculo estático.
+      const h = room.players.h.pos; h.x += Math.cos(h.a) * h.v * 0.05; h.y += Math.sin(h.a) * h.v * 0.05; h.prog += h.v * 0.05 / 6; h.at = relogio;
+      const impactos = []; Robos.passo(room, 0.05, () => {}, (e, d) => { if (e === "batida") impactos.push(d); });
+      assert.ok(Math.hypot(bot.pos.x - h.x, bot.pos.y - h.y) > 26, "o robô fechou o carro ao lado");
+      assert.equal(impactos.length, 0, "sem contato ao disputar lado a lado");
+    }
+  } finally { Date.now = agora; Math.random = aleatorio; }
 });

@@ -123,7 +123,7 @@ test("robôs: o pneu que acaba antes do plano faz o robô parar antes, na volta 
     Robos.preparar(room, ["#a"], () => "z");
     const p = room.players[room.order[0]]; Object.assign(p, { grid: 0, laps: 0, sector: T.SECTORS - 1, started: false, finish: null });
     Itens.start(room); Robos.largar(room);
-    p.ia.plano = { largada: "macio", paradas: [{ volta: 4, composto: "medio" }] }; p.ia.pneu = F1.pneuNovo("macio"); p.pneu = p.pneuAtual = "macio"; p.compostos = ["macio"];
+    p.ia.plano = { largada: "macio", paradas: [{ volta: 4, composto: "medio" }] }; p.ia.pneu = F1.pneuNovo("macio"); p.ia.sim.pneu = p.ia.pneu; p.pneu = p.pneuAtual = "macio"; p.compostos = ["macio"];
     let parou = null;
     const setor = (q, s) => { q.sector = s; if (s === 0) { if (!q.started) q.started = true; else q.laps++; } };
     const emit = (e, d) => { if (e === "box" && parou == null) parou = d.volta; };

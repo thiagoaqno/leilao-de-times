@@ -6,8 +6,8 @@ const Robos = require("../corrida-robos.js");
 const piloto = (largada, ...compostos) => { const p = { pneu: largada, pneuAtual: largada, compostos: [largada], paradas: [] }; compostos.forEach((c, i) => F1.registrarParada(p, { volta: i + 1, tempo: 2.5, composto: c })); return p; };
 
 test("conta a largada e cada parada", () => {
-  assert.deepEqual(F1.jogosRestantes(piloto("macio")), { macio: 1, medio: 2, duro: 2 });
-  assert.deepEqual(F1.jogosRestantes(piloto("macio", "duro", "macio")), { macio: 0, medio: 2, duro: 1 });
+  assert.deepEqual(F1.jogosRestantes(piloto("macio")), { macio: 1, medio: 2, duro: 2, chuva: 2 });
+  assert.deepEqual(F1.jogosRestantes(piloto("macio", "duro", "macio")), { macio: 0, medio: 2, duro: 1, chuva: 2 });
 });
 
 test("recusa o terceiro macio e troca por outro composto com jogo", () => {

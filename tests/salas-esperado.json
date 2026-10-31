@@ -743,17 +743,30 @@
       "error": "Ação desconhecida."
     },
     "camposDoEstado": [
+      "bonusMontagem",
       "boxReady",
+      "chefes",
+      "clima",
       "code",
       "config",
+      "direcao",
       "endAt",
       "finishOrder",
       "host",
       "log",
+      "luzes",
+      "montagens",
       "now",
+      "pecasEq",
       "phase",
       "players",
-      "startAt"
+      "previsao",
+      "quali",
+      "resultado",
+      "semente",
+      "startAt",
+      "tv",
+      "tvAte"
     ],
     "nomes": [
       "Fulano d",
