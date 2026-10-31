@@ -170,6 +170,8 @@ export function muroDeArrimo(tr, add) {
   for (const lado of [1, -1]) {
     const topo = new Array(n).fill(null);
     for (let i = 0; i < n; i++) {
+      // Somente os trechos sobrepostos de Mirabeau e Fairmont precisam de arrimo.
+      if (i / n < 0.31 || i / n > 0.47) continue;
       const p = pts[i], x = p.x + p.nx * lado * (L + 3), z = p.y + p.ny * lado * (L + 3), r = Math.ceil(110 / C) + 1, cx = Math.floor(x / C), cz = Math.floor(z / C); let melhor = null;
       for (let a = cx - r; a <= cx + r; a++) for (let b = cz - r; b <= cz + r; b++) for (const j of hash.get(chave(a, b)) || []) {
         if (Math.min(Math.abs(j - i), n - Math.abs(j - i)) < 60) continue;
