@@ -27,6 +27,13 @@ const SITUACOES = {
   drs: ["DRS disponível. Use na reta.", "Você está a menos de um segundo. DRS liberado.", "Zona de DRS à frente. Ataque.", "DRS ativo. É a sua chance."],
   punicao: ["Recebemos uma punição. Se for stop-and-go, entre no box em até três voltas.", "A direção de prova nos puniu. Vamos compensar na pista.", "Punição confirmada. Evite novos contatos.", "Cuidado nas disputas. A sexta batida causada é bandeira preta."],
   abandono: ["Precisamos abandonar. Leve o carro para os boxes.", "Fim de corrida para nós. Pare com segurança.", "Vamos recolher o carro. Desculpe.", "Abandono. Pare o carro em local seguro."],
+  diagnosticobom: ["Diagnóstico concluído. O carro está sem danos relevantes.", "Tudo certo com o carro. Não vemos danos importantes."],
+  diagnosticomedio: ["Detectamos dano no carro. O desempenho pode estar comprometido.", "Há dano no carro. Cuidado nas próximas disputas."],
+  diagnosticograve: ["O carro está muito danificado. Reduza os riscos.", "Dano grave no carro. Precisamos evitar outro impacto."],
+  pneusbons: ["Os pneus estão em boas condições. Continue assim.", "Os pneus ainda estão em boas condições."],
+  pneusgastos: ["Os pneus estão desgastados. Avalie uma parada.", "A vida dos pneus está baixa. Fique atento à aderência."],
+  corridachuva: ["A pista está molhada. Atenção à aderência.", "Temos água na pista. Cuidado com a tração."],
+  corridaseca: ["A pista está seca no momento.", "Condições de pista seca por enquanto."],
 };
 // situações que passam na frente do intervalo mínimo entre falas
 const URGENTES = ["box", "safety"];

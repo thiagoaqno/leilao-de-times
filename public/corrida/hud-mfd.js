@@ -9,6 +9,7 @@ const PAGINAS = [
   { id: "danos", nome: "DANOS", quando: (c) => !!c.eu },
   { id: "ers", nome: "ERS", quando: (c) => !!c.ers },
   { id: "tempos", nome: "TEMPOS", quando: (c) => !!c.eu },
+  { id: "radio", nome: "RÁDIO", quando: (c) => !!c.eu },
   { id: "classificacao", nome: "CLASSIF.", quando: (c) => !!c.compacta && c.total > 0 }, // com a torre completa na tela, ela já é a classificação
   { id: "ajustes", nome: "AJUSTES", quando: () => true },
 ];

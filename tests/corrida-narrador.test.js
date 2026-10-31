@@ -39,3 +39,11 @@ test("sem navegador e sem mp3 o narrador não quebra", async () => {
   Narrador.abaixar(0.3); Narrador.parar();
   assert.equal(Narrador.tocando, false);
 });
+
+test("falas de acontecimentos têm IDs separados das apresentações", () => {
+  const antigas = new Set(Falas.FALAS.map(f => f.id));
+  for (const tipo of ["sc", "amarela", "verde", "vmr", "chegada"]) {
+    const falas = Falas.porEvento(tipo); assert.ok(falas.length >= 2);
+    for (const f of falas) { assert.match(f.id, /^evento-[a-z]+-\d+$/); assert.ok(!antigas.has(f.id)); }
+  }
+});

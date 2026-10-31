@@ -109,10 +109,10 @@ function dizer(situacao, op = {}) {
     if (!F.SITUACOES[situacao]) return null;
     const agora = Date.now(), urgente = F.URGENTES.includes(situacao);
     if (!op.forcar && agora - (porSituacao[situacao] || -Infinity) < (ESPERA_SIT[situacao] || ESPERA)) return null;
-    if (!urgente && fila.length) return null; // não acumula fala velha
+    if (!urgente && fila.length && !op.forcar) return null; // não acumula fala velha; pedidos do piloto são explícitos
     const f = escolher(situacao, ultimoId); if (!f) return null;
     ultimoId = f.id; porSituacao[situacao] = agora;
-    if (urgente) fila.unshift(f); else fila.push(f);
+    if (urgente || op.forcar) fila.unshift(f); else fila.push(f);
     proximo(); return f;
   } catch { return null; }
 }
@@ -136,6 +136,6 @@ function avisoF1(tipo) { // `tipo` vem de AvisosF1.tipoDoTexto
 function fim(pos, pontos, dnf) { dizer(dnf ? "abandono" : pos === 1 ? "vitoria" : pos <= 3 ? "podio" : pontos > 0 ? "pontos" : "foradospontos", { forcar: true }); }
 function classificacao(pos, total) { dizer(pos <= Math.ceil(total / 3) ? "classboa" : pos > Math.floor(total * 2 / 3) ? "classruim" : "", { forcar: true }); }
 
-const api = { escolher, dizer, usarSaida, posicao, uma, avisoF1, fim, classificacao, silenciar, desenharBotoes, get mudo() { return mudo; }, INTERVALO };
+const api = { escolher, dizer, usarSaida, posicao, uma, avisoF1, fim, classificacao, silenciar, desenharBotoes, get mudo() { return mudo; }, get tocando() { return tocando; }, INTERVALO };
 if (typeof module !== "undefined" && module.exports) module.exports = api; else root.Radio = api;
 })(typeof self !== "undefined" ? self : this);

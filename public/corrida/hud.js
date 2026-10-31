@@ -45,6 +45,8 @@ export function hud() {
   else if (left > -1) { big = luz ? "" : "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); radioF1("largada"); } }
   luzesDaLargada(left);
   const f1on = cfg.regras === "f1" && E.S.phase === "race"; // o HUD novo (torre e painel) só nas regras de F1; no arcade fica o antigo
+  const f1mfd = cfg.regras === "f1" && E.S.phase === "quali";
+  $("race").classList.toggle("f1mfd", f1mfd);
   const f1av = cfg.regras === "f1"; // os avisos no estilo da transmissão valem em toda a pista de F1 (classificação e corrida)
   if (race.avF1 !== f1av) { race.avF1 = f1av; $("race").classList.toggle("f1avisos", f1av); }
   if (race.hudF1 !== f1on) { race.hudF1 = f1on; $("race").classList.toggle("f1hud", f1on); race.hudQuadro = null; }
@@ -118,7 +120,7 @@ export function hud() {
   const star = m && m.starUntil > now;
   hd.innerHTML = star ? "⭐ ESTRELA!" : race.sling > 0 ? "🚀 ESTILINGUE!" : race.arSujo > 0.03 ? `🌀 AR SUJO<i style="width:${Math.round(race.draft * 100)}%"></i>` : race.draft > 0.15 ? `💨 VÁCUO<i style="width:${Math.round(race.draft * 100)}%"></i>` : race.catchup > 0.025 ? "⚡ PELOTÃO À VISTA" : "";
   hd.style.opacity = star || race.sling > 0 || race.draft > 0.15 || race.catchup > 0.025 ? 1 : 0;
-  if (f1on) hudF1(m, st, now);
+  if (f1on || f1mfd) hudF1(m, st, now);
   if ((race.hudVez = (race.hudVez || 0) + 1) % 2 === 0) minimapa(st, m); // o minimapa a cada 2 quadros já basta
 }
 // ---------- o HUD de F1 (regras de F1): a torre de posições à esquerda, o painel embaixo à direita ----------
@@ -183,7 +185,7 @@ function avisosF1(m, left, now) {
   if (!race.avIni) { race.avIni = true; f.limpar(); NOS_AVISOS.clear(); const box = $("avisosF1"); if (box) { box.innerHTML = ""; box._versao = -1; } race.logVisto = null; }
   const S = E.S, nome = m && m.name;
   const lg = A.novosDoLog(S.log, race.logVisto, sNow()); race.logVisto = lg.visto;
-  for (const l of lg.novos) { const a = A.deLinha(l.text, nome); if (a) f.empurrar(a, agora); }
+  for (const l of lg.novos) { const a = A.deLinha(l.text, nome); if (a) { f.empurrar(a, agora); if (S.phase === "race") window.Narrador?.falarEvento(a.tipo); } }
   if (S.phase === "race") {
     // as luzes: aviso fixo até apagarem, e a largada
     if (race.luzes && left > 0) f.empurrar({ chave: "luzes", tipo: "largada", texto: "Largada: pé fora do acelerador até as luzes apagarem", fixo: true }, agora);
@@ -199,7 +201,7 @@ function avisosF1(m, left, now) {
     if (m && m.stopGo && !m.dnf) f.empurrar({ chave: "stopgo", tipo: "punicao", texto: `Stop-and-go ${m.stopGo.s} s: cumpra em ${m.stopGo.v} volta${m.stopGo.v > 1 ? "s" : ""} · B pede o box`, fixo: true }, agora);
     else f.remover("stopgo", agora);
     // minha bandeirada
-    if (m && m.finish != null && !race.avFim) { race.avFim = true; f.empurrar({ tipo: "chegada", texto: "Bandeirada! Você cruzou a linha de chegada", ttl: 6000 }, agora); }
+    if (m && m.finish != null && !race.avFim) { race.avFim = true; f.empurrar({ tipo: "chegada", texto: "Bandeirada! Você cruzou a linha de chegada", ttl: 6000 }, agora); window.Narrador?.falarEvento("chegada"); }
   }
   desenharAvisos();
 }
@@ -246,7 +248,7 @@ function hudF1(m, st, now) {
   // compacta: o líder e os vizinhos (5 linhas); completa: todos que cabem, sem passar do minimapa e do clima embaixo
   const max = compacta ? COMPACTA_N : Math.max(6, Math.min(22, Math.floor((innerHeight - (peq ? 200 : 250)) / (peq ? 22 : 28)))), eu = linhas.findIndex((l) => l.eu);
   set($("hTorre"), "c", "hud" + (compacta ? " compacta" : " completa")); set($("tAlt"), "aria-pressed", String(!compacta));
-  if (eu >= 0 && window.Radio && m && m.started && !m.dnf && m.finish == null) window.Radio.posicao(linhas[eu].pos, String(race.startAt));
+  if (E.S.phase === "race" && eu >= 0 && window.Radio && m && m.started && !m.dnf && m.finish == null) window.Radio.posicao(linhas[eu].pos, String(race.startAt));
   const ver = T.recortar(linhas.length, eu, max), box = $("tLinhas").children;
   for (let k = 0; k < box.length; k++) {
     const d = box[k], l = ver[k] != null ? linhas[ver[k]] : null;

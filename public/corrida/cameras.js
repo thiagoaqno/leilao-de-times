@@ -128,6 +128,11 @@ export function quadroCamera(R, o) {
     pov(ctx, { fo: M.f * esc, eh: M.y * esc, lift: 0, mira: 0.6, fov: 82, fovV: 14, rolar: 0.02, trem: 1.25, tremOff: 0.9, tremBatida: 1.4 });
   } else if (mode === "tv") tv(ctx);
   else perseguicao(ctx);
+  if (o.olharTras && src) {
+    const fx = Math.cos(src.a), fy = Math.sin(src.a);
+    cam.position.set(src.x + fx * 48, (src.z || 0) + 20, src.y + fy * 48);
+    cam.lookAt(src.x - fx * 100, (src.z || 0) + 8, src.y - fy * 100);
+  }
   return mode;
 }
 
