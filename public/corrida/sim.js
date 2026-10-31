@@ -96,7 +96,9 @@ function pneuDaLargada(fase, composto, agua = 0) {
 // ---------- a entrada de um passo, em um número só ----------
 // bits 0 acelerador · 1 freio · 2 ERS · 3 voltar à pista · 4-5 pedido de box (0 nenhum, 1 macio, 2 médio, 3 duro) ·
 // 6-9 marcha do câmbio manual (0 = automático) · 10-18 volante (0..510 → -1..1) · 19 o bit alto do pedido de box (4 = chuva)
-const COMPOSTOS = ["macio", "medio", "duro", "chuva"];
+// (5 = "decidir": o pedido de parada sem pneu, que abre o menu na garagem; 6 = "manter": "não trocar" no menu)
+const COMPOSTOS = ["macio", "medio", "duro", "chuva", "decidir", "manter"];
+const REAIS = ["macio", "medio", "duro", "chuva"];
 function empacotar(e) {
   const st = Math.round(limite(e.steer || 0, -1, 1) * 255) + 255, pd = e.pedido ? COMPOSTOS.indexOf(e.pedido) + 1 : 0;
   return (e.gas ? 1 : 0) | (e.brake ? 2 : 0) | (e.ers ? 4 : 0) | (e.respawn ? 8 : 0) | ((pd & 3) << 4) | ((pd >> 2) << 19) | (limite(e.marcha || 0, 0, 15) << 6) | (st << 10);
@@ -286,8 +288,9 @@ function passoBox(c, ent, amb, tr, p, ev) {
     // com um stop-and-go pendente (`amb.stopGo`: os segundos parado) a visita começa com ele: fica parado esses segundos SEM mexer no pneu e, se o
     // composto pedido é outro (`troca`), a equipe troca o pneu em seguida, na mesma parada, com o tempo normal da troca somado
     // `B.parada`/`B.t`: a parada em si (no stop-and-go, os segundos dele); `B.troca = { parada, t }`: a troca de pneu que vem logo depois (null se não troca)
-    const stopGo = amb.stopGo > 0, atual = c.pneu ? c.pneu.composto : B.pedido, tempoTroca = F1.tempoDeParada(amb.semente, amb.id, n);
-    Object.assign(B, { fase: "entra", u: rel + 0.5, lat0: lado, t: 0, composto: B.pedido, stopGo, troca: stopGo && B.pedido !== atual ? { parada: tempoTroca, t: 0 } : null, sg: stopGo ? amb.stopGo : 0, volta: (amb.laps || 0) + 1, n, parada: stopGo ? amb.stopGo : tempoTroca, garagem: F1.garagemDe(cor, amb.grid || 0), tick0: c.tick });
+    const stopGo = amb.stopGo > 0, decidir = B.pedido === "decidir", atual = c.pneu ? c.pneu.composto : (decidir ? "medio" : B.pedido), tempoTroca = F1.tempoDeParada(amb.semente, amb.id, n);
+    const voltasRest = Math.max(0, (amb.voltas || 1) - ((amb.laps || 0) + 1)), rec = decidir ? F1.recomendarParada({ atual, jogos: amb.jogos, agua: amb.agua || 0, voltasRestantes: voltasRest, fator: spec.desgaste }) : null;
+    Object.assign(B, { fase: "entra", u: rel + 0.5, lat0: lado, t: 0, composto: decidir ? null : B.pedido, escolher: decidir, rec, tt: tempoTroca, manter: false, stopGo, troca: !decidir && stopGo && B.pedido !== atual ? { parada: tempoTroca, t: 0 } : null, sg: stopGo ? amb.stopGo : 0, volta: (amb.laps || 0) + 1, n, parada: stopGo ? amb.stopGo : tempoTroca, garagem: F1.garagemDe(cor, amb.grid || 0), tick0: c.tick });
     if (ev) ev.push({ t: "box", fase: "entra", volta: B.volta, n, stopGo: stopGo || undefined });
   }
   const frena = 180, acel = 90; // o corredor tem o seu próprio jeito de frear e de arrancar
@@ -296,13 +299,24 @@ function passoBox(c, ent, amb, tr, p, ev) {
     const falta = Math.max(0, B.garagem - B.u) * 6;
     vai(Math.min(vlim, Math.sqrt(2 * frena * 0.6 * falta)), acel);
     B.u = Math.min(B.garagem, B.u + (c.v * dt) / 6);
-    if (B.u >= B.garagem - 0.02) { B.u = B.garagem; c.v = 0; B.fase = "parada"; B.t = 0; if (ev) ev.push({ t: "boxParou" }); }
+    if (B.u >= B.garagem - 0.02) { B.u = B.garagem; c.v = 0; B.fase = B.escolher ? "escolha" : "parada"; B.t = 0; if (ev) ev.push({ t: B.escolher ? "boxParou" : "boxParou", escolha: B.escolher || undefined }); }
+  } else if (B.fase === "escolha") {
+    // o carro fica parado e o menu está aberto: o pedido que chega (um pneu ou "manter") escolhe; sem escolha em ESCOLHA_BOX_S vale o recomendado. O tempo conta na parada.
+    c.v = 0; B.t += dt;
+    const e = ent.pedido, valido = REAIS.includes(e) || e === "manter";
+    if (valido || B.t >= F1.ESCOLHA_BOX_S) {
+      const escolha = valido ? e : B.rec, atual = c.pneu ? c.pneu.composto : escolha, manter = escolha === "manter";
+      B.manter = manter; B.composto = manter ? atual : escolha;
+      B.troca = B.stopGo && B.composto !== atual ? { parada: B.tt, t: 0 } : null;
+      B.parada = B.stopGo ? B.sg : (manter ? 0 : B.tt);
+      B.fase = "parada"; B.t = 0; if (ev) ev.push({ t: "boxEscolheu", composto: B.composto, manter: manter || undefined, auto: !valido || undefined });
+    }
   } else if (B.fase === "parada") {
     c.v = 0; B.t += dt;
     if (B.t >= B.parada) {
       if (B.troca) B.troca.t += dt; // o stop-and-go já foi cumprido: agora a equipe troca o pneu
       if (!B.troca || B.troca.t >= B.troca.parada) {
-        const trocou = !B.stopGo || !!B.troca; // (parada normal, ou stop-and-go com troca)
+        const trocou = !B.manter && (!B.stopGo || !!B.troca); // (parada normal, ou stop-and-go com troca; "não trocar" só para)
         if (trocou) c.pneu = Object.assign(c.pneu, F1.pneuNovo(B.composto));
         B.fase = "sai"; if (ev && trocou) ev.push({ t: "boxTrocou" });
       }
@@ -319,7 +333,7 @@ function passoBox(c, ent, amb, tr, p, ev) {
   c.idx = saida ? saida.indice : procurar(tr, c.x, c.y, c.idx); c.z = alturaDoChao(tr, c.x, c.y, c.idx);
   c.rpm = Math.max(0.3, D.rotacao(c.v, spec.vmax, c.marcha)); c.marcha = D.marchaAuto(c.v, spec.vmax, c.marcha);
   if (fim) {
-    if (ev) ev.push({ t: "box", fase: "sai", composto: B.composto, tempo: (c.tick - B.tick0) * dt, volta: B.volta, stopGo: B.stopGo || undefined, troca: B.stopGo ? !!B.troca : true, sg: B.sg || undefined });
+    if (ev) ev.push({ t: "box", fase: "sai", composto: B.composto, tempo: (c.tick - B.tick0) * dt, volta: B.volta, stopGo: B.stopGo || undefined, troca: B.stopGo ? !!B.troca : !B.manter, manter: B.manter || undefined, sg: B.sg || undefined });
     B.fase = null; B.pedido = null;
   }
   return !fim; // no último passo o carro já está na beira da pista e a física de sempre continua dali
@@ -328,6 +342,7 @@ function passoBox(c, ent, amb, tr, p, ev) {
 // A fase da parada no box para o HUD: "stopgo" enquanto cumpre os segundos do stop-and-go, "troca" na troca do pneu (o stop-and-go já cumprido, ou a
 // parada normal), `resta` os segundos que faltam dessa fase e `total` os que faltam da parada inteira. null se não está parado na garagem.
 function faseDoBox(B) {
+  if (B && B.fase === "escolha") return { fase: "escolha", resta: Math.max(0, F1.ESCOLHA_BOX_S - B.t), total: Math.max(0, F1.ESCOLHA_BOX_S - B.t) + (B.stopGo ? B.sg : 0) + (B.stopGo ? 0 : B.tt || 0), stopGo: !!B.stopGo, troca: true, rec: B.rec };
   if (!B || B.fase !== "parada") return null;
   const noSg = B.stopGo && B.t < B.parada, tr = B.troca ? B.troca.parada - B.troca.t : noSg ? 0 : B.parada - B.t;
   return { fase: noSg ? "stopgo" : "troca", resta: Math.max(0, noSg ? B.parada - B.t : tr), total: Math.max(0, (noSg ? B.parada - B.t : 0) + (B.troca ? B.troca.parada - (noSg ? 0 : B.troca.t) : 0)), stopGo: !!B.stopGo, troca: !!B.troca };
@@ -480,7 +495,7 @@ function serializar(c) {
     m: c.marcha, tt: R(c.trocaT, 1000), ds: R(c.desceT || 0, 1000), ax: R(c.axL, 100), vz: R(c.vz, 10), air: c.air ? 1 : 0, gvz: R(c.gvz || 0, 10), ix: c.idx, pg: R(c.prog, 10), sc: c.sector, dr: R(c.draft, 1000), tk: c.tick, fa: c.fant ? 1 : 0,
     pn: [c.pneu.composto, R(c.pneu.desgaste, 100000), R(c.pneu.temp, 10000)], er: [R(c.ers.carga, 10000), R(c.ers.recarga, 10000), c.ers.volta] };
   if (c.inst > 0 || c.rIns) s.ni = [R(c.inst || 0, 1000), R(c.instK || 0, 1000), R(c.rIns || 0, 1000)]; // (a instabilidade da batida)
-  if (c.box) { const B = c.box; s.bx = [B.fase, R(B.u, 1000), R(B.lat0, 100), R(B.t, 1000), R(B.parada, 100), R(B.garagem, 1000), B.composto, B.volta, B.n, B.tick0 ?? 0, B.pedido]; }
+  if (c.box) { const B = c.box; s.bx = [B.fase, R(B.u, 1000), R(B.lat0, 100), R(B.t, 1000), R(B.parada, 100), R(B.garagem, 1000), B.composto, B.volta, B.n, B.tick0 ?? 0, B.pedido, B.stopGo ? 1 : 0, B.troca ? [R(B.troca.parada, 100), R(B.troca.t, 1000)] : null, R(B.sg || 0, 100), B.escolher ? 1 : 0, B.rec || null, R(B.tt || 0, 100), B.manter ? 1 : 0]; }
   return s;
 }
 function aplicar(c, s, tr) {
@@ -490,7 +505,7 @@ function aplicar(c, s, tr) {
   c.pneu.composto = s.pn[0]; c.pneu.desgaste = s.pn[1]; c.pneu.temp = s.pn[2];
   c.ers.carga = s.er[0]; c.ers.recarga = s.er[1]; c.ers.volta = s.er[2];
   if (s.ni) { c.inst = s.ni[0]; c.instK = s.ni[1]; c.rIns = s.ni[2]; } else { c.inst = 0; c.instK = 0; c.rIns = 0; }
-  if (s.bx && c.box) { const B = c.box; [B.fase, B.u, B.lat0, B.t, B.parada, B.garagem, B.composto, B.volta, B.n, B.tick0, B.pedido] = s.bx; }
+  if (s.bx && c.box) { const B = c.box; [B.fase, B.u, B.lat0, B.t, B.parada, B.garagem, B.composto, B.volta, B.n, B.tick0, B.pedido] = s.bx; B.stopGo = !!s.bx[11]; B.troca = s.bx[12] ? { parada: s.bx[12][0], t: s.bx[12][1] } : null; B.sg = s.bx[13] || 0; B.escolher = !!s.bx[14]; B.rec = s.bx[15] || null; B.tt = s.bx[16] || 0; B.manter = !!s.bx[17]; }
   else if (c.box && !s.bx) { c.box.fase = null; }
   c.sp = { x: c.x, y: c.y };
 }
