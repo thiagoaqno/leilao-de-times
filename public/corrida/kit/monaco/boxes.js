@@ -15,9 +15,34 @@ export function boxesMonaco(tr, add) {
   const caixa = new THREE.BoxGeometry(1, 1, 1), rot = (p) => Math.atan2(-p.ty, p.tx); // o x local da caixa vai para a tangente e o z local para a normal da pista
   const fundo = 16, piso = 12.6;
   const L = { corpo: [], porta: [], vidro: [], laje: [], grade: [], poste: [], friso: [], toldo: [], mecBody: [], mecHead: [], mecCap: [], toldoEng: [], posteEng: [], monitor: [], limite: [] };
-  const placas = []; // as placas de número e nome de cada garagem, num atlas só
+  const placas = [];
+  // O Port Hercule logo atrás do prédio dos boxes (no real o pit building fica no cais, com os iates colados atrás e visíveis por cima do terraço): uma faixa de cais de concreto e a água, com iates
+  // atracados; a costa de verdade fica a 300 daqui, então a faixa é um canal curto. Só onde não há prédio nem outro trecho da pista.
+  const porto = () => {
+    const vs = [], cs = [], idx = [], iates = [], tx = (a, b, c) => { vs.push(a, b, c); };
+    const col = (c) => { const k = new THREE.Color(c); cs.push(k.r, k.g, k.b); };
+    const lat0 = cor.garagemLat + lado * (meia / 2 + fundo + 16);
+    const ok = (u, l) => { const q = em(u, l); return !tr.predioEmMonaco?.(q.x, q.y, 10) && tr.distAt(q.x, q.y) > Math.abs(lat0) - 12 && !tr.noCorredor?.(q.x, q.y); };
+    for (let u = -2, j = 0; u < cor.len + 2; u += 3, j++) {
+      if (![0, 3, 6].every((d) => [0, 30, 64].every((o) => ok(u + d, lat0 + lado * o)))) continue;
+      const quadros = [[0, 9, "#cfcbc2", 0.9], [9, 64, "#1f78b8", 0.25]];
+      for (const [a, b, c, y] of quadros) { const A = em(u, lat0 + lado * a), B = em(u, lat0 + lado * b), C = em(u + 3, lat0 + lado * a), D2 = em(u + 3, lat0 + lado * b), q = vs.length / 3; for (const [P, v] of [[A, y], [B, y], [C, y], [D2, y]]) { tx(P.x, P.h + v, P.y); col(c); } idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); }
+      if (j % 4 === 1) { const P = em(u + 4, lat0 + lado * (30 + (j % 8 === 1 ? 10 : 0))); iates.push({ x: P.x, y: P.h + 0.9, z: P.y, r: rot(P.p), s: 0.85 + (j % 5) * 0.12 }); }
+    }
+    if (!idx.length) return;
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(cs, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const m = noGrupo(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.1, side: THREE.DoubleSide }))); m.name = "monaco-box-porto";
+    // o casco, a superestrutura e o mastro do iate numa geometria só (cor por vértice)
+    const parte = (w, h, d, x, y, z, c) => { const b = new THREE.BoxGeometry(w, h, d).toNonIndexed(); b.translate(x, y, z); const k = new THREE.Color(c), n = b.attributes.position.count, v = []; for (let i = 0; i < n; i++) v.push(k.r, k.g, k.b); b.setAttribute("color", new THREE.Float32BufferAttribute(v, 3)); return b; };
+    const gs = [parte(44, 8, 12, 0, 4, 0, "#f4f4f0"), parte(26, 7, 10, -4, 11.5, 0, "#e6e8ea"), parte(14, 5, 8, -6, 17.5, 0, "#2a3a4a"), parte(0.8, 18, 0.8, 4, 23, 0, "#9aa3ab")];
+    const pos = [], nor = [], cc = []; for (const b of gs) { pos.push(...b.attributes.position.array); nor.push(...b.attributes.normal.array); cc.push(...b.attributes.color.array); }
+    const gy = new THREE.BufferGeometry(); gy.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); gy.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3)); gy.setAttribute("color", new THREE.Float32BufferAttribute(cc, 3));
+    const mi = noGrupo(new THREE.InstancedMesh(gy, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 }), iates.length)), o = new THREE.Object3D(); mi.name = "monaco-box-iates";
+    iates.forEach((a, i) => { o.position.set(a.x, a.y, a.z); o.rotation.set(0, a.r, 0); o.scale.setScalar(a.s); o.updateMatrix(); mi.setMatrixAt(i, o.matrix); }); mi.castShadow = false;
+    tr.portoDosBoxes = { iates: iates.length };
+  }; // as placas de número e nome de cada garagem, num atlas só
   cor.garagens.forEach((u, k) => {
-    const q = em(u, cor.garagemLat), p = q.p, nx = p.nx * lado, ny = p.ny * lado, r = rot(p), largura = Math.max(18, cor.gap * 6 * 0.92), c = EQUIPES[k % EQUIPES.length][1];
+    const q = em(u, cor.garagemLat), p = q.p, nx = p.nx * lado, ny = p.ny * lado, r = rot(p), largura = Math.max(18, cor.gap * 6 * 0.92), passo = cor.gap * 6, c = EQUIPES[k % EQUIPES.length][1];
     const ref = { x: q.x + nx * (meia / 2), y: q.y + ny * (meia / 2), h: q.h };
     // só onde nenhum outro trecho da pista passa mais perto do que a garagem está do próprio
     if (![0, fundo + 3].every((b) => [-1, 0, 1].every((s) => tr.distAt(ref.x + nx * b + p.tx * s * largura / 2, ref.y + ny * b + p.ty * s * largura / 2) >= Math.abs(cor.garagemLat) + meia / 2 + b - 4))) return;
@@ -25,15 +50,17 @@ export function boxesMonaco(tr, add) {
     L.corpo.push({ ...pt(0, fundo / 2, piso / 2 - 9), r, sx: largura, sy: piso + 9, sz: fundo }); // o térreo (afunda 9 no chão)
     L.porta.push({ ...pt(0, 0.2, 4.8), r, sx: largura * 0.74, sy: 9.6, sz: 0.8 });
     L.friso.push({ ...pt(0, 0.35, 10.9), r, sx: largura * 0.96, sy: 2.6, sz: 1.1, k, c });
-    L.laje.push({ ...pt(0, fundo / 2 - 1, piso + 0.3), r, sx: largura + 1, sy: 0.7, sz: fundo + 1.5 }); // o piso do terraço
-    L.vidro.push({ ...pt(0, fundo / 2 + 2.5, piso + 4.4), r, sx: largura - 1.2, sy: 7.6, sz: fundo - 5 }); // o andar de cima, de vidro, recuado
-    L.laje.push({ ...pt(0, fundo / 2 + 0.5, piso + 8.6), r, sx: largura + 1.6, sy: 0.9, sz: fundo }); // a laje de cobertura
-    L.grade.push({ ...pt(0, 0.7, piso + 1.9), r, sx: largura, sy: 2.2, sz: 0.3 }); // o guarda-corpo na frente do terraço
+    L.laje.push({ ...pt(0, fundo / 2 - 1, piso + 0.3), r, sx: passo + 0.8, sy: 0.7, sz: fundo + 1.5 }); // o piso do terraço (uma faixa contínua por cima de todas as garagens)
+    L.vidro.push({ ...pt(0, fundo / 2 + 2.5, piso + 4.4), r, sx: passo + 0.6, sy: 7.6, sz: fundo - 5 }); // o andar de cima, contínuo, de vidro, recuado
+    L.laje.push({ ...pt(-passo / 2, 0.8, 10.8), r, sx: 0.9, sy: 21.6, sz: 1.1 }); // as colunas de aço branco, uma entre cada garagem
+    L.laje.push({ ...pt(0, fundo / 2 + 0.5, piso + 8.6), r, sx: passo + 1.4, sy: 0.9, sz: fundo }); // a laje de cobertura (o teto branco corrido)
+    L.grade.push({ ...pt(0, 0.7, piso + 1.9), r, sx: passo, sy: 2.2, sz: 0.3 }); // o guarda-corpo na frente do terraço
     L.toldo.push({ ...pt(0, 2.8, piso + 6.4), r, sx: largura - 0.5, sy: 0.5, sz: 5.4, k, c }); // o toldo da equipe sobre o terraço
     for (const s of [-1, 1]) L.poste.push({ ...pt(s * (largura / 2 - 0.8), 0.9, piso + 3.4), r, sx: 0.5, sy: 6.6, sz: 0.5 });
     // os mecânicos da equipe: macacão na cor dela, em fila na frente da porta
     for (const s of [-1.2, 0, 1.2]) { const a = s * 5, b = -2.6; L.mecBody.push({ ...pt(a, b, 2.6), r, sx: 2.2, sy: 5.2, sz: 1.8, k, c }); L.mecHead.push({ ...pt(a, b, 6), r, sx: 1.7, sy: 1.6, sz: 1.6 }); L.mecCap.push({ ...pt(a, b, 7.1), r, sx: 2, sy: 0.8, sz: 1.9 }); }
-    placas.push({ k, a: pt(0, 0.95, 13.4), t: [p.tx, p.ty], larg: largura * 0.8 });
+    placas.push({ k, a: pt(0, -0.7, 16.4), t: [p.tx, p.ty], larg: largura * 0.94 });
+    placas.push({ k: EQUIPES.length, a: pt(0, -0.2, piso + 7.3), t: [p.tx, p.ty], larg: passo, hh: 0.9 }); // a faixa vermelha e branca "GRAND PRIX DE MONACO" na frente da laje
     // o toldo do engenheiro no pit wall, diante da garagem, com o monitor
     const m = em(u, lado * (W / 2 + 16)), pr = m.p, rm = rot(pr);
     for (const s of [-1, 1]) L.posteEng.push({ x: m.x + pr.tx * s * 7, y: m.h + 4.4, z: m.y + pr.ty * s * 7, r: rm, sx: 0.8, sy: 8.8, sz: 0.8 });
@@ -59,18 +86,20 @@ export function boxesMonaco(tr, add) {
   montar(L.monitor, new THREE.MeshBasicMaterial({ color: 0x1e3f66 }), "monaco-box-monitor"); montar(L.limite, new THREE.MeshBasicMaterial({ color: 0xffd23f }), "monaco-box-limitador");
   // as placas das garagens: número grande e o nome da equipe, num atlas (1 chamada de desenho)
   if (placas.length) {
-    const H = 64, atlas = canvasTex(1024, H * EQUIPES.length, (x, w) => {
+    const LIN = EQUIPES.length + 1, H = 64, atlas = canvasTex(1024, H * LIN, (x, w) => {
+      x.fillStyle = "#d8232a"; x.fillRect(0, EQUIPES.length * H, w, H); x.fillStyle = "#ffffff"; for (let q = 0; q < w; q += 128) x.fillRect(q, EQUIPES.length * H + H - 14, 64, 14); x.textBaseline = "middle"; x.textAlign = "center"; x.font = "900 40px Arial Black, Arial, sans-serif"; x.fillText("GRAND PRIX DE MONACO", w / 2, EQUIPES.length * H + H / 2 - 6, w - 30);
       EQUIPES.forEach(([nome, c], k) => { x.fillStyle = c; x.fillRect(0, k * H, w, H); x.fillStyle = "rgba(0,0,0,0.35)"; x.fillRect(0, k * H, 150, H); x.fillStyle = "#ffffff"; x.textBaseline = "middle"; x.textAlign = "center"; x.font = "900 48px Arial Black, Arial, sans-serif"; x.fillText(String(k + 1), 75, k * H + H / 2 + 2); x.font = "900 40px Arial Black, Arial, sans-serif"; x.fillText(nome.toUpperCase(), 150 + (w - 150) / 2, k * H + H / 2 + 2, w - 190); });
     }, false);
     const vs = [], uv = [], idx = [];
     for (const pl of placas) {
-      const w = pl.larg / 2, hh = 1.7, q = vs.length / 3, [tx, ty] = pl.t, a = pl.a;
-      for (const [s, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { vs.push(a.x + tx * w * s, a.y + hh * v, a.z + ty * w * s); uv.push((s + 1) / 2, 1 - (pl.k + (1 - v) / 2) / EQUIPES.length); }
+      const w = pl.larg / 2, hh = pl.hh ?? 3, q = vs.length / 3, [tx, ty] = pl.t, a = pl.a;
+      for (const [s, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { vs.push(a.x + tx * w * s, a.y + hh * v, a.z + ty * w * s); uv.push((1 - s) / 2, 1 - (pl.k + (1 - v) / 2) / (EQUIPES.length + 1)); }
       idx.push(q, q + 1, q + 2, q, q + 2, q + 3);
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
     const m = noGrupo(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: atlas, side: THREE.DoubleSide }))); m.name = "monaco-box-placas";
   }
+  porto(); // o Port Hercule e os iates logo atrás do prédio
   // as placas de entrada e saída do pit lane, de frente para quem chega
   const placa = (texto, u) => {
     const c = em(u, latDe(u) + lado * (meia + 2)), p = c.p, tex = canvasTex(256, 96, (x, w, h) => { x.fillStyle = "#0e3a8a"; x.fillRect(0, 0, w, h); x.fillStyle = "#ffffff"; x.font = "900 44px Arial Black, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(texto, w / 2, h / 2 - 8, w - 16); x.font = "700 18px Arial, sans-serif"; x.fillText("PIT LANE  60 km/h", w / 2, h - 18); }, false);

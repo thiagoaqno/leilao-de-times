@@ -12,6 +12,7 @@ import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
 import { tecpro, telaos, largada, cais, fonte, cruzeiros, muroDeArrimo } from "./kit/monaco/detalhes.js";
 import { tunel } from "./kit/monaco/tunel.js";
 import { paddockMonaco } from "./kit/monaco/paddock.js";
+import { grampoMonaco } from "./kit/monaco/grampo.js";
 import { arvores, corDoChao } from "./kit/monaco/beira.js";
 import { vidaMonaco as vidaDeMonaco } from "./kit/monaco/vida.js";
 
@@ -25,14 +26,15 @@ function arquibancadasMonaco(tr, add, predioEm) {
   const { pts, n } = tr, L = tr.wallLat, f = D.frac, t = f.trechos, c = f.curvas;
   const lado = (i, quer) => { // quer: "agua" (o lado do porto) ou "fora" (de fora da curva)
     const p = pts[i % n];
+    if (quer === "terra") return -lado(i, "agua"); // o lado oposto ao da água (as arquibancadas do Tabac ficam do lado da Piscina, e o porto fica livre)
     if (quer === "agua") { const a = fundoMonaco(tr, p.x + p.nx * (L + 60), p.y + p.ny * (L + 60)), b = fundoMonaco(tr, p.x - p.nx * (L + 60), p.y - p.ny * (L + 60)); return a > b ? 1 : -1; }
     return -sinalDaCurva(pts, n, i % n);
   };
   const candidatos = [
     ["boxes", t.retaDosBoxes[0] + 0.02, t.retaDosBoxes[1] - 0.012, "fora-da-reta", 4], // a reta dos boxes, do lado de fora do corredor
-    ["cais", t.cais[0], t.cais[1], "agua", 3], // o cais do porto, de frente para os iates
+    ["cais", t.cais[0], Math.min(t.cais[1], c.tabac - 0.025), "agua", 3], // o cais do porto, de frente para os iates
     ["sainteDevote", c.sainteDevote - 0.01, c.sainteDevote + 0.015, "fora", 4],
-    ["tabac", c.tabac - 0.012, c.tabac + 0.012, "agua", 3],
+    ["tabac", c.tabac - 0.012, c.tabac + 0.012, "terra", 3], // do lado de dentro, o da Piscina (K): o lado da água continua livre, com o guard-rail baixo
     ["piscine", c.piscine1 - 0.01, c.piscine2 + 0.012, "agua", 3],
     ["rascasse", c.rascasse - 0.012, c.anthonyNoghes + 0.008, "fora", 4],
   ];
@@ -82,6 +84,7 @@ export function cenarioMonaco(tr, ctx) {
   arquibancadasMonaco(tr, add, predioEm);
   arvores(tr, add, { hAt, predioEm });
   paddockMonaco(tr, add, hAt); // as hospitalidades das equipes, as tendas de apoio e o paddock flutuante (substituem as tendas genéricas)
+  grampoMonaco(tr, add, hAt, predioEm); // o canteiro com palmeiras e os postes verdes do grampo do Fairmont
   muroDeArrimo(tr, add); // o muro de pedra entre trechos empilhados (grampo e Mirabeau): fecha o desnível que o terreno deixaria aberto
   tr.contextoVidaMonaco = { lista, predioEm, hAt };
   const f = D.frac, c = f.curvas, tc = f.trechos;

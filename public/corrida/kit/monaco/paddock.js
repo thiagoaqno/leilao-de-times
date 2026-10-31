@@ -25,7 +25,7 @@ export function paddockMonaco(tr, add, hAt) {
       faixas.push({ ...frente(0, 10.2, 9), r, sx: 34.4, sy: 3, sz: 0.8, c }); // a faixa da equipe, no meio da fachada
       toldos.push({ ...frente(0, 13.5, 6.4), r, sx: 30, sy: 0.6, sz: 7, c }); // o toldo da hospitalidade, na cor da equipe
       for (const s of [-1, 1]) toldos.push({ ...frente(s * 14, 16.4, 3.2), r, sx: 0.6, sy: 6.4, sz: 0.6, c: "#d9d9d6" });
-      letreiros.push({ ...frente(0, 10.4, 17.4), t: [p.tx, p.ty], k, larg: 26 });
+      letreiros.push({ ...frente(0, 10.4, 17.4), t: [p.tx, p.ty], k, larg: 33 });
       (tr.reservado ||= []).push([x, z, 34]); k++; break;
     }
   }
@@ -52,9 +52,9 @@ export function paddockMonaco(tr, add, hAt) {
   instancias(add, new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), M2(0xefeee8), tetos, { nome: "monaco-tenda-apoio-teto", sombra: false });
   // os letreiros das hospitalidades (um atlas, uma malha)
   if (letreiros.length) {
-    const H = 64, atlas = canvasTex(512, H * EQUIPES.length, (x, w) => EQUIPES.forEach(([nome, c], j) => { x.fillStyle = "#101319"; x.fillRect(0, j * H, w, H); x.fillStyle = c; x.fillRect(0, j * H + H - 8, w, 8); x.fillStyle = "#ffffff"; x.font = "900 34px Arial Black, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(nome.toUpperCase() + "  HOSPITALITY", w / 2, j * H + H / 2 - 3, w - 16); }), false);
+    const H = 64, atlas = canvasTex(512, H * EQUIPES.length, (x, w) => EQUIPES.forEach(([nome, c], j) => { x.fillStyle = "#101319"; x.fillRect(0, j * H, w, H); x.fillStyle = c; x.fillRect(0, j * H + H - 8, w, 8); x.fillStyle = "#ffffff"; x.font = "900 52px Arial Black, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(nome.toUpperCase(), w / 2, j * H + H / 2 - 3, w - 16); }), false);
     const vs = [], uv = [], idx = [];
-    for (const s of letreiros) { const q = vs.length / 3, w = s.larg / 2; for (const [a, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { vs.push(s.x + s.t[0] * w * a, s.y + 2.2 * v, s.z + s.t[1] * w * a); uv.push((a + 1) / 2, 1 - (s.k + (1 - v) / 2) / EQUIPES.length); } idx.push(q, q + 1, q + 2, q, q + 2, q + 3); }
+    for (const s of letreiros) { const q = vs.length / 3, w = s.larg / 2; for (const [a, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { vs.push(s.x + s.t[0] * w * a, s.y + 3.4 * v, s.z + s.t[1] * w * a); uv.push((a + 1) / 2, 1 - (s.k + (1 - v) / 2) / EQUIPES.length); } idx.push(q, q + 1, q + 2, q, q + 2, q + 3); }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
     const m = add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: atlas, side: THREE.DoubleSide }))); m.name = "monaco-hospitalidade-letreiro";
   }
