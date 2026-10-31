@@ -54,6 +54,29 @@ export function boxesGP(tr, add, cfg = {}) {
   fita(branco, F.RAMPA, fim - F.RAMPA, desloc(-0.45), desloc(0.45), y0 + 0.04, y0 + 0.04);
   fita(branco, F.RAMPA - 1, F.RAMPA - 0.5, desloc(-meia), desloc(meia), y0 + 0.05, y0 + 0.05);
   fita(vermelho, fim - F.RAMPA, fim - F.RAMPA + 0.5, desloc(-meia), desloc(meia), y0 + 0.05, y0 + 0.05);
+  // Entrada destacada: guias amarelas e setas no asfalto levam da pista à rampa.
+  // Os desenhos usam a mesma curva do corredor, inclusive em pistas com o box à esquerda.
+  const amarelo = poly({ color: 0xffd52a, emissive: 0x342500, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const guia = (u) => cor.lat(u, lado * (W / 2 - 8));
+  for (let u = 0; u < F.RAMPA; u += 3) {
+    const a = u, b = Math.min(u + 1.8, F.RAMPA);
+    fita(amarelo, a, b, (v) => guia(v) - lado * 8, (v) => guia(v) - lado * 6.4, y0 + 0.10, y0 + 0.10);
+    fita(amarelo, a, b, (v) => guia(v) + lado * 6.4, (v) => guia(v) + lado * 8, y0 + 0.10, y0 + 0.10);
+  }
+  for (const u of [2, 6, 10]) {
+    const ponta = em(u + 2, guia(u + 2)), esq = em(u, guia(u) - lado * 5), dir = em(u, guia(u) + lado * 5);
+    const l = L.de(amarelo), base = l.vs.length / 3;
+    for (const p of [ponta, esq, dir]) { l.vs.push(p.x, p.h + y0 + 0.11, p.y); l.uv.push(0, 0); }
+    l.idx.push(base, base + 1, base + 2);
+  }
+  // Placa alta, voltada para quem chega, visível mesmo quando há carros sobre a pintura.
+  const placaTex = canvasTex(512, 160, (x, w, h) => {
+    x.fillStyle = "#101418"; x.fillRect(0, 0, w, h); x.fillStyle = "#ffd52a"; x.fillRect(0, 0, w, 12); x.fillRect(0, h - 12, w, 12);
+    x.fillStyle = "#fff"; x.font = "900 82px Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("PIT ENTRY", w / 2, h / 2);
+  });
+  const pEntrada = em(1, lado * (W / 2 + 40)), qEntrada = pts[(cor.i0 + 1) % n];
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(55, 17), new THREE.MeshBasicMaterial({ map: placaTex, side: THREE.DoubleSide }));
+  placa.position.set(pEntrada.x, pEntrada.h + 31, pEntrada.y); placa.rotation.y = Math.atan2(-qEntrada.tx, -qEntrada.ty); placa.name = `${tr.id}-entrada-box-placa`; grp.add(placa);
   // a mureta entre a pista e o corredor, só no trecho reto (nas rampas o carro cruza); pista de rua já tem o guard-rail
   if ((cfg.mureta ?? !tr.t.walls) !== false) {
     const lm = (u) => lado * (W / 2 + 12.5), a = F.RAMPA + 1, b = fim - F.RAMPA - 1, alt = 3.6;

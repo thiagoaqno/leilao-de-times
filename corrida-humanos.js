@@ -126,7 +126,7 @@ function andar(room, agora, h) {
       if (tReal === undefined) tReal = t + PASSO_MS; // sem a hora do navegador (versão velha): a da chegada
       if (!(tReal > S.tReal)) tReal = S.tReal + 0.5; // só cresce
       S.tReal = tReal;
-      Contato.depoisDoPasso(room, p, c, tReal, ev, corrida && !amb.safety && !amb.segurar && p.finish == null && !p.box && !p.dnf);
+      Contato.depoisDoPasso(room, p, c, tReal, ev, corrida && !amb.safety && !amb.segurar && p.finish == null && !p.box && !c.box?.fase && !p.dnf);
       temEntrada = true;
       // A contagem da corrida usa a hora real validada do passo, não o relógio acumulado da simulação:
       // depois de uma travada, este pode ficar muito atrás dos bots e dar ao humano um tempo de chegada anterior ao deles.
