@@ -8,7 +8,7 @@ import { rotacao, NUM } from "./cambio.js";
 import { Sound } from "./sons.js";
 import { ORDEM, NOMES, usavel, camEstado } from "./cameras.js";
 import { mfd, mfdTecla, mfdPad, mfdAtivo, acoes, teclaBox, digitoPneu, cancelarBoxTecla } from "./mfd.js";
-import { acoesDaTecla, botoesDe, ui } from "./teclas.js";
+import { acoesDaTecla, botoesDe, ui, volante } from "./teclas.js";
 import "./teclas-ui.js";
 
 // câmbio manual: Shift sobe, Ctrl direito desce (redução que estouraria o giro não entra)
@@ -70,6 +70,8 @@ document.querySelectorAll(".pad button[data-k]").forEach((b) => {
 // controle (Xbox/PlayStation): analógico esquerdo vira (com a força exata), RT acelera, LT freia/ré,
 // A também acelera e B/X também freiam (para quem prefere botão), Y troca a câmera, Back/Select (ou LB) volta para a pista.
 export const pad = { steer: 0, on: false, prev: [], olharTras: false };
+// a direção que a física recebe: o analógico (já com a curva) ou o teclado/toque (-1, 0 ou 1 vezes a sensibilidade escolhida); só muda a entrada, não a física
+export const direcao = () => (pad.on && pad.steer ? pad.steer : window.Volante.teclado((keys.right ? 1 : 0) - (keys.left ? 1 : 0), volante.k));
 export function pollPad() {
   const gp = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find((g) => g && g.connected);
   if (!gp) { pad.olharTras = false; if (pad.on) { pad.on = false; keys.gas = keys.brake = false; } return; }
@@ -78,7 +80,7 @@ export function pollPad() {
   if (ui.aberto) { pad.prev = gp.buttons.map((_, i) => b(i)); return; } // a tela de Controles está aberta: o controle só serve para remapear
   mfdPad(bate); // o MFD: páginas, linhas, valor, abrir e confirmar
   let x = gp.axes[0] || 0; if (um("esq")) x = -1; if (um("dir")) x = 1;
-  const dz = 0.15; x = Math.abs(x) < dz ? 0 : Math.sign(x) * ((Math.abs(x) - dz) / (1 - dz)) ** 1.4;
+  x = window.Volante.analogico(x, volante.zona, volante.p); // a zona morta e o ganho do analógico (tela Controles)
   const gas = botoesDe("gas").some(i => b(i) && !(i === 0 && mfdAtivo() && mfd.aberto)), brake = um("freio");
   pad.olharTras = um("olharTras");
   if (gas || brake || x || pad.on) { pad.on = true; pad.steer = x; keys.gas = gas; keys.brake = brake && !gas; }
