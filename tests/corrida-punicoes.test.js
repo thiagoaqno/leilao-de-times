@@ -155,18 +155,26 @@ test("bater num carro que derrapa é infração leve mesmo em baixa velocidade (
 
 test("stop-and-go com troca na mesma parada: B.troca = { parada, t } e a fase vai de stopgo a troca", () => {
   const Sim = require("../public/corrida/sim.js"), T = require("../public/corrida/pistas.js"), Eq = require("../public/corrida/f1-equipes.js");
-  const tr = Sim.criarPista(T.PISTAS.interlagos, "interlagos"), cor = tr.corredor, q = tr.pts[(cor.i0 - 3 + tr.n) % tr.n], a0 = Math.atan2(q.ty, q.tx);
+  const tr = Sim.criarPista(T.PISTAS.interlagos, "interlagos");
   const c = Sim.novo(tr, { grid: 0, f1: true, pneu: F1.pneuNovo("medio"), box: true });
+  const cor = tr.corredor, q = tr.pts[(cor.i0 - 3 + tr.n) % tr.n], a0 = Math.atan2(q.ty, q.tx);
   Object.assign(c, { x: q.x, y: q.y, idx: (cor.i0 - 3 + tr.n) % tr.n, a: a0, v: 60, vx: Math.cos(a0) * 60, vy: Math.sin(a0) * 60, z: q.h });
   const amb = { spec: Eq.specDaEquipe("mclaren"), voltas: 5, laps: 1, paradas: 0, semente: 7, id: "a", grid: 0, f1: true, outros: [], stopGo: 8 }, fases = new Set(), ev = [];
   for (let i = 0; i < 120 * 60 && !ev.some((e) => e.fase === "sai"); i++) {
-    const e = []; Sim.passo(c, { gas: 1, pedido: "duro" }, amb, tr, e); ev.push(...e);
+    const e = []; Sim.passo(c, { gas: 1, pedido: "chuva" }, amb, tr, e); ev.push(...e);
     const f = Sim.faseDoBox(c.box); if (f) fases.add(f.fase);
     if (c.box.fase === "parada") { assert.ok(c.box.troca && c.box.troca.parada > 0 && c.box.parada === 8); }
   }
   assert.deepEqual([...fases], ["stopgo", "troca"]);
-  assert.equal(c.pneu.composto, "duro");
+  assert.equal(c.pneu.composto, "chuva");
   const sai = ev.find((e) => e.fase === "sai"); assert.ok(sai.stopGo && sai.troca && sai.sg === 8);
+});
+
+test("pneu de chuva pedido depois do stop-and-go respeita o estoque", () => {
+  const p = { pneu: "medio", pneuAtual: "medio", compostos: ["medio"], paradas: [] };
+  assert.equal(F1.compostoParaParada(p, "chuva"), "chuva");
+  p.paradas = [{ composto: "chuva" }, { composto: "chuva" }];
+  assert.notEqual(F1.compostoParaParada(p, "chuva"), "chuva");
 });
 
 test("pneus na água: o macio sofre até na garoa, o de chuva é só um pouco melhor na garoa e claramente melhor na pista encharcada", () => {

@@ -34,7 +34,8 @@ export function alternarPedido() {
 // 1, 2, 3 e 4 (macio, médio, duro e chuva): escolhem o composto da parada (e pedem a parada, se ainda não tinha)
 export function escolherComposto(composto) {
   const B = race && race.box; if (!B || B.fase || !F1().PNEUS[composto]) return;
-  if (jogosDe(me())[composto] <= 0) { toast(`${F1().PNEUS[composto].nome} esgotado (2 jogos usados)`, 1600); return; }
+  const soStopGo = me()?.stopGo && composto === (race.pneu ? race.pneu.composto : "medio");
+  if (!soStopGo && jogosDe(me())[composto] <= 0) { toast(`${F1().PNEUS[composto].nome} esgotado (2 jogos usados)`, 1600); return; }
   if (!B.pedido && !podePedir()) return;
   B.pedido = race.pedidoBox = composto; avisar();
 }
