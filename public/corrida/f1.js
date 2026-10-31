@@ -120,7 +120,31 @@ function montarCorpo(k) {
     k.olho = { z: ctr.z + 0.62, y: ctr.y + 0.32 }; // atrás do volante, na altura do capacete
   }
   const cx = new THREE.Box3().setFromObject(k.carro); k.escapamento = { z: k.carro.worldToLocal(cx.max.clone()).z - 0.1, y: 0.42 };
+  montarFlap(k, m);
   k.aoMontar?.(k);
+}
+// O flap do DRS: a asa traseira é parte da malha do corpo, então uma placa fina de carbono na ponta da asa faz o papel do flap superior e gira
+// no seu eixo da frente quando o DRS abre. Onde fica a asa (altura, largura, recuo) sai dos vértices da traseira, medidos uma vez por modelo.
+function medirAsa(k, m) {
+  const M = k.modelo; if (M.asa !== undefined) return M.asa;
+  const v = new THREE.Vector3(), pts = []; let zmax = -1e9;
+  m.traverse((o) => { if (!o.isMesh || !o.geometry.attributes.position) return; const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i += 2) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); k.carro.worldToLocal(v); pts.push(v.x, v.y, v.z); if (v.z > zmax) zmax = v.z; } });
+  let ymax = -1e9; for (let i = 0; i < pts.length; i += 3) if (pts[i + 2] > zmax - 0.45 && pts[i + 1] > ymax) ymax = pts[i + 1];
+  let xmax = 0, zmin = 1e9; for (let i = 0; i < pts.length; i += 3) if (pts[i + 2] > zmax - 0.8 && pts[i + 1] > ymax - 0.1) { xmax = Math.max(xmax, Math.abs(pts[i])); zmin = Math.min(zmin, pts[i + 2]); }
+  return (M.asa = xmax > 0.2 && isFinite(ymax) ? { y: ymax, meia: xmax, z0: zmin, prof: Math.max(0.2, Math.min(0.5, zmax - zmin)) } : null);
+}
+const FLAP_GEO = new THREE.BoxGeometry(1, 0.025, 1);
+function montarFlap(k, m) {
+  const a = medirAsa(k, m); if (!a) return;
+  const mat = new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.45, metalness: 0.3 }), piv = new THREE.Group();
+  piv.position.set(0, a.y, a.z0 + 0.02); k.carro.add(piv);
+  const placa = new THREE.Mesh(FLAP_GEO, mat); placa.scale.set(a.meia * 1.8, 1, a.prof * 0.95); placa.position.z = a.prof * 0.475; placa.castShadow = true; piv.add(placa);
+  k.mats.push(mat); k.flap = piv; k.drsA = 0;
+}
+// a cada quadro: abre (rápido) ou fecha o flap conforme o DRS deste carro, com uma animação curta
+export function animarDrs(k, aberto, dt) {
+  if (!k.flap) return; const alvo = aberto ? 1 : 0; if (k.drsA === alvo) return;
+  k.drsA += Math.sign(alvo - k.drsA) * Math.min(Math.abs(alvo - k.drsA), dt / 0.18); k.flap.rotation.x = -0.6 * k.drsA * k.drsA * (3 - 2 * k.drsA); // levanta a ponta de trás
 }
 // a posição de cada ponto da roda em relação ao eixo, em raios (1 = a borda do pneu): a faixa do composto é um anel nesse
 // espaço (o shader mede o comprimento do vetor em cada pixel, então o anel sai redondo mesmo com poucos vértices)
