@@ -110,34 +110,43 @@ const LINHAS = {
 const linhasDaPagina = (id = mfd.pagina) => LINHAS[id] || [];
 // o pneu da próxima parada ainda sem pedido (a escolha do MFD; senão o que vem depois do atual, como o B fazia)
 function proximo() {
-  const op = compostosPossiveis(), atual = race.pneu ? race.pneu.composto : "medio", ordem = ["macio", "medio", "duro", "chuva"];
-  if (mfd.prox && op.includes(mfd.prox)) return mfd.prox;
-  if (me() && me().stopGo) return atual; // com stop-and-go pendente o padrão é só cumpri-lo (sem trocar o pneu); outro número troca na mesma parada
-  for (let k = 1; k <= 3; k++) { const c = ordem[(ordem.indexOf(atual) + k) % 4]; if (op.includes(c)) return c; }
-  return op[0] || atual;
+  const BE = window.BoxEscolha, atual = race.pneu ? race.pneu.composto : "medio", m_ = me() || {};
+  return BE.padraoDoB({ atual, jogos: m_.jogos, stopGo: !!m_.stopGo, desgaste: race.pneu ? race.pneu.desgaste : 0, selecionado: mfd.prox });
 }
-// pede a parada com o pneu escolhido, ou cancela se já estava pedida (a ação do B)
+// a linha "Pedir box" (e o botão do MFD) alterna: pede com o pneu escolhido, ou cancela se já estava pedida
 function alternarBox() {
   const B = race && race.box; if (!B || B.fase) return;
   if (B.pedido) { cancelarPedido(); return; }
   escolherComposto(proximo()); // (box.js: com stop-and-go pendente o pedido cumpre o stop-and-go e, se o pneu for outro, troca na mesma parada)
 }
+// Enter, A, o botão confirmar e o segundo B: PEDEM com o que está selecionado, mas com o pedido já feito só o mostram (nunca cancelam nem trocam o pneu: era o
+// B apertado "de confirmação" que desfazia o 4). Cancelar é do Backspace, do mesmo número duas vezes não (é só confirmação) ou da linha "Pedir box".
+function confirmarBox() {
+  const B = race && race.box; if (!B || B.fase) return;
+  if (B.pedido) { toast(`🔧 Box pedido: ${F1U().PNEUS[B.pedido].nome} (Backspace cancela)`, 1600); return; }
+  escolherComposto(proximo());
+}
 const naPaginaBox = () => !!race && !!race.box && mfd.aberto && mfd.pagina === "box";
-// B (teclado e botão Box): abre o MFD na página do Box com o próximo pneu à vista; com ela aberta, B confirma o pedido (de novo, cancela)
+// B (teclado e botão Box): abre o MFD na página do Box; com ela aberta e sem pedido, pede; com o pedido feito, só o mostra
 export function teclaBox() {
   if (!ativo() || !race.box) { alternarPedido(); return; } // fora do HUD de F1 (arcade) segue o jeito antigo
   if (race.box.fase) return;
-  if (!naPaginaBox()) { mfd.prox = null; abrirBoxMfd(); return; }
-  alternarBox(); mexeu(); atualizarLinhas();
+  const acao = window.BoxEscolha.acaoDoB({ naPaginaBox: naPaginaBox(), pedido: race.box.pedido });
+  if (acao === "abrir") { mfd.prox = null; abrirBoxMfd(); return; }
+  confirmarBox(); mexeu(); atualizarLinhas();
 }
-// 1 a 4: escolhem o pneu E confirmam o pedido na hora (o atalho rápido: B e 2, B e 4), com ou sem stop-and-go pendente. O MFD abre no Box para
-// mostrar o pedido. Sem setas. Devolve true se tratou.
+// 1 a 4: escolhem o pneu E pedem a parada na hora (o atalho rápido: B e 2, B e 4), com ou sem stop-and-go pendente. O MFD abre no Box para mostrar o pedido.
+// O mesmo número do pedido já feito é só confirmação. Sem setas. Devolve true se tratou.
 export function digitoPneu(composto) {
   if (!ativo() || !race.box || race.box.fase) return false;
-  escolherComposto(composto); // (avisa e recusa sozinho: composto esgotado, última volta...)
-  if (race.box.pedido === composto) { mfd.prox = null; abrirBoxMfd(); }
+  const m_ = me() || {}, r = window.BoxEscolha.acaoDoDigito({ composto, pedido: race.box.pedido, jogos: m_.jogos, atual: race.pneu ? race.pneu.composto : null, stopGo: !!m_.stopGo });
+  if (r.acao === "esgotado") toast(F1U().PNEUS[composto].nome + " esgotado (2 jogos usados)", 1600);
+  else if (r.acao === "manter") toast(`🔧 Box já pedido: ${F1U().PNEUS[composto].nome}`, 1200);
+  else if (r.acao === "pedir") { escolherComposto(composto); if (race.box.pedido === composto) { mfd.prox = null; abrirBoxMfd(); } } // (box.js recusa sozinho a última volta etc.)
   mexeu(); atualizarLinhas(); return true;
 }
+// Backspace: cancela o pedido de box (a única tecla que cancela sem querer querer)
+export function cancelarBoxTecla() { if (race && race.box && !race.box.fase && race.box.pedido) { cancelarPedido(); mexeu(); atualizarLinhas(); } }
 
 // ---------- montagem ----------
 export function montarMfd() {

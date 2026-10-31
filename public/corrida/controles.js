@@ -7,7 +7,7 @@ import { E, carOf, me, act } from "./estado.js";
 import { rotacao, NUM } from "./cambio.js";
 import { Sound } from "./sons.js";
 import { ORDEM, NOMES, usavel, camEstado } from "./cameras.js";
-import { mfd, mfdTecla, mfdPad, mfdAtivo, acoes, teclaBox, digitoPneu } from "./mfd.js";
+import { mfd, mfdTecla, mfdPad, mfdAtivo, acoes, teclaBox, digitoPneu, cancelarBoxTecla } from "./mfd.js";
 import { acoesDaTecla, botoesDe, ui } from "./teclas.js";
 import "./teclas-ui.js";
 
@@ -37,6 +37,7 @@ document.addEventListener("keydown", (e) => {
     else if (id === "marchaMenos") { e.preventDefault(); trocarMarcha(-1); }
     else if (id === "respawn") respawn();
     else if (id === "box") teclaBox();
+    else if (id === "cancelarBox") cancelarBoxTecla();
     else if (PNEUS[id]) { if (!digitoPneu(PNEUS[id])) escolherComposto(PNEUS[id]); }
     else if (id === "camera") nextCam();
     else if (id === "ers") { if (E.S?.config.regras === "f1") { keys.ers = true; e.preventDefault(); } else { e.preventDefault(); useItem(keys.brake); } }
