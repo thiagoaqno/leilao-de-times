@@ -153,7 +153,7 @@ function aplicarAberto() {
 function abrir(v, guardar = true) { mfd.aberto = !!v; if (v) mexeu(); if (guardar) guardarAberto(); aplicarAberto(); paginaVista = null; }
 // 3 s sem interação: o painel desce sozinho (no PC e no celular), sai do modo ajustar e devolve as setas à pilotagem. Qualquer tecla ou botão do MFD
 // (M, N, B, 1-4, Tab, D-pad ajustando, toques no painel) chama mexeu() e reinicia a contagem. Não grava a escolha: o próximo GP começa com o painel à vista.
-const RECOLHE_MS = 3000;
+const RECOLHE_MS = 5000;
 export function mexeu() { mfd.ultimo = performance.now(); }
 // B e o botão de box mostram a estratégia sem tirar as setas da pilotagem.
 export function abrirBoxMfd() {
