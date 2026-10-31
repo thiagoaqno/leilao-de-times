@@ -178,9 +178,20 @@ test("sala: um composto só recebe penalidade proporcional e passar do limitador
     for (const nome of ["Ana", "Beto", "Caio"]) internos.onSector(room, jogador(nome), 0, relogio); // a largada
     // o Beto e o Caio param nos boxes na volta 1 (o tempo no corredor é o da física: aqui, o do Caio é rápido demais)
     internos.concluirParada(room, jogador("Caio"), { composto: "duro", tempo: 4, volta: 1 }); // 4 s: rápido demais
+    jogador("Beto").dano = 20;
     internos.concluirParada(room, jogador("Beto"), { composto: "inexistente", tempo: 23, volta: 1 }); // composto que não existe: não vale
     assert.equal((jogador("Beto").paradas || []).length, 0);
+    assert.equal(jogador("Beto").dano, 20, "parada inválida não repara");
     internos.concluirParada(room, jogador("Beto"), { composto: "duro", tempo: 23, volta: 1 }); // 23 s: certo
+    assert.equal(jogador("Beto").dano, 2, "box reduz 90% do dano");
+    jogador("Caio").dano = 30; jogador("Caio").stopGo = { s: 8, ate: 3 };
+    internos.concluirParada(room, jogador("Caio"), { stopGo: true, troca: false, tempo: 12, volta: 1 });
+    assert.equal(jogador("Caio").dano, 3, "stop-and-go também repara 90%");
+    assert.equal(jogador("Caio").stopGo, null);
+    assert.equal(jogador("Caio").paradas.length, 1, "stop-and-go sem troca não registra pneus");
+    const bot = { id: "bot", name: "Bot", bot: true, dano: 50, pneu: "medio" };
+    internos.concluirParada(room, bot, { composto: "duro", tempo: 20, volta: 1 });
+    assert.equal(bot.dano, 5, "robôs recebem o mesmo reparo");
     relogio += 26000;
     volta("Ana"); volta("Beto"); volta("Caio");
     relogio += 31000;

@@ -58,7 +58,7 @@ export function somGP(tr, regioes = {}) {
     ganho(S.cidade, 0.03 * peso.cidade * fora); ganho(S.fonte, 0.018 * peso.fonte * fora); ganho(S.tunel, 0.06 * peso.tunel);
     ganho(S.vento, 0.02 * peso.campo * fora * (0.5 + 0.5 * Math.sin(t * 0.37) * Math.sin(t * 0.13 + 2)));
     ganho(S.heli, 0.05 * peso.heli * fora);
-    Sound.eco(0.55 * peso.tunel);
+    Sound.eco(0.8 * peso.tunel);
     // os sons de vez em quando
     for (const k in prox) prox[k] -= dt;
     if (prox.gaivota <= 0) { prox.gaivota = 2 + Math.random() * 5; if (peso.porto > 0.3) { const f = 1700 + Math.random() * 600, v = 0.02 * peso.porto * fora; for (let k = 0; k < 2 + ((Math.random() * 3) | 0); k++) tom(f, f * 0.72, 0.28, v, "triangle", 0, k * 0.32); } }

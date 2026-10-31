@@ -334,6 +334,9 @@ module.exports = function attachCorrida(io) {
   // A parada acabou (o navegador diz ao sair do corredor; o robô, aqui mesmo): guarda volta, tempo e composto novo,
   // confere o limitador pelo tempo que ficou no corredor (rápido demais: RAPIDO s de acréscimo) e avisa no log.
   function concluirParada(room, p, d) {
+    if (!p || ((!d.stopGo || d.troca) && !F1.PNEUS[d.composto])) return;
+    // O serviço dos boxes recupera 90% do dano existente, também na visita de stop-and-go.
+    p.dano = Math.max(0, (p.dano || 0) * 0.1);
     if (p && d.stopGo) { // a visita incluiu o stop-and-go: cumprido; se o pneu foi trocado na mesma parada, o resto é uma parada normal (sem os segundos do stop-and-go)
       Direcao.cumprirStopGo(room, p, (s) => log(room, s));
       if (!d.troca) return;
