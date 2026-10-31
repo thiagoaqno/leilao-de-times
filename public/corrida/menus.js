@@ -7,11 +7,13 @@ import { f1Pronto } from "./f1.js";
 import { palco } from "./palco.js";
 import { iniciarControle } from "./sala-controle.js";
 const EQUIPES_F1 = window.EQUIPES_F1 || {};
+// o logo da equipe sozinho (sem a sigla por trás, que aparecia pelas transparências do PNG); só sem arquivo, ou se ele não carregar, entra a sigla
+const siglaEquipe = (e) => `<span class="sigla">${h(e.sigla)}</span>`;
 const marcaEquipe = (id) => {
   const e = EQUIPES_F1[id]; if (!e) return "";
-  return `<span class="equipe-marca" style="--equipe:${e.cor}"><span class="sigla">${h(e.sigla)}</span>${e.arquivo ? `<img data-logo-f1 src="/api/corrida/logo/${id}" alt="" loading="lazy">` : ""}</span>`;
+  return `<span class="equipe-marca" style="--equipe:${e.cor}">${e.arquivo ? `<img data-logo-f1 src="/api/corrida/logo/${id}" alt="" loading="lazy" data-sigla="${h(e.sigla)}">` : siglaEquipe(e)}</span>`;
 };
-document.addEventListener("error", (ev) => { if (ev.target.matches?.("img[data-logo-f1]")) ev.target.remove(); }, true);
+document.addEventListener("error", (ev) => { const i = ev.target.matches?.("img[data-logo-f1]") && ev.target; if (!i) return; const p = i.parentNode; i.remove(); if (p && !p.querySelector(".sigla")) p.insertAdjacentHTML("afterbegin", `<span class="sigla">${i.dataset.sigla || ""}</span>`); }, true);
 const logosEquipes = document.getElementById("logosEquipes");
 if (logosEquipes) logosEquipes.innerHTML = Object.entries(EQUIPES_F1).map(([id, e]) => `<span class="equipe-mini" style="--equipe:${e.cor}">${marcaEquipe(id).replace(" loading=\"lazy\"", "")}<span>${h(e.nome)}</span></span>`).join(""); // a faixa da entrada carrega já (fica abaixo da dobra em tela baixa)
 let f1Carregou = false;
