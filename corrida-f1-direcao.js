@@ -127,7 +127,7 @@ function iniciar(room) {
     scDura: 10000 + Math.floor(r() * 4000),
     pista: T.pontos(t, 6), ultimaAtualizacao: 0 };
   for (const id of room.order) Object.assign(room.players[id], { drsZona: -1, penal: 0, avisosLimite: 0,
-    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, dsq: false, causadas: 0, propositais: 0, stopGo: null, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, gasNasLuzes: 0, azul: false, fora: false, deteccoes: {}, ultrapassagem: null });
+    avisosAmarela: 0, avisosAzul: 0, dano: 0, dnf: false, dsq: false, causadas: 0, propositais: 0, stopGo: null, batidas: 0, batidaAte: 0, batidaPares: {}, ultimaBatida: null, queimou: false, gasNasLuzes: 0, azul: false, fora: false, frenteAoSair: null, deteccoes: {}, ultrapassagem: null });
 }
 function progresso(p, n) { return Number.isFinite(p.pos?.prog) ? p.pos.prog / n : -1; }
 function ordem(room) {
@@ -171,9 +171,16 @@ function registrar(room, p, pos, agora, log) {
   // Um aviso por saída completa. O limite inclui a zebra e a largura inteira do carro.
   const fora = Math.abs(lat) > t.width / 2 + 13;
   if (fora && !p.fora && !p.box) {
+    // Guarda apenas os carros próximos que estavam à frente ao sair da pista.
+    p.frenteAoSair = room.order.map((id) => room.players[id]).filter((q) => q && q.id !== p.id && !q.dnf && q.finish == null && !q.box && q.pos && progresso(q, n) > pr && progresso(q, n) - pr < 0.02).map((q) => q.id);
     p.avisosLimite++;
     log(`⚫⚪ ${p.name}: limite de pista (${p.avisosLimite}/4).`);
     if (p.avisosLimite === 4) penalizar(p, 5, 'quatro saídas de pista', log);
+  }
+  if (!fora && p.fora && p.frenteAoSair && !p.box) {
+    const ganhou = p.frenteAoSair.some((id) => { const q = room.players[id]; return q && !q.dnf && q.finish == null && !q.box && q.pos && pr > progresso(q, n) + 0.0005; });
+    if (ganhou) penalizar(p, 5, 'ganhou posição fora da pista', log);
+    p.frenteAoSair = null;
   }
   p.fora = fora;
   const setor = Math.floor((((pr % 1) + 1) % 1) * T.SECTORS);

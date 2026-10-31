@@ -1,5 +1,5 @@
 // Kit de pista — a área de escape de autódromo, depois da zebra: brita (a caixa de pedra que segura o carro) e o
-// asfalto de escape pintado em listras (no Brasil, verde e amarelo). Tudo é tinta: o carro anda igual.
+// asfalto de escape pintado em listras (no Brasil, verde e amarelo). As faixas de piso são compartilhadas com a física.
 //
 // cfg: {
 //   brita: [[f0, f1, lado], ...]    — trechos de brita (frações da volta, a partir da chegada)
@@ -18,6 +18,9 @@ import { M } from "../cena.js";
 import { lotes, tira, sinalDaCurva, livre, ocupado, instancias } from "./comum.js";
 
 export function escapeGP(tr, add, cfg = {}) {
+  // Spa desenha o asfalto pintado na peça própria; as demais usam as mesmas faixas da física.
+  const dados = tr.t.superficieEscape;
+  if (dados) { const { listrado, ...comuns } = dados; cfg = { ...cfg, ...comuns, britaCurvas: dados.britaCurvas, ...(tr.id === "spa" ? {} : { listrado }) }; }
   const { pts, n, W } = tr, L = lotes(), de = W / 2 + 7, ate = de + (cfg.largura ?? 23);
   const cores = cfg.cores || ["#1f9a3d", "#f2c230"];
   const brita = new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (x, w, hh, rr) => {
@@ -37,8 +40,8 @@ export function escapeGP(tr, add, cfg = {}) {
   };
   const stats = (tr.escapeGP = { brita: 0, listrado: 0, pneus: 0 });
   if (cfg.britaCurvas) { // do lado de fora de cada curva fechada, do ápice (10 pontos antes) até a saída (14 depois)
-    const fora = { "-1": new Uint8Array(n), "1": new Uint8Array(n) };
-    for (let i = 0; i < n; i++) { if ((pts[i].k || 0) < 1 / cfg.britaCurvas) continue; const s = -sinalDaCurva(pts, n, i); for (let j = i - 10; j <= i + 14; j++) fora[s][(j + n) % n] = 1; }
+    const fora = { "-1": new Uint8Array(n), "1": new Uint8Array(n) }, explicitas = window.Pistas.mapaSuperficies(pts, { brita: cfg.brita });
+    for (let i = 0; i < n; i++) { if ((pts[i].k || 0) < 1 / cfg.britaCurvas) continue; const s = -sinalDaCurva(pts, n, i); for (let j = i - 10; j <= i + 14; j++) { const k = (j + n) % n; if (explicitas[s][k] !== 1) fora[s][k] = 1; } }
     for (const s of [-1, 1]) for (let i = 0, a = -1; i <= n; i++) {
       const tem = i < n && !!fora[s][i];
       if (a >= 0 && !tem) { tira(tr, L.de(brita), a, i, s * de, s * ate, 0.3, 0.2, (a * 6) / 64, (i * 6) / 64); stats.brita += i - a; a = -1; }
@@ -54,13 +57,15 @@ export function escapeGP(tr, add, cfg = {}) {
   }
   L.montar(add, `${tr.id}-escape`);
   // as pilhas de pneus: uma a cada 2 pontos, de 3 pneus; de vez em quando um pneu pintado de branco
-  const pretos = [], brancos = [], d = (W / 2 + 7) + (cfg.largura ?? 23) - 4;
+  const pretos = [], brancos = [];
   for (const [f0, f1, lado] of cfg.pneus || []) {
     const a = Math.floor(f0 * n), b = Math.floor(f1 * n);
     for (const s of lados(a, b, lado)) for (let i = a; i < b; i += 2) {
+      if (tr.murosEscape && !tr.murosEscape[s][i % n]) continue;
+      const d = tr.murosEscape ? W / 2 + tr.murosEscape[s][i % n] - 4 : (W / 2 + 7) + (cfg.largura ?? 23) - 4;
       const p = pts[i % n], x = p.x + p.nx * s * d, z = p.y + p.ny * s * d;
       if (!livre(tr, x, z, 12) || ocupado(tr, x, z, i % n)) continue;
-      for (let k = 0; k < 3; k++) (((i / 2 + k) % 7 | 0) === 0 ? brancos : pretos).push({ x, y: p.h + 1.7 + k * 3.6, z, sx: 1, sy: 1, sz: 1 });
+      for (let k = 0; k < 3; k++) (((i / 2 + k) % 7 | 0) === 0 ? brancos : pretos).push({ x, y: (tr.murosEscape ? tr.chao(x, z) : p.h) + 1.7 + k * 3.6, z, sx: 1, sy: 1, sz: 1 });
     }
   }
   const pneu = new THREE.TorusGeometry(3.4, 1.7, 6, 12); pneu.rotateX(Math.PI / 2);

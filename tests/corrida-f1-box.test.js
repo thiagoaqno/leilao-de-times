@@ -116,7 +116,7 @@ test("robôs: cada um faz as paradas da estratégia pelo corredor, no limitador,
     assert.ok(F1.usouDoisCompostos(r), `${r.name}: ${r.compostos}`);
     assert.equal(F1.acrescimoDeFinal(r, 3), 0);
     assert.equal(r.box, null);
-    const minimo = F1.tempoNoBox(c, T.CARROS[r.car].vmax, F1.PARADA_BASE);
+    const minimo = F1.tempoNoBox(c, (r.spec || T.CARROS[r.car]).vmax, F1.PARADA_BASE);
     for (const q of r.paradas) {
       assert.ok(q.tempo >= minimo * 0.9 && q.tempo < minimo + 30, `${r.name}: ${q.tempo.toFixed(1)} s no corredor (mínimo ${minimo.toFixed(1)})`);
       assert.ok(q.volta >= 1 && q.volta <= 2);
@@ -163,7 +163,7 @@ test("sala: quem corre com um composto só leva +10 s e perde a vitória para qu
   const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
   return (async () => {
     const { socket, chamar, estado, internos } = salaDeMentira(), ana = socket(), beto = socket(), caio = socket();
-    const criou = await chamar(ana, "create", { name: "Ana", config: { pista: "interlagos", voltas: 2, regras: "f1", classificacao: "pular" } });
+    const criou = await chamar(ana, "create", { name: "Ana", config: { pista: "interlagos", voltas: 2, regras: "f1", classificacao: "pular", clima: "seco" } });
     await chamar(beto, "join", { code: criou.code, name: "Beto" }); await chamar(caio, "join", { code: criou.code, name: "Caio" });
     const act = (s, dados) => chamar(s, "act", dados);
     // o navegador não manda mais checkpoint, box nem batida: o servidor ignora (a física dele é que conta)
@@ -178,7 +178,7 @@ test("sala: quem corre com um composto só leva +10 s e perde a vitória para qu
     for (const nome of ["Ana", "Beto", "Caio"]) internos.onSector(room, jogador(nome), 0, relogio); // a largada
     // o Beto e o Caio param nos boxes na volta 1 (o tempo no corredor é o da física: aqui, o do Caio é rápido demais)
     internos.concluirParada(room, jogador("Caio"), { composto: "duro", tempo: 4, volta: 1 }); // 4 s: rápido demais
-    internos.concluirParada(room, jogador("Beto"), { composto: "chuva", tempo: 23, volta: 1 }); // composto que não existe: não vale
+    internos.concluirParada(room, jogador("Beto"), { composto: "inexistente", tempo: 23, volta: 1 }); // composto que não existe: não vale
     assert.equal((jogador("Beto").paradas || []).length, 0);
     internos.concluirParada(room, jogador("Beto"), { composto: "duro", tempo: 23, volta: 1 }); // 23 s: certo
     relogio += 26000;

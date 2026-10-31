@@ -67,3 +67,9 @@ test("nas curvas de Interlagos o robô difícil anda a 90% ou mais da velocidade
   assert.ok(k > 300, `poucos pontos de curva: ${k}`);
   assert.ok(soma / k >= 0.9, `velocidade de curva do robô: ${(100 * soma / k).toFixed(1)}% da do usuário`);
 });
+test("robô completa Suzuka com as muretas do viaduto", { timeout: 120000 }, () => {
+  const r = solo("suzuka", 2);
+  assert.ok(r.voltas.length >= 2, `voltas concluídas: ${r.voltas.length}`);
+  assert.equal(r.batidas, 0, `batidas: ${r.batidas}`);
+  assert.equal(r.avisos, 0, `saídas: ${r.avisos}`);
+});

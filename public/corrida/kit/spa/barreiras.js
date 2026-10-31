@@ -90,9 +90,11 @@ export function muroDePneus(tr, add, lista, cfg = {}) {
     let lados = lado === 0 ? [-1, 1] : [lado];
     if (lado === "fora" || lado === "dentro") { let m = a; for (let k = a; k <= b; k++) if ((pts[k % n].k || 0) > (pts[m % n].k || 0)) m = k; const d = sinalDaCurva(pts, n, m % n); lados = [lado === "dentro" ? d : -d]; }
     for (const s of lados) for (let i = a; i < b; i += 3) {
-      const p = pts[i % n], x = p.x + p.nx * s * lat, z = p.y + p.ny * s * lat;
-      if (tr.distAt(x, z) < lat - 3 || ocupado(tr, x, z, i % n) || tr.noCorredor?.(x, z)) continue;
-      for (let k = 0; k < alto; k++) (((i / 2 + k) % 7 | 0) === 0 ? brancos : pretos).push({ x, y: p.h + 1.7 + k * 3.6, z, sx: 1, sy: 1, sz: 1 });
+      if (tr.murosEscape && !tr.murosEscape[s][i % n]) continue;
+      const d = tr.murosEscape ? W / 2 + tr.murosEscape[s][i % n] - 4 : lat;
+      const p = pts[i % n], x = p.x + p.nx * s * d, z = p.y + p.ny * s * d;
+      if (tr.distAt(x, z) < d - 3 || ocupado(tr, x, z, i % n) || tr.noCorredor?.(x, z)) continue;
+      for (let k = 0; k < alto; k++) (((i / 2 + k) % 7 | 0) === 0 ? brancos : pretos).push({ x, y: (tr.murosEscape ? tr.chao(x, z) : p.h) + 1.7 + k * 3.6, z, sx: 1, sy: 1, sz: 1 });
     }
   }
   instancias(add, pneu, M(0x16171a, { roughness: 0.95 }), pretos, { nome: `${tr.id}-muro-pneus` });
