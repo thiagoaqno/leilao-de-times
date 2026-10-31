@@ -43,3 +43,21 @@ test("o canteiro bloqueia também um carro acima do topo", () => {
   for (let k = 0; k < 240; k++) { Sim.passo(c, { gas: 1, steer: 0 }, amb, tr, ev); min = Math.min(min, Math.hypot(c.x - o.x, c.y - o.y)); }
   assert.ok(min >= o.r + 11 - 0.6, `o carro passou por cima do canteiro (distância mínima ${min.toFixed(1)})`);
 });
+
+test("borda e grama acompanham o asfalto dos dois lados do grampo", { timeout: 120000 }, async () => {
+  const { montar } = await import("./ajuda-cena/index.mjs");
+  const { tr } = await montar("monaco"), ob = tr.obstaculos[0];
+  const mesh = tr.grp.getObjectByName("monaco-canteiro");
+  assert.ok(mesh, "canteiro montado na cena");
+  const v = mesh.geometry.attributes.position;
+  let menorPista = Infinity, maiorPista = -Infinity;
+  for (let k = 0; k < 48; k++) {
+    for (const i of [3, 4, 5, 6, 7, 8]) {
+      const j = k * 21 + i, x = mesh.position.x + v.getX(j), y = mesh.position.z + v.getZ(j);
+      const pista = P.alturaPistaMaisProxima(tr.pts, x, y), altura = v.getY(j) - pista;
+      assert.ok(Math.abs(altura - ob.alt) < 0.05, `borda a ${altura} unidades acima da pista`);
+      menorPista = Math.min(menorPista, pista); maiorPista = Math.max(maiorPista, pista);
+    }
+  }
+  assert.ok(maiorPista - menorPista > 4, "a verificação cobre as duas alturas da pista");
+});
