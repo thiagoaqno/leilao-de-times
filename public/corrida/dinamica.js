@@ -25,6 +25,7 @@ const PASSO = 1 / 120;       // o passo fixo da física, no navegador e no servi
 // peso de carga): a 300 km/h o carro freia uns 5 g (com o arrasto), a 100 km/h uns 2,5 g. Quem pede mais do que o pneu segura (molhado, pneu
 // gasto, freio na curva) trava a roda. O pedal sobe em 1/FREIO_SOBE s.
 // (+20% sobre a versão anterior, 1,925 e 0,55: o freio pedido e o que o pneu segura antes de travar crescem juntos, então o pedal cheio com o pneu bom segue sem travar)
+const V_ENGATA_RE = 3; // u/s (~2 km/h): abaixo disto, segurando só o freio, engata a ré (anda para trás até uns 70 u/s)
 const FREIO_G = 2.31, FREIO_AERO = 0.66, FREIO_SOBE = 4.5;
 // O quanto o pneu aguenta de freio antes de travar (múltiplo da aderência lateral): folgado com o pneu bom (1,25) e justo com o pneu que
 // perdeu aderência (gasto, frio, molhado, depois de uma batida), onde o pedal cheio já trava a roda. Vai de ATRITO_MIN a ATRITO_MAX
@@ -182,7 +183,10 @@ function passo(c, ent, amb, p, dt = PASSO) {
   const limiteV = amb.limiteV || Infinity, acima = uU > limiteV;
   const gas = acima ? 0 : c.gasP, freioAuto = acima ? Math.min(1, (uU - limiteV) / 25 + 0.25) : 0;
   const pedalFreio = Math.max(c.brkP, freioAuto);
-  const rev = uU < 1 && ent.brake && !ent.gas && c.brkP > 0.5; // parado e só o freio: dá ré
+  // parado (ou quase) e só o freio: engata a ré. Antes o limite era 1 u/s, mas o carro que acabava de parar ficava rastejando a ~1,2 u/s (o freio some
+  // devagar perto do zero e nada puxava para trás): travava nessa faixa por mais de 1 s, ou para sempre numa subida, e a ré "não engatava"
+  const rev = uU < V_ENGATA_RE && ent.brake && !ent.gas && c.brkP > 0.5;
+  c.re = rev; // (o carro está em ré: o HUD e o som podem mostrar o R)
   const usoC = c.uso || 0; // (arcade) o quanto a curva pediu do pneu no passo anterior: divide o pneu com o freio e a tração
   const h = dt / 2; // duas passadas por passo: o eixo da frente e de trás ficam estáveis em baixa velocidade
   for (let s = 0; s < 2; s++) {
