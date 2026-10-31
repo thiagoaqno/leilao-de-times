@@ -99,3 +99,11 @@ test("as muretas dos dois níveis do viaduto de Suzuka mantêm colisão", () => 
     assert.equal(tr.murosEscape[1][i], 0); assert.equal(tr.murosEscape[-1][i], 0);
   }
 });
+test("Hungaroring conserva brita na saída da curva 5 e barreira à esquerda na 14", () => {
+  const tr = Sim.criarPista(P.PISTAS.hungaroring, "hungaroring"), info = require("../public/corrida/gp-info.js").REAIS.hungaroring;
+  const i5 = Math.floor(info.curvas.find(c => c.n === 5).f * tr.n), p = tr.pts[i5], q = tr.pts[(i5 + 3) % tr.n];
+  const fora = p.tx * q.ty - p.ty * q.tx > 0 ? -1 : 1;
+  assert.equal(tr.superficiesEscape[fora][(i5 + 8) % tr.n], 1);
+  const i14 = Math.floor(info.curvas.find(c => c.n === 14).f * tr.n);
+  assert.ok(tr.murosEscape[1][i14] > 0);
+});
