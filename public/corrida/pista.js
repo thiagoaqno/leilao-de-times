@@ -273,8 +273,11 @@ function buildWorld(tr) {
       const base = gp?.guardrail, defs = (base?.trechos || []).map((d) => ({ ...d, i0: Math.floor(d.de * n), i1: Math.floor(d.ate * n) + (d.ate < d.de ? n : 0) }));
       // `agua`: o estilo do lado do mar naquele trecho (o porto aparece por cima da barreira baixa e através da cerca); o lado de terra segue o estilo do trecho
       const aguaDe = id === "monaco" ? pts.map((p) => { const a = fundoMonaco(tr, p.x + p.nx * (L + 200), p.y + p.ny * (L + 200)), b = fundoMonaco(tr, p.x - p.nx * (L + 200), p.y - p.ny * (L + 200)); return Math.max(a, b) > -30 ? (a > b ? 1 : -1) : 0; }) : null;
-      const defDe = (i) => { const k = ((i % n) + n) % n, d = defs.findIndex((e) => (k >= e.i0 && k <= e.i1) || (k + n >= e.i0 && k + n <= e.i1)); return d >= 0 && defs[d].agua && aguaDe?.[k] === s ? d + 1000 : d; }; // -1: o estilo de base; 1000+: o do lado da água
-      const estiloDe = (d) => (d < 0 ? base : d >= 1000 ? { ...base, ...defs[d - 1000], ...defs[d - 1000].agua } : { ...base, ...defs[d] }), materiais = new Map();
+      const dentroDe = (k) => { const p = pts[k], q = pts[(k + 3) % n]; return p.tx * q.ty - p.ty * q.tx > 0 ? 1 : -1; }; // o lado de dentro da curva
+      const defDe = (i) => { const k = ((i % n) + n) % n, d = defs.findIndex((e) => (k >= e.i0 && k <= e.i1) || (k + n >= e.i0 && k + n <= e.i1)); if (d >= 0 && defs[d].vazio && (!defs[d].dentro || s === dentroDe(k))) return -2; // sem barreira nenhuma (o miolo do grampo: lá entra o canteiro)
+      if (d >= 0 && defs[d].porLado?.[s]) return d + 2000; // estilo só de um lado (1 = direita de quem anda, -1 = esquerda)
+      return d >= 0 && defs[d].agua && aguaDe?.[k] === s ? d + 1000 : d; }; // -1: o estilo de base; 1000+: o do lado da água; 2000+: o de um lado
+      const estiloDe = (d) => (d < 0 ? base : d >= 2000 ? { ...base, ...defs[d - 2000], ...defs[d - 2000].porLado[s] } : d >= 1000 ? { ...base, ...defs[d - 1000], ...defs[d - 1000].agua } : { ...base, ...defs[d] }), materiais = new Map();
       const matDe = (d) => { if (!base) return wm; if (!materiais.has(d)) materiais.set(d, new THREE.MeshStandardMaterial({ map: guardRail(s, estiloDe(d)), roughness: 0.55, side: THREE.DoubleSide })); return materiais.get(d); };
       const vLenDe = (d) => { const g = estiloDe(d); return g?.estilo === "monaco" ? g.sequencia.length * (g.trecho ?? 360) : g?.vLen ?? (base ? 480 : 32); };
       const trecho = (i0, i1) => {
@@ -282,7 +285,7 @@ function buildWorld(tr) {
         for (let i = i0 + 1; i <= i1 + 1; i++) if (i === i1 + 1 || defDe(i) !== defDe(a)) { fatias.push([a, Math.min(i, i1), defDe(a)]); a = i; }
         let m = null;
         for (const [x0, x1, d] of fatias) {
-          if (x1 <= x0) continue; const g = estiloDe(d);
+          if (x1 <= x0 || d === -2) continue; const g = estiloDe(d);
           m = ribbon(s * L, s * L, 0.5, matDe(d), vLenDe(d), g?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`;
           if (base?.estilo === "monaco") afastarMuro(tr, m.geometry, x0, L - (tr.t.muroFolga ?? 8) + 13);
         }

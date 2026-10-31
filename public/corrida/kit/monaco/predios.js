@@ -62,7 +62,8 @@ export function lerPredios(tr) {
     let baixo = Infinity, alto = -Infinity; for (const [x, z] of [...P, [cx, cz]]) { const g = tr.chao(x, z) - 1.5; baixo = Math.min(baixo, g); alto = Math.max(alto, g); }
     const metros = e[0] / 2, alturaReal = metros <= 40 ? metros * M_ALTURA : 40 * M_ALTURA + (metros - 40) * M_ALTURA * 0.8;
     // Nas ruas junto ao circuito, as fachadas comuns formam uma parede urbana mais alta; os marcos conservam as proporções próprias.
-    const perto = tr.distAt(cx, cz) < tr.wallLat + 220, h = perto && !(e[1] >> 3) ? Math.max(90, alturaReal * 1.25) : alturaReal;
+    // os prédios das ruas do circuito: mais baixos que a planta pede (os de 90 a 220 pareciam enormes para a rua estreita); os marcos têm as proporções próprias
+    const perto = tr.distAt(cx, cz) < tr.wallLat + 220, h = !(e[1] >> 3) ? (perto ? Math.max(55, alturaReal * 0.62) : alturaReal * 0.75) : alturaReal;
     lista.push({ P, esp: e[1] >> 3, cor: e[1] & 7, metros, h, cx, cz, caixa: [x0, z0, x1, z1], baixo, alto, topo: alto + h, id: lista.length });
   }
   tr.prediosDescartados = descartados;
@@ -88,7 +89,7 @@ export function adensarRua(tr, lista) {
     if (!livre) continue;
     if (area2(P) < 0) P.reverse();
     const [cx, cz] = ponto(0, perto + profundidade / 2), chao = P.map(([x, z]) => tr.chao(x, z) - 1.5);
-    const baixo = Math.min(...chao), alto = Math.max(...chao), h = 95 + hash(i * 2 + (lado + 1)) * 75;
+    const baixo = Math.min(...chao), alto = Math.max(...chao), h = 55 + hash(i * 2 + (lado + 1)) * 45;
     const xs = P.map((q) => q[0]), zs = P.map((q) => q[1]);
     novos.push({ P, esp: 0, cor: Math.floor(hash(i + (lado + 1) * 83) * PAREDES.length), metros: h / M_ALTURA, h, cx, cz, caixa: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)], baixo, alto, topo: alto + h, id: lista.length + novos.length });
   }
@@ -132,8 +133,8 @@ export function predios(tr, add, lista) {
       for (const t of tris) { const [i, j, k] = t, A = P[i], B = P[j], C = P[k], cruz = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]); if (cruz > 0) tel.i.push(base + i, base + k, base + j); else tel.i.push(base + i, base + j, base + k); }
       // a casa de máquinas e a caixa d'água no terraço dos prédios grandes
       if (Math.abs(area2(P)) / 2 > 700 && b.metros > 9) {
-        const bx = b.cx + (hash(b.id + 7) - 0.5) * 8, bz = b.cz + (hash(b.id + 8) - 0.5) * 8; if (poligonoDentro(P, bx, bz)) {
-          const w = 14 + hash(b.id + 9) * 12, hh = 9 + hash(b.id + 10) * 8, c2 = [0.72, 0.7, 0.66], top = y1 + 0.4 + hh;
+        const bx = b.cx + (hash(b.id + 7) - 0.5) * 8, bz = b.cz + (hash(b.id + 8) - 0.5) * 8; const w = 14 + hash(b.id + 9) * 12; if ([[-1, -1], [1, -1], [1, 1], [-1, 1]].every(([sx, sz]) => poligonoDentro(P, bx + sx * w, bz + sz * w))) { // (a casa de máquinas só entra se os quatro cantos cabem na planta: não passa da fachada para a rua)
+          const hh = 9 + hash(b.id + 10) * 8, c2 = [0.72, 0.7, 0.66], top = y1 + 0.4 + hh;
           for (const [px, pz, qx, qz, nx, nz] of [[bx - w, bz - w, bx + w, bz - w, 0, -1], [bx + w, bz - w, bx + w, bz + w, 1, 0], [bx + w, bz + w, bx - w, bz + w, 0, 1], [bx - w, bz + w, bx - w, bz - w, -1, 0]]) {
             const q = tel.v(px, y1, pz, nx, 0, nz, 0, 0, c2), r = tel.v(qx, y1, qz, nx, 0, nz, 0, 0, c2), s = tel.v(qx, top, qz, nx, 0, nz, 0, 0, c2), t = tel.v(px, top, pz, nx, 0, nz, 0, 0, c2); tel.i.push(q, s, r, q, t, s);
           }

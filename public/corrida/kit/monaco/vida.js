@@ -99,8 +99,8 @@ export function vidaMonaco(tr, ctx, { lista, predioEm, hAt }) {
   for (const q of postos) {
     const p = pts[q.i], x = q.x, z = q.z, lado = Math.sign((x - p.x) * p.nx + (z - p.y) * p.ny) || 1, ry = Math.atan2(-p.nx * lado, -p.ny * lado), y = hAt(x, z);
     if (tr.coberto?.(q.i)) continue;
-    plataformas.push({ x, y: y + 2.5, z, r: Math.atan2(p.tx, p.ty), sx: 12, sy: 5, sz: 8 });
-    for (const o of [-3, 3]) { pessoa(x - p.tx * 0 + p.tx * o, y + 5, z + p.ty * o, ry, "#ff6a00"); stats.fiscais++; }
+    plataformas.push({ x, y: y + 6.5, z, r: Math.atan2(p.tx, p.ty), sx: 12, sy: 13, sz: 8 }); // o posto sobe até a altura da barreira, para os fiscais aparecerem por cima dela
+    for (const o of [-3, 3]) { pessoa(x + p.tx * o, y + 13, z + p.ty * o, ry, "#ff6a00"); stats.fiscais++; }
   }
   montar(add, new THREE.BoxGeometry(1, 1, 1), M(0x4a4f57, { roughness: 0.8 }), plataformas, "monaco-posto");
 

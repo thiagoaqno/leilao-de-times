@@ -22,8 +22,9 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
       const p0 = pts[i0 % n], q0 = pts[(i0 + 3) % n], fora = p0.tx * q0.ty - p0.ty * q0.tx > 0 ? -1 : 1;
       for (let i = i0; i < i0 + Math.floor(n * 0.012); i++) { const p = pts[i % n]; for (let fila = 0; fila < 2; fila++) {
         if (r() < 0.4) continue; const d = borda + 12 + fila * 8, [x, z] = lat(p, fora * d); if (tr.distAt(x, z) < borda + 4 || tr.noCorredor?.(x, z) || (tr.ocupado && tr.ocupado(x, z, i % n))) continue;
-        extra.push({ x, y: alturaEm(x, z, i % n) + fila * 3, z, ry: Math.atan2(-p.nx * fora, -p.ny * fora), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: PELE[(r() * 5) | 0], camisa: (tr.camisasGP || CAMISA)[(r() * (tr.camisasGP || CAMISA).length) | 0] }); } }
+        extra.push({ x, y: alturaEm(x, z, i % n) + fila * 3 + (tr.elevarGente || 0), z, ry: Math.atan2(-p.nx * fora, -p.ny * fora), fase: r() * 6.3, ritmo: 5 + r() * 5, pula: r() < 0.6, pele: PELE[(r() * 5) | 0], camisa: (tr.camisasGP || CAMISA)[(r() * (tr.camisasGP || CAMISA).length) | 0] }); } }
     }
+    praticaveis(add, extra, tr.elevarGente);
     V.torcidas = [montarTorcida(add, extra)];
     if (tr.torcidasGP?.length) V.torcidas.push(montarTorcida(add, tr.torcidasGP, { leve: true })); // gente que um GP pôs onde quer (Mônaco: sacadas, terraços, arquibancadas, fiscais)
   }
@@ -136,6 +137,12 @@ export function enfeitarMais(tr, add, r, alturaEm, V) {
   }
 }
 // torcida: corpo, cabeça e braços em três malhas instanciadas (uma pessoa por instância)
+// `tr.elevarGente` (um GP com barreira alta, como Mônaco): a galera sobe sobre degraus (um bloco por pessoa) para aparecer por cima da barreira
+export function praticaveis(add, gente, alto) {
+  if (!gente.length || !alto) return;
+  const m = add(new THREE.InstancedMesh(new THREE.BoxGeometry(5.5, 1, 5), M(0x8a8d94, { roughness: 0.9 }), gente.length)), o = new THREE.Object3D(); m.name = "gente-praticavel"; m.castShadow = false; m.receiveShadow = true;
+  gente.forEach((g, k) => { o.position.set(g.x, g.y - alto / 2 - 0.2, g.z); o.rotation.set(0, g.ry || 0, 0); o.scale.set(1, alto, 1); o.updateMatrix(); m.setMatrixAt(k, o.matrix); });
+}
 export function montarTorcida(add, gente, { leve = false } = {}) { // leve: cabeça com menos faces (GPs que precisam de muita gente: Mônaco)
   if (!gente.length) return null;
   const corpo = add(new THREE.InstancedMesh(new THREE.BoxGeometry(4.6, 8, 2.8).translate(0, 4, 0), M(0xffffff), gente.length));

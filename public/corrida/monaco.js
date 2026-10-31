@@ -13,6 +13,7 @@ import { tecpro, telaos, largada, cais, fonte, cruzeiros, muroDeArrimo } from ".
 import { tunel } from "./kit/monaco/tunel.js";
 import { paddockMonaco } from "./kit/monaco/paddock.js";
 import { grampoMonaco } from "./kit/monaco/grampo.js";
+import { fairmontSobreOTunel } from "./kit/monaco/fairmont.js";
 import { arvores, corDoChao } from "./kit/monaco/beira.js";
 import { vidaMonaco as vidaDeMonaco } from "./kit/monaco/vida.js";
 
@@ -31,7 +32,7 @@ function arquibancadasMonaco(tr, add, predioEm) {
     return -sinalDaCurva(pts, n, i % n);
   };
   const candidatos = [
-    // (a arquibancada da reta dos boxes ficou de fora: com a pista mais estreita ela passaria a caber, mas estoura o teto de malhas do CI)
+    ["boxes", t.retaDosBoxes[0] + 0.02, t.retaDosBoxes[1] - 0.012, "fora-da-reta", 4], // a reta dos boxes, do lado de fora do corredor (com a pista estreita ela cabe)
     ["cais", t.cais[0], Math.min(t.cais[1], c.tabac - 0.025), "agua", 3], // o cais do porto, de frente para os iates
     ["sainteDevote", c.sainteDevote - 0.01, c.sainteDevote + 0.015, "fora", 4],
     ["tabac", c.tabac - 0.012, c.tabac + 0.012, "terra", 3], // do lado de dentro, o da Piscina (K): o lado da água continua livre, com o guard-rail baixo
@@ -67,6 +68,7 @@ function arquibancadasMonaco(tr, add, predioEm) {
 export function cenarioMonaco(tr, ctx) {
   const { add, hAt } = ctx, { pts, n } = tr, L = tr.wallLat, reservado = (tr.reservado ||= []);
   tr.arquibancadas = [];
+  tr.elevarGente = 12; // a galera e os fiscais sobem sobre degraus para aparecer por cima da barreira (alta, até 20)
   if (Math.abs(D.projecao.mundo - tr.t.world) > 1) console.warn("Mônaco: os dados (kit/monaco/dados.js) foram gerados para outro tamanho de mundo; rode ferramentas/monaco-dados.js de novo");
   const lista = lerPredios(tr); adensarRua(tr, lista); const predioEm = indiceDePredios(lista);
   tr.predioEmMonaco = predioEm;
@@ -77,6 +79,7 @@ export function cenarioMonaco(tr, ctx) {
   };
   mar(tr, ctx);
   tunel(tr, add);
+  fairmontSobreOTunel(tr, add); // o hotel Fairmont, largo e curvo, sobre a entrada do túnel
   predios(tr, add, lista);
   marcosMonaco(tr, add, lista, hAt);
   porto(tr, add, ctx);
