@@ -17,7 +17,7 @@ export function grampoMonaco(tr, add, hAt, predioEm) {
   const raio = Math.min(12, livre - 3.6);
   if (raio >= 8) {
     melhor = { x: cx, z: cz };
-    const y = p0.h, gs = [];
+    const y = Math.min(...pts.filter((q) => (q.x - cx) ** 2 + (q.y - cz) ** 2 < 75 * 75).map((q) => q.h)), gs = []; // a base na pista mais baixa em volta: as duas pernas do U têm alturas diferentes e o canteiro não pode passar de 2 m sobre nenhuma
     const anel = new THREE.CylinderGeometry(raio, raio + 0.6, 12, 24); anel.translate(0, -3.6, 0); gs.push(cor(anel, "#b9b2a3")); // a borda de pedra (desce até o terreno)
     for (let k = 0; k < 24; k++) { const a0 = (k / 24) * Math.PI * 2, a1 = ((k + 1) / 24) * Math.PI * 2, g = new THREE.RingGeometry(raio, raio + 1.5, 1, 1, a0, a1 - a0); g.rotateX(-Math.PI / 2); g.translate(0, 2.7, 0); const gg = g.index ? g.toNonIndexed() : g; const nn = gg.attributes.position.count; if (!gg.attributes.normal) gg.computeVertexNormals(); gs.push(cor(gg, k % 2 ? "#f4f4f0" : "#d62828")); } // a zebra vermelha e branca por dentro
     const terra = new THREE.CylinderGeometry(raio - 0.6, raio - 0.6, 1, 24); terra.translate(0, 2.2, 0); gs.push(cor(terra, "#4f7a3d"));
