@@ -274,3 +274,47 @@
 .sg-barra{display:block;height:4px;background:#ffffff24}
 .sg-barra s{display:block;height:100%;width:100%;background:#ffd23f;text-decoration:none;transition:width .1s linear}
 @media (prefers-reduced-motion:reduce){.sg-barra s{transition:none}}
+
+/* ---- o MFD mais legível: fonte maior, mais contraste, fundo opaco, só o essencial em destaque ---- */
+#race.f1hud #hMfd{background:#0a0c12;border-color:#ffffff40;width:324px;height:264px}
+#race.f1hud #hMfd .mp{font-size:15px}
+#race.f1hud #hMfd .mfd-nome{font-size:20px;letter-spacing:.12em}
+#race.f1hud #hMfd .mfd-topo{height:38px;background:#171a22}
+.mfd-abas button{min-width:30px;height:28px;color:#fff;background:#ffffff22}
+.mfd-abas button svg{width:17px;height:17px}
+.mfd-abas button.on{box-shadow:0 3px 0 #e10600}
+.mp-par,.mp-par b,.mp-par span{font-size:15px}
+.mp-nota{font-size:14px}.mp-nota.mp-fraca{font-size:12.5px;color:#ffffffc8}
+.mr{height:32px;font-size:15px}
+.mr-n kbd,.mp-nota kbd,.pn2-prox kbd{display:inline-grid;place-items:center;min-width:20px;height:18px;margin-left:7px;padding:0 5px;font:700 12px/1 var(--f1-fonte);color:#0a0c12;background:#e4e7ee;border-radius:3px;vertical-align:1px}
+.mr.sel .mr-n kbd{background:#0a0c12;color:#fff}
+/* pneus: o essencial grande */
+.mp-pneus2{gap:8px}
+.pn2-topo{display:flex;align-items:center;gap:14px}
+.anel-g{width:84px;height:84px;flex:none}.anel-g b{font-size:24px}
+.pn2-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pn2-txt .mp-comp{font-size:19px}.pn2-txt .mp-bola{width:32px;height:32px;font-size:17px}
+.pn2-voltas{font-size:25px;line-height:1.05;font-weight:700;color:#fff}.pn2-voltas.baixo,.pn2-voltas.medio{color:#ffb02e}.pn2-voltas.fim{color:#ff6a6a}
+.pn2-sub{font-size:14px;color:#ffffffc8}
+.pn2-prox{display:flex;align-items:center;gap:10px;padding:7px 10px;background:#ffffff18;font-size:14px;font-weight:700;letter-spacing:.1em;color:#ffffffc8}
+.pn2-prox b{margin-left:auto;font-size:22px;letter-spacing:.06em;color:#fff}
+/* box: os quatro compostos lado a lado, botões grandes numerados de 1 a 4 */
+.mp-box{gap:6px}
+.bx-linha{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.bx-btn{--c:#ffd100;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;min-height:76px;padding:6px 2px 5px;color:#fff;background:#171a22;border:2px solid #ffffff30;border-radius:0;cursor:pointer;font-family:inherit;box-shadow:none}
+.bx-btn kbd{position:absolute;left:4px;top:3px;display:grid;place-items:center;min-width:20px;height:20px;padding:0 4px;font:700 14px/1 var(--f1-fonte);color:#0a0c12;background:#e4e7ee;border-radius:3px}
+.bx-btn .bx-pn{display:block;width:26px;height:26px;margin:0 0 3px;border-radius:50%;background:#06070b;box-shadow:inset 0 0 0 4px var(--c)}
+.bx-btn b{font-size:14px;font-weight:700;letter-spacing:.06em}
+.bx-btn span{font-size:12px;font-weight:600;color:#ffffffc8}
+.bx-btn.sel{border-color:#fff;background:#252a36}
+.bx-btn.pedido{border-color:#ffd23f;background:#ffd23f;color:#0a0c12}.bx-btn.pedido span{color:#0a0c12}
+.bx-btn.esgotado{opacity:.4;cursor:default}
+.bx-btn.atual::after{content:"ATUAL";position:absolute;right:3px;top:4px;font-size:9px;font-weight:700;letter-spacing:.08em;color:#ffffffa8}
+.bx-btn.pedido.atual::after{color:#0a0c12}
+.bx-info{font-weight:700;color:#fff}
+@media (pointer:coarse),(max-width:700px){
+  #race.f1hud #hMfd{width:min(284px,calc(100vw - 16px));height:240px}
+  .bx-btn{min-height:70px}.mr{height:36px}
+  #race.f1hud #hMfd .mfd-nome{font-size:17px}
+  .anel-g{width:70px;height:70px}.pn2-voltas{font-size:21px}
+}

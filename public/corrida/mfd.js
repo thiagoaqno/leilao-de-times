@@ -37,12 +37,9 @@ const linhasDe = (id) => `<div class="mr-lista" data-linhas="${id}"></div>`;
 const HTML = {
   // como a página de pneus do jogo da EA (F1 24): o carro no meio com as 4 rodas coloridas pela temperatura e um anel de desgaste em cada canto
   // (o jogo daqui mede UM conjunto de pneus, então os quatro anéis mostram o mesmo valor); embaixo o composto, a temperatura e a previsão
-  pneus: `<div class="mp mp-pneus"><div class="pn-grade">
-    <div class="pn-col"><div class="anel" data-r="a0"><b></b></div><div class="anel" data-r="a2"><b></b></div></div>
-    ${CARRO("pn")}
-    <div class="pn-col"><div class="anel" data-r="a1"><b></b></div><div class="anel" data-r="a3"><b></b></div></div></div>
-    <div class="pn-rodape"><div class="mp-comp"><b class="mp-bola" data-r="pLetra">M</b><span data-r="pNome">Médio</span></div><span class="pn-temp">Temp. <b data-r="pTempT">Ideal</b></span><span class="pn-vida">VIDA</span></div>
-    <p class="mp-nota" data-r="pNota"></p></div>`,
+  // só o essencial, grande: o pneu de agora com a vida, quantas voltas ainda aguenta e o próximo pneu (B abre o Box)
+  pneus: `<div class="mp mp-pneus2"><div class="pn2-topo"><div class="anel anel-g" data-r="a0"><b></b></div><div class="pn2-txt"><div class="mp-comp"><b class="mp-bola" data-r="pLetra">M</b><span data-r="pNome">Médio</span></div><strong class="pn2-voltas" data-r="pVoltas">—</strong><span class="pn2-sub" data-r="pTempT"></span></div></div>
+    <div class="pn2-prox"><span>PRÓXIMO PNEU</span><b data-r="pProx">—</b><kbd>B</kbd></div><p class="mp-nota" data-r="pNota"></p></div>`,
   danos: `<div class="mp mp-dupla">${CARRO("dn")}<b class="mp-centro" data-r="dPct">0%</b><div class="mp-dados">
     <div class="mp-barra"><span>Dano</span><div><i data-r="dBarra"></i></div><b data-r="dT">0%</b></div>
     <div class="mp-barra"><span>Desempenho</span><div><i data-r="dDes"></i></div><b data-r="dDesT">100%</b></div>
@@ -52,8 +49,9 @@ const HTML = {
     <div class="mp-barra"><span>Recarga da volta</span><div><i data-r="eRecB"></i></div><b data-r="eRecT">0%</b></div>
     <div class="mp-par"><span>Modo</span><b data-r="eModo">—</b></div><div class="mp-par"><span>DRS</span><b data-r="eDrs">—</b></div>
     <div class="mp-par"><span>Combustível</span><b>não medido no jogo</b></div></div>`,
-  box: `<div class="mp mp-box"><div class="mp-janela"><small>JANELA DE BOX · PIT WINDOW</small><b data-r="bJan">—</b><em data-r="bSub"></em></div>
-    <div class="mp-par"><span>Box agora, volta em</span><b data-r="bRet">—</b></div><div class="mp-par"><span>Troca custa</span><b data-r="bPerda">—</b></div><small class="mp-sub">Mudanças a aplicar:</small>${linhasDe("box")}<p class="mp-nota" data-r="bJogos"></p><p class="mp-nota mp-fraca" data-r="bDica"><kbd>1</kbd>–<kbd>4</kbd> escolhe e pede · <kbd>B</kbd> ou <kbd>Enter</kbd> pede o selecionado · <kbd>A</kbd> no controle</p></div>`,
+  box: `<div class="mp mp-box"><div class="mp-janela"><small>JANELA DE BOX</small><b data-r="bJan">—</b><em data-r="bSub"></em></div>
+    <div class="bx-linha" role="group" aria-label="Escolher o pneu da parada">${["macio", "medio", "duro", "chuva"].map((c, i) => `<button type="button" class="bx-btn" data-c="${c}" data-r="bx${c}"><kbd>${i + 1}</kbd><i class="bx-pn"></i><b>${["MACIO", "MÉDIO", "DURO", "CHUVA"][i]}</b><span></span></button>`).join("")}</div>
+    <p class="mp-nota bx-info" data-r="bInfo"></p><p class="mp-nota mp-fraca" data-r="bDica"><kbd>1</kbd>–<kbd>4</kbd> escolhe e pede · <kbd>B</kbd> ou <kbd>Enter</kbd> pede o selecionado · <kbd>Backspace</kbd> cancela</p></div>`,
   tempos: `<div class="mp mp-tempos"><div class="mp-par"><span>Volta atual</span><b data-r="tAtual">0:00.000</b></div><div class="mp-par"><span>Corrida</span><b data-r="tCorrida">0:00.0</b></div><div class="mp-par"><span>Última volta</span><b data-r="tUlt">—:--.---</b></div><div class="mp-par"><span>Melhor volta</span><b data-r="tMelhor">—:--.---</b></div>
     <div class="mp-par"><span>Volta mais rápida</span><b class="roxo" data-r="tVR">—</b></div>
     <div class="mp-par frente"><span>Carro da frente</span><b data-r="tFrente">—</b></div><div class="mp-par tras"><span>Carro de trás</span><b data-r="tTras">—</b></div></div>`,
@@ -91,14 +89,14 @@ const LINHAS = {
     { rot: "Situação da corrida", valor: () => "Pedir", mudar: () => pedirRadio("corrida") },
   ],
   box: [
-    { rot: "Próximo pneu", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return F().PNEUS[B.pedido || proximo()].nome; },
+    { rot: "Próximo pneu", dica: "1–4", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return F().PNEUS[B.pedido || proximo()].nome; },
       mudar(d) {
         const B = race && race.box; if (!B || B.fase) return;
         const op = compostosPossiveis(); if (!op.length) { toast("Sem jogos de pneu: " + textoJogos(me()), 1800); return; }
         const base = B.pedido || proximo(), i = op.indexOf(base), novo = op[(i < 0 ? (d > 0 ? 0 : op.length - 1) : (i + d + op.length) % op.length)];
         if (B.pedido) escolherComposto(novo); else mfd.prox = novo; // sem pedido, só escolhe; o B (ou Enter) confirma
       } },
-    { rot: "Pedir box", valor() { const B = race && race.box; return !B ? "—" : B.fase ? "No box" : B.pedido ? "Sim" : "Não"; },
+    { rot: "Pedir box", dica: "B", valor() { const B = race && race.box; return !B ? "—" : B.fase ? "No box" : B.pedido ? "Sim" : "Não"; },
       mudar() { alternarBox(); } },
   ],
   ajustes: [
@@ -165,7 +163,7 @@ export function montarMfd() {
     const caixa = q(`[data-linhas="${id}"]`); if (!caixa) continue;
     lista.forEach((l, i) => {
       const d = document.createElement("div"); d.className = "mr"; d.dataset.i = i;
-      d.innerHTML = `<span class="mr-n">${l.rot}</span><span class="mr-v"><button type="button" class="mr-b" data-d="-1" aria-label="${l.rot}: anterior">‹</button><b></b><button type="button" class="mr-b" data-d="1" aria-label="${l.rot}: próximo">›</button></span>`;
+      d.innerHTML = `<span class="mr-n">${l.rot}${l.dica ? `<kbd>${l.dica}</kbd>` : ""}</span><span class="mr-v"><button type="button" class="mr-b" data-d="-1" aria-label="${l.rot}: anterior">‹</button><b></b><button type="button" class="mr-b" data-d="1" aria-label="${l.rot}: próximo">›</button></span>`;
       caixa.appendChild(d);
     });
   }
@@ -173,6 +171,7 @@ export function montarMfd() {
     const b = e.target.closest("button, .mr"); if (!b) return; mexeu();
     if (b.classList.contains("mfd-x")) return abrir(false);
     if (b.dataset.pg) return irPara(b.dataset.pg);
+    if (b.classList.contains("bx-btn")) { digitoPneu(b.dataset.c); return; }
     const lin = b.closest(".mr");
     if (lin) { mfd.linha[mfd.pagina] = +lin.dataset.i; const d = b.dataset.d; if (d) linhasDaPagina()[+lin.dataset.i].mudar(+d); atualizarLinhas(); }
   });
@@ -339,13 +338,15 @@ const corRodas = (r, nivel) => { for (const k of ["w0", "w1", "w2", "w3"]) set(r
 const ATU = {
   pneus(ctx, r) {
     const pn = race.pneu; if (!pn) return;
-    const F = F1U(), e = M().estadoDoPneu(pn, F), tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO];
+    const F = F1U(), e = M().estadoDoPneu(pn, F), tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO], B = race.box;
     const COR = { bom: "#2ee08a", medio: "#ffb02e", baixo: "#ff6a3d", fim: "#ff3d4a" };
-    for (const k of ["a0", "a1", "a2", "a3"]) { set(r[k], "style", `--r:${e.vida};--c:${COR[e.nivel]}`); set(r[k].firstChild, "t", e.vida + "%"); }
-    corRodas(r, e.temp === "Frio" ? "frio" : e.temp === "Quente" ? "fim" : "bom"); // a roda pela temperatura: azul frio, verde ideal, vermelho quente
-    set(r.pLetra, "t", window.HudTorre.LETRA[pn.composto] || "M"); set(r.pLetra, "style", `--c:${tipo.cor}`); set(r.pNome, "t", tipo.nome); set(r.pTempT, "t", e.temp);
-    const v = ctx.tp;
-    set(r.pNota, "t", e.nivel === "fim" ? "Passou do limite: o pneu despenca. Faça a parada." : v && v.voltas < 90 ? `Aguenta ~${Math.max(0, Math.floor(v.voltas))} volta${Math.floor(v.voltas) === 1 ? "" : "s"}${v.medida ? " (no seu ritmo)" : ""}` : "");
+    set(r.a0, "style", `--r:${e.vida};--c:${COR[e.nivel]}`); set(r.a0.firstChild, "t", e.vida + "%");
+    set(r.pLetra, "t", window.HudTorre.LETRA[pn.composto] || "M"); set(r.pLetra, "style", `--c:${tipo.cor}`); set(r.pNome, "t", tipo.nome.toUpperCase());
+    const v = ctx.tp, n = v ? Math.max(0, Math.floor(v.voltas)) : null;
+    set(r.pVoltas, "t", n == null || v.voltas >= 90 ? "—" : e.nivel === "fim" ? "NO LIMITE" : `Aguenta ~${n} volta${n === 1 ? "" : "s"}`); set(r.pVoltas, "c", "pn2-voltas " + e.nivel);
+    set(r.pTempT, "t", "Temperatura: " + e.temp);
+    set(r.pProx, "t", B && !B.fase ? F.PNEUS[B.pedido || proximo()].nome.toUpperCase() : "—");
+    set(r.pNota, "t", e.nivel === "fim" ? "Passou do limite: faça a parada." : v && v.medida ? "(no seu ritmo)" : "");
   },
   danos(ctx, r) {
     const m = ctx.m; if (!m) return; const d = Math.round(m.dano || 0), des = Math.round(F1U().efeitoDoDano(m.dano || 0).final * 100), nivel = d >= 66 ? "fim" : d >= 33 ? "medio" : "bom";
@@ -367,8 +368,13 @@ const ATU = {
     else if (!j) { set(r.bJan, "t", "—"); set(r.bSub, "t", ""); }
     else if (!j.precisa) { set(r.bJan, "t", "SEM PARADA"); set(r.bSub, "t", j.motivo); }
     else { set(r.bJan, "t", j.abre === j.fecha ? `VOLTA ${j.abre}` : `VOLTA ${j.abre} – ${j.fecha}`); set(r.bSub, "t", j.motivo || "janela estimada pelo desgaste"); }
-    set(r.bRet, "t", ctx.retorno ? `Volta em ${ctx.retorno}º (est.)` : "—"); set(r.bPerda, "t", ctx.perda != null ? `~${ctx.perda.toFixed(0)} s` : "—");
-    set(r.bJogos, "t", "Jogos: " + textoJogos(m));
+    const jogos = jogosDe(m), sel = B.pedido || proximo(), atual = race.pneu ? race.pneu.composto : null;
+    for (const c of ["macio", "medio", "duro", "chuva"]) {
+      const bt = r["bx" + c], n = jogos[c];
+      set(bt, "c", "bx-btn" + (B.pedido === c ? " pedido" : sel === c ? " sel" : "") + (n <= 0 && !(m.stopGo && c === atual) ? " esgotado" : "") + (c === atual ? " atual" : ""));
+      set(bt, "style", `--c:${F.PNEUS[c].cor}`); set(bt.querySelector("span"), "t", n <= 0 ? "esgotado" : n + (n === 1 ? " jogo" : " jogos"));
+    }
+    set(r.bInfo, "t", [B.pedido ? `PEDIDO: ${F.PNEUS[B.pedido].nome.toUpperCase()}` : "Sem pedido", ctx.retorno ? `volta em ${ctx.retorno}º (est.)` : "", ctx.perda != null ? `troca ~${ctx.perda.toFixed(0)} s` : ""].filter(Boolean).join(" · "));
     set(r.bDica, "d", B.fase ? "none" : "");
   },
   tempos(ctx, r) {

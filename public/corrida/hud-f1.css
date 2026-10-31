@@ -136,7 +136,7 @@
 @media (pointer:coarse){#hClima{bottom:112px}}
 
 /* o rádio do engenheiro: o cartão aparece por cima do velocímetro enquanto ele fala */
-#hRadioEng{position:absolute;right:14px;bottom:268px;width:254px;padding:8px 12px 10px;background:linear-gradient(135deg,#0a0c12f0 60%,color-mix(in srgb,var(--equipe,#e10600) 35%,#0a0c12));border-left:4px solid var(--equipe,#e10600);font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:3;opacity:0;transform:translateX(24px);transition:opacity .18s,transform .18s;display:none}
+#hRadioEng{position:absolute;right:14px;bottom:288px;width:254px;padding:8px 12px 10px;background:linear-gradient(135deg,#0a0c12f0 60%,color-mix(in srgb,var(--equipe,#e10600) 35%,#0a0c12));border-left:4px solid var(--equipe,#e10600);font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;pointer-events:none;z-index:3;opacity:0;transform:translateX(24px);transition:opacity .18s,transform .18s;display:none}
 #race.f1hud #hRadioEng{display:block}
 #hRadioEng.on{opacity:1;transform:none}
 #hRadioEng .rr-nome{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
