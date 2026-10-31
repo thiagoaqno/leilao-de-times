@@ -22,6 +22,7 @@ f1Pronto.then(() => { f1Carregou = true; if (E.S && E.S.phase === "lobby") rende
 const reduz = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 let veioDaCorrida = false;
 export function show(id) {
+  if (id === "race") window.MusicaCarreira?.calar(); else window.MusicaCarreira?.voltar();
   const eraSala = !$("lobby").classList.contains("hidden");
   for (const s of ["home", "lobby"]) $(s).classList.toggle("hidden", s !== id);
   $("race").classList.toggle("hidden", id !== "race");

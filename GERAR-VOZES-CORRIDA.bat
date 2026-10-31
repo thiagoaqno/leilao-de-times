@@ -2,6 +2,8 @@
 setlocal EnableExtensions EnableDelayedExpansion
 chcp 65001 >nul
 cd /d "%~dp0"
+rem Nunca usa uma chave herdada do Windows: esta execucao pede uma chave nova.
+set "ELEVENLABS_API_KEY="
 rem Gera as vozes da Corrida com a ElevenLabs: o narrador das pistas (transmissao) e o engenheiro de equipe (radio).
 rem A chave e pedida aqui, sem aparecer na tela, e vive so nesta janela (variavel de ambiente deste processo): nunca vai para arquivo nem para log.
 rem Uso: GERAR-VOZES-CORRIDA.bat   (sem argumentos: pergunta tudo)
@@ -52,9 +54,9 @@ if /i not "%EST%"=="n" (
   if not "%O%"=="2" ( echo --- Narrador das pistas --- & node ferramentas\narrador-pistas.js --estimar %REF% )
   if not "%O%"=="1" ( echo --- Radio do engenheiro --- & node ferramentas\radio-engenheiro.js --estimar %REF% )
   echo.
-  set "GO=S"
-  set /p "GO=Continuar e gerar? S/n: "
-  if /i "!GO!"=="n" ( echo Cancelado. Nada foi gerado. & pause & exit /b 0 )
+  set "GO=N"
+  set /p "GO=Continuar e gerar usando creditos? s/N: "
+  if /i not "!GO!"=="s" ( echo Cancelado. Nada foi gerado. & pause & exit /b 0 )
 )
 
 echo.

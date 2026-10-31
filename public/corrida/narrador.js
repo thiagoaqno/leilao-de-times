@@ -71,6 +71,13 @@ function falarDaPista(pista, semente, op) {
   return falar(f.id, op);
 }
 
-const api = { falar, falarDaPista, parar, abaixar, usarSaida, get tocando() { return !!atual; } };
+let ultimoEvento = 0;
+function falarEvento(tipo) {
+  const opcoes = F?.porEvento(tipo) || [], agora = Date.now();
+  if (!opcoes.length || atual || root.Radio?.tocando || agora - ultimoEvento < 25000) return Promise.resolve(false);
+  ultimoEvento = agora;
+  return falar(opcoes[Math.floor(Math.random() * opcoes.length)].id);
+}
+const api = { falar, falarDaPista, falarEvento, parar, abaixar, usarSaida, get tocando() { return !!atual; } };
 if (typeof module !== "undefined" && module.exports) module.exports = api; else root.Narrador = api;
 })(typeof self !== "undefined" ? self : this);

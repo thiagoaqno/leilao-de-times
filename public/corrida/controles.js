@@ -7,7 +7,7 @@ import { E, carOf, me, act } from "./estado.js";
 import { rotacao, NUM } from "./cambio.js";
 import { Sound } from "./sons.js";
 import { ORDEM, NOMES, usavel, camEstado } from "./cameras.js";
-import { mfdTecla, mfdPad, mfdAtivo, acoes, teclaBox, digitoPneu } from "./mfd.js";
+import { mfd, mfdTecla, mfdPad, mfdAtivo, acoes, teclaBox, digitoPneu } from "./mfd.js";
 import { acoesDaTecla, botoesDe, ui } from "./teclas.js";
 import "./teclas-ui.js";
 
@@ -31,6 +31,7 @@ document.addEventListener("keydown", (e) => {
   const ids = acoesDaTecla(e.code).slice(); if (!mfdAtivo() && SETAS[e.code] && !ids.includes(SETAS[e.code])) ids.push(SETAS[e.code]);
   for (const id of ids) {
     if (PILOTO[id]) { keys[PILOTO[id]] = true; e.preventDefault(); }
+    else if (id === "olharTras") { keys.olharTras = true; e.preventDefault(); }
     else if (e.repeat) continue;
     else if (id === "marchaMais") { e.preventDefault(); trocarMarcha(1); }
     else if (id === "marchaMenos") { e.preventDefault(); trocarMarcha(-1); }
@@ -56,7 +57,7 @@ function nextCam(d = 1) {
 }
 acoes.camera = (d) => nextCam(d); acoes.camNome = () => NOMES[camEstado.modo || camMode] || "";
 document.addEventListener("keyup", (e) => {
-  for (const id of acoesDaTecla(e.code)) { if (PILOTO[id]) keys[PILOTO[id]] = false; if (id === "ers") keys.ers = false; }
+  for (const id of acoesDaTecla(e.code)) { if (PILOTO[id]) keys[PILOTO[id]] = false; if (id === "ers") keys.ers = false; if (id === "olharTras") keys.olharTras = false; }
   if (SETAS[e.code]) keys[PILOTO[SETAS[e.code]]] = false; // (as setas do esterço antigo, se estavam apertadas)
 });
 document.querySelectorAll(".pad button[data-marcha]").forEach((b) => b.addEventListener("pointerdown", (e) => { e.preventDefault(); trocarMarcha(+b.dataset.marcha); }));
@@ -67,17 +68,18 @@ document.querySelectorAll(".pad button[data-k]").forEach((b) => {
 });
 // controle (Xbox/PlayStation): analógico esquerdo vira (com a força exata), RT acelera, LT freia/ré,
 // A também acelera e B/X também freiam (para quem prefere botão), Y troca a câmera, Back/Select (ou LB) volta para a pista.
-export const pad = { steer: 0, on: false, prev: [] };
+export const pad = { steer: 0, on: false, prev: [], olharTras: false };
 export function pollPad() {
   const gp = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find((g) => g && g.connected);
-  if (!gp) { if (pad.on) { pad.on = false; keys.gas = keys.brake = false; } return; }
+  if (!gp) { pad.olharTras = false; if (pad.on) { pad.on = false; keys.gas = keys.brake = false; } return; }
   const b = (i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.3)), hit = (i) => b(i) && !pad.prev[i];
   const um = (id) => botoesDe(id).some(b), bate = (id) => botoesDe(id).some(hit); // botões de cada ação (teclas.js: padrão ou remapeados)
   if (ui.aberto) { pad.prev = gp.buttons.map((_, i) => b(i)); return; } // a tela de Controles está aberta: o controle só serve para remapear
   mfdPad(bate); // o MFD: páginas, linhas, valor, abrir e confirmar
   let x = gp.axes[0] || 0; if (um("esq")) x = -1; if (um("dir")) x = 1;
   const dz = 0.15; x = Math.abs(x) < dz ? 0 : Math.sign(x) * ((Math.abs(x) - dz) / (1 - dz)) ** 1.4;
-  const gas = um("gas"), brake = um("freio");
+  const gas = botoesDe("gas").some(i => b(i) && !(i === 0 && mfdAtivo() && mfd.aberto)), brake = um("freio");
+  pad.olharTras = um("olharTras");
   if (gas || brake || x || pad.on) { pad.on = true; pad.steer = x; keys.gas = gas; keys.brake = brake && !gas; }
   if (bate("camera")) nextCam();
   if (bate("respawn")) respawn();
@@ -87,10 +89,16 @@ export function pollPad() {
   pad.ersPad = um("ers");
   pad.prev = gp.buttons.map((_, i) => b(i));
 }
-window.addEventListener("gamepaddisconnected", () => { pad.on = false; pad.steer = 0; keys.gas = keys.brake = false; });
+window.addEventListener("gamepaddisconnected", () => { pad.on = false; pad.steer = 0; pad.olharTras = false; keys.gas = keys.brake = false; });
+window.addEventListener("blur", () => { keys.olharTras = false; });
 window.addEventListener("gamepadconnected", () => toast("🎮 Controle conectado: RT acelera, LT freia, analógico vira", 2600));
 $("bRespawn").onclick = () => respawn();
 $("bCam").onclick = () => nextCam();
+const bTras = $("bTras");
+for (const ev of ["pointerdown", "pointerup", "pointercancel", "lostpointercapture"]) bTras.addEventListener(ev, (e) => {
+  e.preventDefault(); keys.olharTras = ev === "pointerdown";
+  if (keys.olharTras) bTras.setPointerCapture(e.pointerId);
+});
 $("hItem").onclick = () => useItem(keys.brake);
 $("bBox").onclick = () => teclaBox();
 const bErs = $("bErs");

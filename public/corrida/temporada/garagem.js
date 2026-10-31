@@ -7,7 +7,7 @@ const h = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "
 const P = () => root.F1Pecas, E = () => root.F1Equipes, FP = () => root.F1Pilotos;
 
 // ---------- as abas ----------
-const ABAS = [["geral", "Visão geral"], ["carro", "Carro · Pontos"], ["classif", "Classificação"], ["equipe", "Equipe"]];
+const ABAS = [["geral", "Visão geral"], ["circuitos", "Circuitos"], ["carro", "Carro · Pontos"], ["classif", "Classificação"], ["equipe", "Equipe"]];
 let aba = "geral";
 const abaAtual = () => aba;
 const definirAba = (a) => { if (ABAS.some((x) => x[0] === a)) aba = a; };
@@ -64,6 +64,22 @@ function mapaGP(id, etapa, ativo = false, previsao = null, voltas = 0) {
   const largada = pts[0], nome = h(pista.name);
   return `<section class="gp-mapa" aria-label="Mapa do circuito ${nome}"><div class="gp-mapa-info"><span class="gp-mapa-rotulo">Etapa ${etapa} · traçado da pista</span><h2>${nome}</h2><p>${ativo ? "Circuito do GP em andamento." : "Confira o circuito antes de abrir a Q1."}</p>${previsao && root.PrevisaoUI ? `<div class="prev-bloco">${root.PrevisaoUI.html(previsao, { voltas })}</div>` : ""}<span class="gp-mapa-legenda"><i></i>Largada e chegada</span></div>
     <div class="gp-mapa-desenho"><svg viewBox="${x - margem} ${y - margem} ${largura + margem * 2} ${altura + margem * 2}" role="img" aria-label="Traçado de ${nome}, com largada e chegada marcadas"><path class="gp-mapa-borda" d="${caminho}"/><path class="gp-mapa-linha" d="${caminho}"/><circle class="gp-mapa-marco" cx="${largada.x.toFixed(1)}" cy="${largada.y.toFixed(1)}" r="28"/><circle class="gp-mapa-centro" cx="${largada.x.toFixed(1)}" cy="${largada.y.toFixed(1)}" r="12"/></svg></div></section>`;
+}
+
+// Catálogo das pistas da temporada, compartilhado pela carreira solo e em grupo.
+function circuitosHTML(cal, gp) {
+  const G = root.GpInfo, pistas = root.Pistas;
+  return `<section class="circuitos"><header class="circuitos-intro"><h2>Circuitos da temporada</h2><p>Explore o traçado e as curvas de cada etapa do calendário.</p></header>${cal.map((etapa, i) => {
+    const t = pistas?.PISTAS[etapa.pista], info = G?.get(etapa.pista); if (!t || !info) return "";
+    const pts = pistas.pontos(t, 18); if (!pts.length) return "";
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    const x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x, hh = Math.max(...ys) - y, m = 90;
+    const caminho = pts.map((p, n) => `${n ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z";
+    const foto = G.fundoDe(etapa.pista), credito = G.creditoTxt(etapa.pista);
+    const curvas = info.curvas.length ? `<ol class="circuito-curvas">${info.curvas.map(c => `<li><b>${c.n}</b><span>${h(c.nome || `Curva ${c.n}`)}</span></li>`).join("")}</ol>` : `<p class="boxnota">${h(t.sub || "Detalhes das curvas ainda não disponíveis.")}</p>`;
+    return `<details class="circuito" ${i === Math.min(gp, cal.length - 1) ? "open" : ""}><summary><span class="circuito-etapa">${String(i + 1).padStart(2, "0")}</span>${bandeira(etapa.pista)}<span class="circuito-nome"><b>${h(etapa.nome)}</b><small>${i < gp ? "GP disputado" : i === gp ? "Próximo GP" : "Próxima etapa"}</small></span><span class="circuito-seta" aria-hidden="true">+</span></summary>
+      <div class="circuito-corpo">${foto ? `<figure class="circuito-foto"><img src="${h(foto)}" alt="" loading="lazy">${credito ? `<figcaption>${h(credito)}</figcaption>` : ""}</figure>` : ""}<div class="circuito-ficha"><div><h3>${h(info.circuito)}</h3>${info.real ? `<p>${h(info.cidade)} · ${h(info.pais)}</p>` : ""}<div class="circuito-dados">${info.km ? `<span>${info.km.toFixed(3).replace(".", ",")} km</span>` : ""}${info.curvas.length ? `<span>${info.curvas.length} curvas</span>` : ""}${info.voltas ? `<span>${info.voltas} voltas oficiais</span>` : ""}</div></div><svg viewBox="${x-m} ${y-m} ${w+2*m} ${hh+2*m}" role="img" aria-label="Traçado de ${h(t.name)}"><path class="gp-mapa-borda" d="${caminho}"/><path class="gp-mapa-linha" d="${caminho}"/><circle class="gp-mapa-marco" cx="${pts[0].x}" cy="${pts[0].y}" r="28"/></svg></div><div class="circuito-lista"><h4>Curvas</h4>${curvas}</div></div></details>`;
+  }).join("")}</section>`;
 }
 
 // ---------- o carro 3D, que fica no mesmo elemento entre as redesenhadas ----------
@@ -133,5 +149,5 @@ function cliquePonto(botao, montagem, equipe, bonus = 0) {
   return { ...montagem, [k]: nivel };
 }
 
-root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, previsaoDoGP, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
+root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, circuitosHTML, previsaoDoGP, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
 })(window);

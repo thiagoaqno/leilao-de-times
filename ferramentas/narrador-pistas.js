@@ -7,7 +7,8 @@
 // ELEVENLABS_VOICE_ID é opcional. A chave só é lida do ambiente: nunca é gravada nem impressa. Node 18+.
 const fs = require("fs");
 const path = require("path");
-const { FALAS, PISTAS } = require("../public/corrida/narrador/falas.js");
+const { FALAS, FALAS_EVENTOS, PISTAS } = require("../public/corrida/narrador/falas.js");
+const TODAS = [...FALAS, ...FALAS_EVENTOS];
 
 const PASTA = path.join(__dirname, "..", "public", "corrida", "narrador");
 // a voz: --voz <id> (o GERAR-VOZES-CORRIDA.bat passa), senão ELEVENLABS_VOICE_ID, senão Brian (grave, encorpada, boa de narração)
@@ -36,12 +37,12 @@ async function gerar(chave, f) {
 async function main() {
   const desconhecidas = pedidas.filter((p) => !PISTAS[p]);
   if (desconhecidas.length) { console.error(`Pista sem fala: ${desconhecidas.join(", ")}\nPistas com fala: ${Object.keys(PISTAS).join(", ")}`); process.exit(1); }
-  const alvo = pedidas.length ? FALAS.filter((f) => pedidas.includes(f.pista)) : FALAS;
+  const alvo = pedidas.length ? FALAS.filter((f) => pedidas.includes(f.pista)) : TODAS;
   const fazer = alvo.filter((f) => refazer || !existe(f));
   const chars = (l) => l.reduce((a, f) => a + f.texto.length, 0);
-  const total = FALAS.filter(existe).length;
-  console.log(`Falas selecionadas: ${alvo.length} (${Object.keys(PISTAS).length} pistas no total, ${FALAS.length} falas) · a gerar: ${fazer.length} · ${milhar(chars(fazer))} caracteres no plano da ElevenLabs`);
-  if (estimar) { console.log(`Arquivos de voz que já existem: ${total} de ${FALAS.length} · se gerasse tudo de novo: ${milhar(chars(FALAS))} caracteres`); return; }
+  const total = TODAS.filter(existe).length;
+  console.log(`Falas selecionadas: ${alvo.length} (${Object.keys(PISTAS).length} pistas e ${FALAS_EVENTOS.length} falas de corrida) · a gerar: ${fazer.length} · ${milhar(chars(fazer))} caracteres no plano da ElevenLabs`);
+  if (estimar) { console.log(`Arquivos de voz que já existem: ${total} de ${TODAS.length} · se gerasse tudo de novo: ${milhar(chars(TODAS))} caracteres`); return; }
 
   const chave = (process.env.ELEVENLABS_API_KEY || "").trim();
   if (!chave) { console.error("Falta a chave: defina ELEVENLABS_API_KEY (ou use o GERAR-VOZES-CORRIDA.bat)."); process.exit(1); }
@@ -56,7 +57,7 @@ async function main() {
       if (e.status === 401 || e.status === 429) break; // não adianta insistir
     }
   }
-  console.log(`\nGeradas: ${feitas} · puladas: ${puladas} · com erro: ${falhas} · arquivos de voz existentes: ${FALAS.filter(existe).length} de ${FALAS.length}`);
+  console.log(`\nGeradas: ${feitas} · puladas: ${puladas} · com erro: ${falhas} · arquivos de voz existentes: ${TODAS.filter(existe).length} de ${TODAS.length}`);
   process.exit(falhas ? 1 : 0);
 }
 main();

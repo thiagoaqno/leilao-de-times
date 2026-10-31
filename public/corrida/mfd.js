@@ -30,6 +30,7 @@ const ICONE = {
   pneus: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>', danos: '<path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/>',
   ers: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', box: '<path d="M4 21V4M4 5h13l-2 4 2 4H4"/>', tempos: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5"/>',
   classificacao: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', ajustes: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+  radio: '<path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H4zM17 14h3v6h-3z"/>',
 };
 const icone = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONE[id] || ""}</svg>`;
 const linhasDe = (id) => `<div class="mr-lista" data-linhas="${id}"></div>`;
@@ -58,11 +59,37 @@ const HTML = {
     <div class="mp-par frente"><span>Carro da frente</span><b data-r="tFrente">—</b></div><div class="mp-par tras"><span>Carro de trás</span><b data-r="tTras">—</b></div></div>`,
   classificacao: `<div class="mp mp-classif" data-r="cLista">${'<div class="cl-r hidden"><b></b><i></i><span></span><em></em><u></u></div>'.repeat(24)}</div>`,
   ajustes: `<div class="mp mp-ajustes">${linhasDe("ajustes")}<div class="mp-par"><span>ERS</span><b data-r="aErs">—</b></div><p class="mp-nota mp-fraca">Balanço de freio e mistura de combustível não existem neste carro.</p></div>`,
+  radio: `<div class="mp mp-ajustes">${linhasDe("radio")}<p class="mp-nota">Selecione e confirme para pedir informações ao engenheiro.</p><p class="mp-nota" data-r="radioResposta" aria-live="polite"></p></div>`,
 };
+
+function pedirRadio(tipo) {
+  const m = LEITURA.m; if (!m || !race) return;
+  let situacao, texto;
+  if (tipo === "carro") {
+    const d = Math.round(m.dano || 0);
+    situacao = d >= 66 ? "diagnosticograve" : d >= 15 ? "diagnosticomedio" : "diagnosticobom";
+    texto = `Dano do carro: ${d}%.`;
+  } else if (tipo === "pneus") {
+    if (!race.pneu) texto = "Dados dos pneus indisponíveis.";
+    else { const vida = Math.round(F().vidaRestante(race.pneu) * 100); situacao = vida < 35 ? "pneusgastos" : "pneusbons"; texto = `Vida dos pneus: ${vida}%.`; }
+  } else {
+    situacao = clima.agua > 0.15 ? "corridachuva" : "corridaseca";
+    const q = E.S.phase === "quali" ? E.S.quali : null;
+    const pos = q ? q.tabela.findIndex(r => r.id === m.id) + 1 : LEITURA.st.findIndex(r => r.id === m.id) + 1;
+    texto = `${q ? `Classificação: ${pos ? pos + "º" : "sem tempo"}` : `Posição: ${pos || "—"}/${LEITURA.st.length}`}. Pista ${clima.agua > 0.15 ? "molhada" : "seca"}.`;
+  }
+  if (refs.r.radio?.radioResposta) set(refs.r.radio.radioResposta, "t", texto);
+  if (situacao && window.Radio) window.Radio.dizer(situacao, { forcar: true });
+}
 
 // ---------- as linhas ajustáveis (setas ‹ › ): só o que o jogo de fato muda ----------
 const compostosPossiveis = () => ["macio", "medio", "duro", "chuva"].filter((c) => jogosDe(me())[c] > 0);
 const LINHAS = {
+  radio: [
+    { rot: "Diagnóstico do carro", valor: () => "Pedir", mudar: () => pedirRadio("carro") },
+    { rot: "Estado dos pneus", valor: () => "Pedir", mudar: () => pedirRadio("pneus") },
+    { rot: "Situação da corrida", valor: () => "Pedir", mudar: () => pedirRadio("corrida") },
+  ],
   box: [
     { rot: "Próximo pneu", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return F().PNEUS[B.pedido || proximo()].nome; },
       mudar(d) {
@@ -176,7 +203,7 @@ function valorMudar(d) {
 }
 
 // ---------- a entrada (tudo pelas ações de teclas.js) ----------
-export const mfdAtivo = () => !!race && !!E.S && E.S.config.regras === "f1" && race.hudF1 && !!raiz;
+export const mfdAtivo = () => !!race && !!E.S && E.S.config.regras === "f1" && (race.hudF1 || E.S.phase === "quali") && !!raiz;
 const ativo = mfdAtivo;
 // Executa uma ação do MFD. Com o painel recolhido, linha e valor só ABREM (nada muda sem a pessoa ver o painel).
 function acao(id) {
@@ -190,6 +217,7 @@ function acao(id) {
   }
   if (id === "confirmar") {
     if (confirmarSugestao()) return true;
+    if (mfd.aberto && mfd.pagina === "radio") { linhasDaPagina()[mfd.linha.radio || 0]?.mudar(); mexeu(); return true; }
     if (naPaginaBox() && !race.box.fase) {
       // Confirmar é idempotente: nunca cancela um pedido já feito. B continua permitindo cancelar.
       if (!race.box.pedido) escolherComposto(proximo()); else toast("Box já confirmado", 1200);

@@ -1,20 +1,20 @@
 // Música da Carreira: um botão na barra de cima abre um mini-tocador (tocar/pausar, anterior/próxima e volume).
 // As faixas vêm de GET /api/musicas (arquivos de public/musica). Cada pessoa ouve a sua; nada baixa antes de tocar.
 (() => {
-  const barra = document.getElementById("barra");
+  const barra = document.getElementById("barra") || document.querySelector(".utilbar") || document.querySelector(".bar-in");
   if (!barra) return;
   const css = document.createElement("style");
   css.textContent = `
-.musica-bt{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--b1);background:transparent;color:var(--t2);font:inherit;font-size:13px;font-weight:500;cursor:pointer;margin-left:auto}
-.musica-bt:hover{background:var(--s2);color:var(--t1)}
-.musica-bt.tocando{color:var(--t1);border-color:currentColor}
+.musica-bt{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--b1,#ffffff33);background:transparent;color:var(--t2,#d1d7e0);font:inherit;font-size:13px;font-weight:500;cursor:pointer;margin-left:auto}
+.musica-bt:hover{background:var(--s2,#151b25);color:var(--t1,#ffffff)}
+.musica-bt.tocando{color:var(--t1,#ffffff);border-color:currentColor}
 .musica-bt[hidden]{display:none}
 .musica-bt + #conexao{margin-left:0}
-.musica-cx{position:fixed;right:max(12px,env(safe-area-inset-right));top:58px;z-index:40;display:none;flex-direction:column;gap:8px;width:min(260px,calc(100% - 24px));padding:12px;background:var(--s2);color:var(--t1);border:1px solid var(--b1);border-radius:10px}
+.musica-cx{position:fixed;right:max(12px,env(safe-area-inset-right));top:58px;z-index:40;display:none;flex-direction:column;gap:8px;width:min(260px,calc(100% - 24px));padding:12px;background:var(--s2,#151b25);color:var(--t1,#ffffff);border:1px solid var(--b1,#ffffff33);border-radius:10px}
 .musica-cx.on{display:flex}
 .musica-cx b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .musica-cx .lin{display:flex;align-items:center;gap:8px}
-.musica-cx button{min-width:40px;min-height:36px;border-radius:8px;border:1px solid var(--b1);background:transparent;color:inherit;cursor:pointer}
+.musica-cx button{min-width:40px;min-height:36px;border-radius:8px;border:1px solid var(--b1,#ffffff33);background:transparent;color:inherit;cursor:pointer}
 .musica-cx input[type=range]{flex:1;min-width:0}`;
   document.head.appendChild(css);
   const bt = document.createElement("button");
@@ -22,7 +22,8 @@
   const cx = document.createElement("div");
   cx.className = "musica-cx"; cx.setAttribute("role", "group"); cx.setAttribute("aria-label", "Música");
   cx.innerHTML = '<b id="mNome">—</b><div class="lin"><button id="mAnt" aria-label="Anterior">⏮</button><button id="mTocar" aria-label="Tocar ou pausar">▶</button><button id="mProx" aria-label="Próxima">⏭</button></div><div class="lin"><span aria-hidden="true">Vol</span><input type="range" id="mVol" min="0" max="100" aria-label="Volume"></div>';
-  barra.insertBefore(bt, document.getElementById("conexao"));
+  const conexao = document.getElementById("conexao");
+  if (conexao && conexao.parentNode === barra) barra.insertBefore(bt, conexao); else barra.appendChild(bt);
   document.body.appendChild(cx);
   const $ = (id) => cx.querySelector("#" + id);
   const ler = () => { try { return JSON.parse(localStorage.getItem("galera:musica")) || {}; } catch (e) { return {}; } };

@@ -10,7 +10,7 @@ import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
 import { CARS3, KS, makeKart, poseKart, fantasmaVisual, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
-import { camMode, pollPad } from "./controles.js";
+import { camMode, pollPad, pad } from "./controles.js";
 import { quadroCamera, somDaCamera, camEstado } from "./cameras.js";
 import { physics, quadroDeFisica, quadroParado, criarRede, PASSO } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
@@ -27,7 +27,7 @@ const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
 // ---------- corrida ----------
 export let race = null, raf = 0;
-export const keys = { gas: false, brake: false, left: false, right: false, ers: false };
+export const keys = { gas: false, brake: false, left: false, right: false, ers: false, olharTras: false };
 // ---------- preparar a pista antes de correr ----------
 // A primeira volta numa pista travava: o navegador só monta o shader de cada material e só manda cada textura para a
 // placa de vídeo na primeira vez que ela aparece na tela, e cada curva nova traz coisas que ainda não tinham aparecido.
@@ -290,7 +290,7 @@ function draw(dt) {
   animarVida(tr, dt, src);
   // a câmera (cameras.js): cockpit, onboard, bico, perseguição próxima e afastada, aérea e TV; quem só assiste ou já
   // passou a bandeirada começa na TV
-  const mode = quadroCamera(race, { dt, tr, c, src, nearest, rm: motionPreference.matches, escolha: camMode, assistindo: !(src === c && race.kart), acabou: !!me() && me().finish != null, spec: CARS3[me()?.car] || CARS3.equilibrado });
+  const mode = quadroCamera(race, { dt, tr, c, src, nearest, olharTras: keys.olharTras || pad.olharTras, rm: motionPreference.matches, escolha: camMode, assistindo: !(src === c && race.kart), acabou: !!me() && me().finish != null, spec: CARS3[me()?.car] || CARS3.equilibrado });
   const modoClima = somDaCamera(mode); // o clima só conhece perto, cockpit, longe e cima
   // sol e sombras acompanham o carro (a direção do sol vem da foto do céu, quando tem)
   const sd = tr.sol; if (sd) sun.position.set(src.x + sd.x * 800, (src.z || 0) + sd.y * 800, src.y + sd.z * 800); else sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260);

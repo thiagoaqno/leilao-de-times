@@ -2,7 +2,7 @@
    velocidade, rotação, modo do ERS), o MFD (embaixo à direita, com páginas), o botão MFD e o banner de punição. A torre e o minimapa estão
    em hud-f1.css. Tudo só com `#race.f1hud` (regras de F1, fase da corrida); o arcade segue com o HUD antigo. */
 #hTempo,#hCentro,#hMfd,.mfd-botao,#hBanner,#hPunicao,#hCrono{display:none}
-#race.f1hud #hTempo,#race.f1hud #hCentro,#race.f1hud #hMfd{font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;text-shadow:none}
+#race.f1hud #hTempo,#race.f1hud #hCentro,#race:is(.f1hud,.f1mfd) #hMfd{font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;text-shadow:none}
 
 /* ---- o quadro de tempos: setores S1/S2/S3, posição, volta atual e BEST ---- */
 #race.f1hud #hTempo{display:block;position:absolute;right:12px;top:62px;width:268px;padding:5px 10px 6px;background:#0a0c12e6;box-shadow:0 6px 18px #0009;z-index:2}
@@ -52,9 +52,9 @@
 @keyframes gcPisca{50%{opacity:.55}}
 
 /* ---- o MFD: o painel de páginas ---- */
-#race.f1hud #hMfd{display:flex;flex-direction:column;position:absolute;right:14px;bottom:12px;width:292px;height:240px;pointer-events:auto;z-index:3;background:linear-gradient(180deg,#0a0c12e8,#06070bf2);border:1px solid #ffffff22;box-shadow:0 6px 18px #0009}
-#race.f1hud #hMfd.fechado{display:none}
-#race.f1hud #hMfd.foco{border-color:#fff;box-shadow:0 0 0 2px #e10600,0 6px 18px #000a}
+#race:is(.f1hud,.f1mfd) #hMfd{display:flex;flex-direction:column;position:absolute;right:14px;bottom:12px;width:292px;height:240px;pointer-events:auto;z-index:3;background:linear-gradient(180deg,#0a0c12e8,#06070bf2);border:1px solid #ffffff22;box-shadow:0 6px 18px #0009}
+#race:is(.f1hud,.f1mfd) #hMfd.fechado{display:none}
+#race:is(.f1hud,.f1mfd) #hMfd.foco{border-color:#fff;box-shadow:0 0 0 2px #e10600,0 6px 18px #000a}
 .mfd-topo{display:flex;align-items:center;gap:8px;height:32px;flex:none;padding:0 4px 0 10px;background:#14161d;border-bottom:2px solid #e10600}
 .mfd-nome{flex:1;font-size:15px;font-weight:700;letter-spacing:.14em;white-space:nowrap}
 .mfd-abas{display:flex;gap:4px}
@@ -123,9 +123,9 @@
 .cl-r.eu{background:#fff;color:#0a0c12}.cl-r.eu b,.cl-r.eu em{color:#0a0c12}
 
 /* o botão que abre o MFD (fechado): no PC no canto do painel, no celular em cima dos botões de toque */
-#race.f1hud .mfd-botao{display:inline-flex;position:absolute;right:14px;bottom:12px;z-index:3;align-items:center;gap:7px;height:36px;padding:0 13px;font:700 13px/1 var(--f1-fonte);letter-spacing:.12em;color:#fff;background:#0a0c12e6;border:1px solid #ffffff33;border-radius:0;box-shadow:0 3px 10px #0008;cursor:pointer}
-#race.f1hud .mfd-botao svg{width:18px;height:18px}
-#race.f1hud.mfd-on .mfd-botao{display:none}
+#race:is(.f1hud,.f1mfd) .mfd-botao{display:inline-flex;position:absolute;right:14px;bottom:12px;z-index:3;align-items:center;gap:7px;height:36px;padding:0 13px;font:700 13px/1 var(--f1-fonte);letter-spacing:.12em;color:#fff;background:#0a0c12e6;border:1px solid #ffffff33;border-radius:0;box-shadow:0 3px 10px #0008;cursor:pointer}
+#race:is(.f1hud,.f1mfd) .mfd-botao svg{width:18px;height:18px}
+#race:is(.f1hud,.f1mfd).mfd-on .mfd-botao{display:none}
 
 /* ---- o banner de punição e a linha fixa do stop-and-go ---- */
 #race.f1hud #hBanner{display:none;left:50%;top:27%;transform:translateX(-50%);max-width:min(560px,90vw);text-align:center;font:700 clamp(15px,2.2vw,22px)/1.15 var(--f1-fonte);letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:none;background:#0a0c12f2;padding:10px 26px;border-left:5px solid #ffd23f;border-right:5px solid #ffd23f;z-index:5}
@@ -141,7 +141,7 @@
 @media (max-width:1000px){
   #race.f1hud #hTempo{width:230px}
   #avisosF1{width:min(330px,calc(100% - 256px - 246px))}
-  #race.f1hud #hMfd{width:262px}
+  #race:is(.f1hud,.f1mfd) #hMfd{width:262px}
   #race.f1hud #hCentro{width:270px}
   .gc-aro{grid-template-columns:84px minmax(0,1fr) 84px}.gc-lado{width:84px;height:84px}.gc-meio b{font-size:56px}
 }
@@ -160,24 +160,24 @@
 }
 @media (pointer:coarse),(max-width:700px){
   #race.f1hud #hCentro{transform:translateX(-50%) scale(.84);transform-origin:50% 100%}
-  #race.f1hud #hMfd{right:auto;left:50%;transform:translateX(-50%);bottom:8px;width:min(272px,calc(100vw - 16px));height:228px}
+  #race:is(.f1hud,.f1mfd) #hMfd{right:auto;left:50%;transform:translateX(-50%);bottom:8px;width:min(272px,calc(100vw - 16px));height:228px}
   #race.f1hud.mfd-on #hCentro{visibility:hidden}
-  #race.f1hud .mfd-botao{bottom:174px;right:14px;height:40px}
+  #race:is(.f1hud,.f1mfd) .mfd-botao{bottom:174px;right:14px;height:40px}
   .mfd-dicas{display:none}
   .mfd-abas button,.mfd-x{min-width:26px;height:26px}
   .mr-b{width:32px;height:30px}.mr{height:30px}
   #race.f1hud #hBanner{top:auto;bottom:232px}#race.f1hud #hPunicao{top:auto;bottom:198px}
 }
 @media (pointer:coarse) and (max-width:560px),(max-width:560px){
-  #race.f1hud #hMfd{bottom:176px}
+  #race:is(.f1hud,.f1mfd) #hMfd{bottom:176px}
 }
 @media (max-width:700px) and (pointer:fine){
-  #race.f1hud .mfd-botao{bottom:12px}
+  #race:is(.f1hud,.f1mfd) .mfd-botao{bottom:12px}
 }
 @media (prefers-reduced-motion:reduce){.gc-arco .valor,.gc-ers i,.mp-barra i{transition:none}.gc-drs.pronto,#race.f1hud #hPunicao.urgente,#race.f1hud #hBanner.on{animation:none}}
 
 /* MFD de corrida: leitura rápida, superfícies escuras e seleção clara. */
-#race.f1hud #hMfd{width:310px;height:232px;background:rgba(12,15,21,.94);border:1px solid #ffffff45;box-shadow:0 5px 18px #0009}
+#race:is(.f1hud,.f1mfd) #hMfd{width:310px;height:232px;background:rgba(12,15,21,.94);border:1px solid #ffffff45;box-shadow:0 5px 18px #0009}
 .mfd-topo{height:34px;padding:0 7px 0 11px;background:#20242b;border-bottom:2px solid #e10600}
 .mfd-nome{font-size:14px;letter-spacing:.06em}
 .mfd-abas{gap:3px;align-items:center}
@@ -207,7 +207,7 @@
 .mr.sel{background:#ffffff25;border-left-color:#74d6f7;box-shadow:none}
 #hMfd.foco .mr.sel{border-left-color:#e10600}
 .mr-v b{min-width:87px}
-@media(max-width:700px){#race.f1hud #hMfd{width:min(290px,calc(100vw - 16px));height:232px}.mfd-topo{height:31px}.mfd-abas button{width:22px;min-width:22px;height:30px}.mfd-corpo{padding:7px 9px 4px}}
+@media(max-width:700px){#race:is(.f1hud,.f1mfd) #hMfd{width:min(290px,calc(100vw - 16px));height:232px}.mfd-topo{height:31px}.mfd-abas button{width:22px;min-width:22px;height:30px}.mfd-corpo{padding:7px 9px 4px}}
 
 /* A janela de box ocupa duas linhas, deixando as escolhas sempre acessíveis. */
 .mp-janela{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:8px;padding:4px 8px}
@@ -230,8 +230,8 @@
 #race.f1hud #hCrono.fim b{color:#2ee08a}
 
 /* ---- o MFD no estilo do jogo da EA (F1 24/25): painel escuro translúcido, abas por ícone, tipografia condensada, linha escolhida em branco ---- */
-#race.f1hud #hMfd{font-family:"Barlow Condensed","Titillium Web",var(--f1-fonte),sans-serif;background:linear-gradient(180deg,#0b0d13dd,#06070be8);backdrop-filter:none}
-#race.f1hud #hMfd .mp,#race.f1hud #hMfd .mr,#race.f1hud #hMfd .mp-par{font-weight:600}
+#race:is(.f1hud,.f1mfd) #hMfd{font-family:"Barlow Condensed","Titillium Web",var(--f1-fonte),sans-serif;background:linear-gradient(180deg,#0b0d13dd,#06070be8);backdrop-filter:none}
+#race:is(.f1hud,.f1mfd) #hMfd .mp,#race:is(.f1hud,.f1mfd) #hMfd .mr,#race:is(.f1hud,.f1mfd) #hMfd .mp-par{font-weight:600}
 .mfd-nome{font-weight:700;letter-spacing:.16em;font-size:16px}
 .mfd-abas{gap:3px}
 .mfd-abas button{width:26px;height:24px;min-width:26px;border-radius:3px;border:1px solid #ffffff1f;background:#ffffff0f;color:#ffffffa8}
@@ -255,11 +255,11 @@
 .mp-pneus .mp-nota{font-size:13px}
 
 /* o MFD desce sozinho depois de 3 s sem interação (mfd.js põe .descendo por 230 ms e então .fechado); fechado, o botão mostra o pedido de box */
-#race.f1hud #hMfd.descendo{animation:mfdDesce .22s ease-in forwards;pointer-events:none}
+#race:is(.f1hud,.f1mfd) #hMfd.descendo{animation:mfdDesce .22s ease-in forwards;pointer-events:none}
 @keyframes mfdDesce{to{transform:translateY(28px);opacity:0}}
 @media (pointer:coarse),(max-width:700px){@keyframes mfdDesce{from{transform:translateX(-50%)}to{transform:translateX(-50%) translateY(28px);opacity:0}}}
-#race.f1hud .mfd-botao.pedido{color:#0a0c12;background:#ffd23f;border-color:#ffd23f}
-@media (prefers-reduced-motion:reduce){#race.f1hud #hMfd.descendo{animation:none}}
+#race:is(.f1hud,.f1mfd) .mfd-botao.pedido{color:#0a0c12;background:#ffd23f;border-color:#ffd23f}
+@media (prefers-reduced-motion:reduce){#race:is(.f1hud,.f1mfd) #hMfd.descendo{animation:none}}
 
 /* a sugestão de box: um cartão por cima do painel, com a contagem de 10 s */
 .mfd-sug{position:absolute;left:0;right:0;top:32px;bottom:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 14px;background:#0b0d13f5;border-top:3px solid #ffd23f}

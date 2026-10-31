@@ -186,6 +186,16 @@ function escolher(pista, semente) { // a fala da pista para este GP (ou null se 
   const todas = porPista(pista); if (!todas.length) return null;
   return todas[Math.min(todas.length - 1, Math.floor(hash(`${semente}:${pista}:narrador`) * todas.length))];
 }
-const api = { PISTAS, FALAS: lista, porPista, escolher };
+// Falas curtas de acontecimentos, com IDs separados das apresentações já geradas.
+const EVENTOS = {
+  sc: ["Safety car na pista. O pelotão precisa reduzir e manter a ordem.", "O safety car foi acionado. A corrida está neutralizada."],
+  amarela: ["Bandeira amarela neste setor. Os pilotos precisam reduzir.", "Temos bandeira amarela na pista. Atenção ao trecho sinalizado."],
+  verde: ["Pista liberada. Voltamos a correr em bandeira verde.", "A bandeira verde está no ar. A disputa recomeça."],
+  vmr: ["Temos uma nova volta mais rápida nesta corrida.", "Novo melhor tempo de volta. O ritmo está aumentando."],
+  chegada: ["Bandeirada! Mais uma corrida chega ao fim.", "Cai a bandeira quadriculada. Corrida encerrada."],
+};
+const FALAS_EVENTOS = Object.entries(EVENTOS).flatMap(([tipo, textos]) => textos.map((texto, i) => ({ id: `evento-${tipo}-${i + 1}`, texto, tipo })));
+const porEvento = (tipo) => FALAS_EVENTOS.filter(f => f.tipo === tipo);
+const api = { PISTAS, FALAS: lista, porPista, escolher, EVENTOS, FALAS_EVENTOS, porEvento };
 if (typeof module !== "undefined" && module.exports) module.exports = api; else root.NarradorFalas = api;
 })(typeof self !== "undefined" ? self : this);
