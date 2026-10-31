@@ -1,3 +1,4 @@
+import { criarReverberacao } from "./reverberacao.js";
 // Corrida da Galera — sons sintetizados (kart e F1, derrapagem, batidas e largada). O motor de F1 (V10) fica em motor-v10.js.
 import { $, store } from "./estado.js";
 import { criarMotorF1 } from "./motor-v10.js";
@@ -18,15 +19,13 @@ export const Sound = (() => {
   const MARCHAS = [0, 110, 190, 270, 350, 1e9];
   let marcha = 1, troca = 0;
   // o som ambiente das pistas (pista-som.js) passa por um barramento que abre e fecha junto com o motor (só na corrida);
-  // o eco do túnel é um envio do motor para uma reverberação (ruído que se apaga em 1,4 s)
+  // o eco do túnel é um envio do motor para uma reverberação (reflexões curtas e discretas)
   let ambBus = null, ecoG = null;
   let motorF1 = null; // o motor de F1 (motor-v10.js), criado na primeira vez que as regras de F1 pedem
   let motorBus = null; // os motores de F1 (o meu e os dos outros) passam por aqui: abaixam enquanto o engenheiro fala
   function barramento() { const c = ctx(); if (!c) return null; if (!ambBus) { ambBus = c.createGain(); ambBus.gain.value = 0; ambBus.connect(master); } return ambBus; }
   function reverb(c) {
-    const len = Math.floor(c.sampleRate * 1.4), b = c.createBuffer(2, len, c.sampleRate);
-    for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
-    const conv = c.createConvolver(); conv.buffer = b; ecoG = c.createGain(); ecoG.gain.value = 0; conv.connect(ecoG).connect(master); reverbExistente = conv; return conv;
+    const conv = criarReverberacao(c); ecoG = c.createGain(); ecoG.gain.value = 0; conv.connect(ecoG).connect(master); reverbExistente = conv; return conv;
   }
   let reverbExistente = null;
   function engine(speed, racing, gas = true, marchaF1 = 0, rpmF1 = 0, f1 = null) {
