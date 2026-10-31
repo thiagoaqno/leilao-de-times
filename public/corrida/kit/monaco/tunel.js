@@ -32,6 +32,8 @@ export function tunel(tr, add) {
   }), color: 0xe3c295, roughness: 0.95, side: THREE.DoubleSide, emissive: 0x6a4524, emissiveIntensity: 0.5 });
   const esq = (() => { const p = pts[Math.floor((i0 + i1) / 2) % n]; return Math.sign(p.nx * p.ty - p.ny * p.tx) || 1; })(); // o sinal de `lat` do lado esquerdo de quem anda (esquerda = (ty, -tx))
   faixa(tr, add, i0, i1, esq * (L + 1), esq * (L + 1), 0, TUNEL_ALTO, galeria, 32); faixa(tr, add, i0, i1, -esq * (L + 1), -esq * (L + 1), 0, TUNEL_ALTO, blocos, 32);
+  // o embasamento do túnel: as paredes descem 14 abaixo do asfalto (o terreno é mais baixo que a pista em volta e deixaria um vão por baixo)
+  faixa(tr, add, i0, i1, esq * (L + 1), esq * (L + 1), -14, 0, galeria, 32); faixa(tr, add, i0, i1, -esq * (L + 1), -esq * (L + 1), -14, 0, blocos, 32);
   // as luminárias: pequenas, retangulares e âmbar, em fileiras ao longo das duas paredes, perto do teto (sem brilho exagerado: a imagem não estoura nem fica com neblina branca)
   const luz = new THREE.MeshStandardMaterial({ color: 0xffc27a, emissive: 0xff9d3a, emissiveIntensity: 0.9 }), lg = new THREE.BoxGeometry(5, 1.4, 2.4), luzes = [];
   for (let i = i0; i <= i1; i += 2) { const p = pts[i % n]; for (const d of [-L + 5, L - 5]) luzes.push({ x: p.x + p.nx * d, y: p.h + TUNEL_ALTO - 7, z: p.y + p.ny * d, r: Math.atan2(p.tx, p.ty) }); }

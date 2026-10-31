@@ -7,7 +7,7 @@ import { TUNEL_ALTO, trechoDoTunel } from "./tunel.js";
 
 export function fairmontSobreOTunel(tr, add) {
   const { pts, n } = tr, L = tr.wallLat, { i0 } = trechoDoTunel(tr);
-  const a0 = i0 - 16, a1 = i0 + 62; // do começo (a boca) até o trecho em que o túnel segue sozinho
+  const a0 = i0 - 6, a1 = i0 + 62; // do começo (a boca) até o trecho em que o túnel segue sozinho
   const andares = [[0, 30], [10, 56], [22, 80], [34, 100]]; // [recuo da fachada, topo acima da laje do túnel]
   const fach = new THREE.MeshStandardMaterial({ map: canvasTex(128, 128, (x, w, hh, rr) => {
     x.fillStyle = "#f0e4c8"; x.fillRect(0, 0, w, hh);
@@ -26,11 +26,17 @@ export function fairmontSobreOTunel(tr, add) {
     const baseAnt = andares.indexOf(andares.find((q) => q[0] === rec)) > 0 ? andares[andares.indexOf(andares.find((q) => q[0] === rec)) - 1][1] : 0;
     for (let i = a0; i < a1; i++) { const d0 = (i - a0) * 6 / 28, d1 = (i + 1 - a0) * 6 / 28; quad(P(i, l, base + baseAnt), P(i + 1, l, base + baseAnt), P(i + 1, l, base + topo), P(i, l, base + topo), d0, d1, 0, (topo - baseAnt) / 28); }
   }
+  for (const i of [a0, a1]) andares.forEach(([rec, topo], k) => { const l = L + 4 - rec * 0.35, ba = k ? andares[k - 1][1] : 0; quad(P(i, -l, TUNEL_ALTO + ba), P(i, l, TUNEL_ALTO + ba), P(i, l, TUNEL_ALTO + topo), P(i, -l, TUNEL_ALTO + topo), 0, (2 * l) / 28, 0, (topo - ba) / 28); }); // as duas pontas, com a mesma fachada
   // as lajes de cada andar (o topo recuado), a parte de cima e as duas pontas do prédio
   const telhado = new THREE.MeshStandardMaterial({ color: 0xc9c2b2, roughness: 0.9, side: THREE.DoubleSide }), vt = [], it = [];
   const qt = (A, B, Cc, Dd) => { const q = vt.length / 3; vt.push(...A, ...B, ...Cc, ...Dd); it.push(q, q + 1, q + 2, q, q + 2, q + 3); };
   andares.forEach(([rec, topo]) => { for (let i = a0; i < a1; i++) qt(P(i, -(L + 4 - rec * 0.35), TUNEL_ALTO + topo), P(i + 1, -(L + 4 - rec * 0.35), TUNEL_ALTO + topo), P(i + 1, L + 4 - rec * 0.35, TUNEL_ALTO + topo), P(i, L + 4 - rec * 0.35, TUNEL_ALTO + topo)); });
-  for (const i of [a0, a1]) for (const [rec, topo] of andares) qt(P(i, -(L + 4 - rec * 0.35), TUNEL_ALTO), P(i, L + 4 - rec * 0.35, TUNEL_ALTO), P(i, L + 4 - rec * 0.35, TUNEL_ALTO + topo), P(i, -(L + 4 - rec * 0.35), TUNEL_ALTO + topo));
+  // o embasamento: paredes de concreto do chão (bem abaixo, no terreno) até a laje do túnel, dos dois lados e na ponta do fundo, para o prédio não ficar no ar e sem vão nem céu por baixo
+  const base = new THREE.MeshStandardMaterial({ color: 0xcfc6b2, roughness: 0.95, side: THREE.DoubleSide }), vb = [], ib = [], FUNDO = -40;
+  const qb = (A, B, Cc, Dd) => { const q = vb.length / 3; vb.push(...A, ...B, ...Cc, ...Dd); ib.push(q, q + 1, q + 2, q, q + 2, q + 3); };
+  for (const lado of [1, -1]) for (let i = a0; i < a1; i++) { const l = lado * (L + 4); qb(P(i, l, FUNDO), P(i + 1, l, FUNDO), P(i + 1, l, TUNEL_ALTO), P(i, l, TUNEL_ALTO)); }
+  { const l = L + 4; qb(P(a1, -l, FUNDO), P(a1, l, FUNDO), P(a1, l, TUNEL_ALTO), P(a1, -l, TUNEL_ALTO)); }
+  const gb = new THREE.BufferGeometry(); gb.setAttribute("position", new THREE.Float32BufferAttribute(vb, 3)); gb.setIndex(ib); gb.computeVertexNormals(); const mb = add(new THREE.Mesh(gb, base)); mb.name = "monaco-fairmont-base"; mb.castShadow = false;
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
   const m = add(new THREE.Mesh(g, fach)); m.name = "monaco-fairmont"; m.castShadow = true; m.receiveShadow = true;
   const g2 = new THREE.BufferGeometry(); g2.setAttribute("position", new THREE.Float32BufferAttribute(vt, 3)); g2.setIndex(it); g2.computeVertexNormals();
