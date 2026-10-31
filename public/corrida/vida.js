@@ -47,7 +47,7 @@ export function enfeitar(tr, add, r, alturaEm) {
   const lat = (p, l) => [p.x + p.nx * l, p.y + p.ny * l];
   // balizas: um a cada 36 unidades dos dois lados (em cima do muro, olhos de gato; sem muro, postes brancos com faixa)
   const bal = [], olho = [];
-  for (let i = 0; i < (tr.sem?.olhos ? 0 : n); i += 6) { // (tr.sem: o que o GP não tem; Mônaco não põe olhos de gato no guard-rail)
+  for (let i = 0; i < (tr.sem?.olhos || t.escapeLivre ? 0 : n); i += 6) { // (tr.sem: o que o GP não tem; Mônaco não põe olhos de gato no guard-rail)
     const p = pts[i];
     for (const s of [-1, 1]) {
       const [x, z] = lat(p, s * (borda + (comMuro ? 0 : 0))), y = comMuro ? alturaEm(x, z, i) + 12 : alturaEm(x, z, i);
@@ -56,6 +56,7 @@ export function enfeitar(tr, add, r, alturaEm) {
       else { bal.push({ x, y: y + 5, z, s: 1 }); olho.push({ x, y: y + 8, z, ry: Math.atan2(p.tx, p.ty), sx: 1.9, sy: 2.2, sz: 1.9, c: "#ff7a1a" }); }
     }
   }
+  V.balizadores = bal.length;
   instancias(add, new THREE.CylinderGeometry(0.8, 0.9, 10, 6), M(0xf4f4f4, { roughness: 0.6 }), bal);
   instancias(add, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x553300, emissiveIntensity: noite ? 2 : 0.4, roughness: 0.3 }), olho, false);
   // setas nas curvas fechadas, do lado de fora, viradas para quem chega

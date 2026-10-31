@@ -23,7 +23,7 @@ export const GP_SUZUKA = {
   },
   // o escape: brita bege do lado de fora das curvas lentas (T1, Degner, Hairpin, Spoon, 130R) e muros de pneus por fora
   escape: {
-    britaCurvas: 420, corBrita: "#d3c49b", largura: 30,
+    corBrita: "#d3c49b", largura: 30,
     brita: [[0.072, 0.12, "fora"], [0.355, 0.395, "fora"], [0.448, 0.48, "fora"], [0.606, 0.662, "fora"], [0.807, 0.836, "fora"], [0.905, 0.946, "fora"]],
     pneus: [[0.075, 0.115, "fora"], [0.448, 0.48, "fora"], [0.612, 0.66, "fora"], [0.81, 0.834, "fora"]],
   },

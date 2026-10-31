@@ -75,6 +75,8 @@ export function buildTrack(id) {
   for (const p of pts) { p.nx = -p.ty; p.ny = p.tx; }
   const mini = document.createElement("canvas"); mini.width = mini.height = 240; drawPreview(mini, id);
   const tr = { id, t, pts, n, W, look: LOOK[id], theme: THEMES[id], mini, wallLat: t.walls ? W / 2 + t.wall : Infinity, grp: new THREE.Group() };
+  if (t.superficieEscape) tr.superficiesEscape = window.Pistas.mapaSuperficies(pts, t.superficieEscape);
+  if (t.escapeLivre) tr.murosEscape = window.Pistas.murosDoEscape(pts, W, tr.superficiesEscape, t);
   // grade de distância até a pista (para o relevo e para espalhar enfeites sem cair na pista)
   const G = 96, cell = t.world / G, gd = new Float32Array((G + 1) * (G + 1)), gi = new Int32Array((G + 1) * (G + 1));
   for (let j = 0; j <= G; j++) for (let i = 0; i <= G; i++) {
@@ -235,19 +237,8 @@ function buildWorld(tr) {
     for (const lado of [-1, 1]) ribbon(lado * (W / 2 - 2.6), lado * (W / 2 - 1.2), 0.49, tinta, 80);
     borrachaGP(tr, add);
   } else ribbon(-W / 2, W / 2, 0.4, arco ? new THREE.MeshStandardMaterial({ map: arco, emissive: 0xffffff, emissiveMap: arco, emissiveIntensity: 0.55, roughness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }) : Object.assign(new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, side: THREE.DoubleSide }), { userData: { asfalto: true } }), 256); // asfalto: o clima molha (clima-visual.js)
-  // Balizadores leves nas saídas de curva: o carro pode tocá-los e eles se inclinam.
+  // A pista não recebe balizadores genéricos junto ao asfalto.
   tr.cones = [];
-  if (!t.espaco && !gp) {
-    const orange = M(0xff792d), white = M(0xf7f1df), base = M(0x34383a);
-    for (let i = 28; i < n; i += Math.max(45, Math.floor(n / 42))) {
-      const p = pts[i], side = i % 2 ? -1 : 1, lat = side * (W / 2 - 3);
-      const cone = new THREE.Group(); cone.name = `${id}-balizador`; cone.position.set(p.x + p.nx * lat, p.h + 0.5, p.y + p.ny * lat);
-      const foot = new THREE.Mesh(new THREE.BoxGeometry(9, 1.5, 9), base); cone.add(foot);
-      const body = new THREE.Mesh(new THREE.ConeGeometry(3.2, 10, 6), orange); body.position.y = 5; cone.add(body);
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 2.1, 1.8, 6), white); band.position.y = 6.5; cone.add(band);
-      add(cone); tr.cones.push({ mesh: cone, x: cone.position.x, y: cone.position.z, h: p.h, hit: 0, dir: 0 });
-    }
-  }
   const kerbT = canvasTex(32, 64, (x, w, hh) => { x.fillStyle = look.kerb[0]; x.fillRect(0, 0, w, hh / 2); x.fillStyle = look.kerb[1]; x.fillRect(0, hh / 2, w, hh / 2); });
   const kerbM = new THREE.MeshStandardMaterial({ map: kerbT, roughness: 0.6, side: THREE.DoubleSide, emissive: id === "tokyo" ? 0x0a3a44 : 0 });
   if (gp?.chao) chaoGP(tr, add, gp.chao, { gridSpot }); // margem, zebras só nas curvas e as marcas da rua (kit/chao.js)
@@ -297,6 +288,26 @@ function buildWorld(tr) {
       else { trecho(cb.i0 + cb.len + 1, cb.i0 + n - 1); (tr.guardaBox = tr.guardaBox || []).push(trecho(cb.i0 - 1, cb.i0 + cb.len + 1)); }
     }
   }
+  if (tr.murosEscape) { // os mesmos recuos e recortes usados na colisão
+    const mat = M(0x9aa0a3, { roughness: 0.85, side: THREE.DoubleSide });
+    for (const lado of [-1, 1]) {
+      const mapa = tr.murosEscape[lado], vs = [], uv = [], indices = [];
+      for (let i = 0; i < n; i++) {
+        const prox = (i + 1) % n;
+        if (!mapa[i] || !mapa[prox]) continue;
+        const q = vs.length / 3;
+        for (const j of [i, prox]) {
+          const p = pts[j], l = lado * (W / 2 + mapa[j]), h = p.h * falloff(tr, l);
+          vs.push(p.x + p.nx * l, h + 0.5, p.y + p.ny * l, p.x + p.nx * l, h + 9, p.y + p.ny * l);
+          uv.push(j / 8, 0, j / 8, 1);
+        }
+        indices.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
+      }
+      if (!indices.length) continue;
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(indices); g.computeVertexNormals();
+      const m = add(new THREE.Mesh(g, mat)); m.name = `${id}-muro-escape`; m.receiveShadow = true;
+    }
+  }
   // paredão embaixo dos trechos altos (para não ficar "flutuando") e pilares nos viadutos
   if (id === "tokyo" || id === "losangeles") {
     const pil = new THREE.CylinderGeometry(6, 7, 1, 10), pm = M(id === "tokyo" ? 0x55586a : 0xb8b0a0);
@@ -344,7 +355,7 @@ function buildWorld(tr) {
   // barreiras de pneus: do lado de fora das curvas fechadas (a física bate nelas: tr.pneus guarda o lado de cada ponto).
   // Em Mônaco, não: o guard-rail fica colado na pista o tempo todo
   tr.pneus = new Int8Array(n);
-  if (!t.espaco && !t.muro) {
+  if (!t.espaco && !t.muro && !t.escapeLivre) {
     const pilhas = [], topos = [];
     for (let i = 0; i < n; i++) {
       const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 170)) continue;
@@ -357,6 +368,10 @@ function buildWorld(tr) {
     const pneuGeo = new THREE.CylinderGeometry(3, 3, 2.1, 10);
     inst(pneuGeo, M(0x1d1e22, { roughness: 0.9 }), pilhas);
     inst(pneuGeo, M(0xffffff, { roughness: 0.7 }), topos);
+  }
+  if (id === "montreal") {
+    const m = window.Pistas.muroCampeoes(pts);
+    if (m) for (let i = m.i0; i <= m.i1; i++) tr.pneus[i % n] = m.lado;
   }
   // os checkpoints (como no Forza): duas bandeiras altas verde-limão, uma de cada lado, com "CHECKPOINT." na vertical.
   // Só aparecem o próximo e o seguinte (jogo.js acende, balança e pinta de vermelho o perdido).
@@ -394,7 +409,7 @@ function buildWorld(tr) {
   if (gp) {
     if (gp.arquibancadas) arquibancadas(tr, add, gp.arquibancadas); // as arquibancadas do kit (kit/arquibancadas.js)
     gp.cenario?.(tr, ctx);
-    if (gp.ambiente) ambienteGP(tr, add, gp.ambiente); // cerca, painéis, bandeiras, postos e placas
+    if (gp.ambiente) ambienteGP(tr, add, t.escapeLivre ? { ...gp.ambiente, cerca: false } : gp.ambiente); // cerca, painéis, bandeiras, postos e placas
     if (gp.passarelas) passarelas(tr, add, gp.passarelas);
     gp.marcos?.(tr, ctx); // os marcos próprios (Mônaco: a capela de Sainte Dévote)
     if (gp.postes) postes(tr, add, gp.postes);

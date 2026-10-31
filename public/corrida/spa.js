@@ -22,7 +22,7 @@ import { tribunaCoberta, tendaPaddock } from "./kit/coberturas.js";
 import { Montador, solido } from "./kit/montagem.js";
 import { registrarMarcasSpa } from "./kit/spa/marcas.js";
 import { predioDosBoxes, tribunaDoRaidillon, chaleArdenas, fazenda, carretas, torreDeTV } from "./kit/spa/predios.js";
-import { barreiras, muroDePneus, escapePintado } from "./kit/spa/barreiras.js";
+import { muroDePneus, escapePintado } from "./kit/spa/barreiras.js";
 import { torcidaNasEncostas, acampamento, bandeirasDaTorcida, CAMISAS_SPA } from "./kit/spa/torcida.js";
 import { colinas, bosqueDaBeira, florestaDeLonge } from "./kit/spa/floresta.js";
 
@@ -263,8 +263,7 @@ export function cenarioSpa(tr, ctx) {
     verde: [[0.514, 0.578, "fora"], [0.684, 0.714, "fora"], [0.828, 0.874, "fora"]],
     vermelho: [[0.026, 0.052, "fora"], [0.118, 0.16, 1]],
   });
-  muroDePneus(tr, ctx.add, [[0.027, 0.05, "fora"], [0.324, 0.35, "fora"], [0.41, 0.432, "fora"], [0.943, 0.963, 0], [0.62, 0.645, "fora"]]);
-  barreiras(tr, ctx.add, {});
+  muroDePneus(tr, ctx.add, [[0.027, 0.05, "fora"], [0.324, 0.35, "fora"], [0.41, 0.432, "fora"], [0.943, 0.963, 0], [0.62, 0.645, "fora"]], { lat: tr.W / 2 + window.Pistas.RECUO_MURO_ESCAPE - 4 });
   encostas(tr, ctx);
   placasDasCurvas(tr, ctx);
 }

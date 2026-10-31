@@ -1062,6 +1062,36 @@ for (const t of Object.values(PISTAS)) {
   if (!t.espaco && !t.muro) { t.walls = false; t.wall = 20; }
 }
 
+// Faixas de escape usadas pela cena e pela física (frações da volta).
+const SUPERFICIES_ESCAPE = {
+  "bahrein": {"brita": [[0.31, 0.352, "fora"], [0.6, 0.63, "fora"], [0.658, 0.696, "fora"]], "largura": 36},
+  "barcelona": {"brita": [[0.15, 0.177, "fora"], [0.178, 0.2, "fora"], [0.205, 0.268, "fora"], [0.34, 0.4, "fora"], [0.432, 0.46, "fora"], [0.527, 0.545, "fora"], [0.595, 0.632, "fora"], [0.728, 0.762, "fora"], [0.778, 0.825, "fora"], [0.835, 0.88, "fora"], [0.9, 0.935, "fora"]], "listrado": [[0.152, 0.176, "dentro"], [0.208, 0.266, "dentro"], [0.342, 0.4, "dentro"], [0.597, 0.63, "dentro"], [0.78, 0.822, "dentro"], [0.902, 0.934, "dentro"]], "largura": 24},
+  "catar": {"largura": 26, "britaCurvas": 420},
+  "interlagos": {"brita": [[0.4, 0.48, "fora"], [0.6, 0.7, "fora"], [0.72, 0.79, "fora"]], "listrado": [[0.058, 0.14, "fora"], [0.31, 0.38, "fora"], [0.84, 0.9, "fora"]]},
+  "melbourne": {"brita": [[0.055, 0.09, "fora"], [0.13, 0.17, "fora"], [0.26, 0.31, "fora"], [0.66, 0.72, "fora"], [0.76, 0.82, "fora"], [0.87, 0.92, "fora"]], "listrado": [[0.085, 0.11, "fora"], [0.53, 0.56, "fora"], [0.69, 0.73, "fora"]]},
+  "montreal": {"brita": [[0.655, 0.677, "fora"], [0.118, 0.14, "fora"]], "listrado": [[0.1, 0.14, 0], [0.936, 0.955, 0], [0.5, 0.53, 0]], "largura": 20},
+  "monza": {"brita": [[0.235, 0.27, "fora"], [0.39, 0.425, "fora"], [0.45, 0.472, "fora"]], "listrado": [[0.113, 0.136, 0], [0.326, 0.35, 0], [0.636, 0.692, 0]]},
+  "silverstone": {"brita": [[0.48, 0.535, "fora"], [0.815, 0.865, "fora"]], "listrado": [[0.04, 0.075, "fora"], [0.6, 0.68, "fora"], [0.935, 0.975, "fora"]], "largura": 30},
+  "spa": {"brita": [[0.322, 0.35, "fora"], [0.41, 0.436, "fora"], [0.618, 0.652, "fora"], [0.15, 0.185, -1]], "largura": 26, "listrado": [[0.514, 0.578, "fora"], [0.684, 0.714, "fora"], [0.828, 0.874, "fora"], [0.026, 0.052, "fora"], [0.118, 0.16, 1]]},
+  "suzuka": {"brita": [[0.072, 0.12, "fora"], [0.355, 0.395, "fora"], [0.448, 0.48, "fora"], [0.606, 0.662, "fora"], [0.807, 0.836, "fora"], [0.905, 0.946, "fora"]], "largura": 30},
+  "zandvoort": {"brita": [[0.092, 0.132, "fora"], [0.186, 0.24, "fora"], [0.4, 0.447, "fora"], [0.486, 0.562, "fora"], [0.594, 0.628, "fora"], [0.838, 0.934, "fora"], [0.738, 0.775, 0]], "largura": 26},
+  "hungaroring": {"britaCurvas": 420, "largura": 26},
+  "abudhabi": {"britaCurvas": 420, "largura": 26},
+  "austin": {"britaCurvas": 420, "largura": 26},
+  "xangai": {"britaCurvas": 420, "largura": 26},
+  "mexico": {"britaCurvas": 420, "largura": 26},
+  "redbullring": {"britaCurvas": 420, "largura": 26},
+  "madri": {"britaCurvas": 420, "largura": 26},
+  "miami": {"britaCurvas": 420, "largura": 26},
+};
+
+// Nos autódromos de GP o escape começa depois da zebra. As pistas de rua mantêm o muro existente.
+for (const [id, t] of Object.entries(PISTAS)) {
+  if ((t.f1 || ["interlagos", "monza", "barcelona", "silverstone"].includes(id)) && !t.muro && id !== "montreal") t.escapeLivre = true;
+  if (t.escapeLivre || id === "montreal") t.superficieEscape = SUPERFICIES_ESCAPE[id] || null;
+  if (id === "suzuka") t.muroViaduto = true;
+}
+
 // Os cinco acertos do carro de F1 (os ids continuam os antigos, para as salas e o servidor). vmax: velocidade final no asfalto · acc: aceleração na arrancada (ela cai perto da velocidade
 // final: a = acc·(1 − 0,8·(v/vmax)^1,6), então leva de 4 a 8 segundos para chegar no topo; a pilotagem é a de kart) · brake: freio · grip: quanto o pneu segura
 // de lado (acima disso o carro escorrega para fora da curva) · turn: quanto o volante gira · scrub: quanto perde de
@@ -1251,7 +1281,87 @@ function boxesFor(id) {
 // o turbo do cogumelo: quanto tempo fica acima da velocidade final, e quanto do excesso perde por segundo quando acaba
 // (aos poucos, para não cortar seco; o vácuo e o estilingue também acabam assim)
 const TURBO_MS = 3500, TURBO_SOLTA = 90;
-const api = { WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, cruzouSetor, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
+// A mesma descrição das faixas alimenta os dois lados da simulação. 0 = grama, 1 = brita, 2 = asfalto pintado.
+function mapaSuperficies(pts, cfg) {
+  if (!cfg) return null;
+  const n = pts.length, mapa = { 1: new Uint8Array(n), [-1]: new Uint8Array(n) };
+  const sinal = i => { const p = pts[(i + n) % n], q = pts[(i + 3 + n) % n]; return p.tx * q.ty - p.ty * q.tx > 0 ? 1 : -1; };
+  if (cfg.britaCurvas) for (let i = 0; i < n; i++) if ((pts[i].k || 0) >= 1 / cfg.britaCurvas) {
+    const lado = -sinal(i); for (let j = i - 10; j <= i + 14; j++) mapa[lado][(j + n) % n] = 1;
+  }
+  for (const [campo, tipo] of [["brita", 1], ["listrado", 2]]) for (const [f0, f1, lado] of cfg[campo] || []) {
+    const a = Math.floor(f0 * n), b = Math.floor(f1 * n); let melhor = a;
+    for (let i = a; i <= b; i++) if ((pts[i % n].k || 0) > (pts[melhor % n].k || 0)) melhor = i;
+    const dentro = sinal(melhor), lados = lado === 0 || lado === undefined ? [-1, 1] : [lado === "fora" ? -dentro : lado === "dentro" ? dentro : lado];
+    for (const l of lados) for (let i = a; i <= b; i++) mapa[l][i % n] = tipo;
+  }
+  return mapa;
+}
+function superficieEscape(tr, idx, lat) {
+  const distancia = Math.abs(lat), cfg = tr.t.superficieEscape;
+  if (distancia <= tr.W / 2 + 6) return "asfalto";
+  if (!tr.superficiesEscape || !cfg || distancia < tr.W / 2 + 7 || distancia > tr.W / 2 + 7 + (cfg.largura ?? 23)) return "grama";
+  const tipo = tr.superficiesEscape[Math.sign(lat) || 1][((idx % tr.n) + tr.n) % tr.n];
+  return tipo === 2 ? "asfalto" : tipo === 1 ? "brita" : "grama";
+}
+
+// As muretas do viaduto em oito de Suzuka já existem no cenário: colisão no trecho e na largura delas.
+function limiteViaduto(t, n, i, largura) {
+  if (!t.muroViaduto || !t.cruza?.length) return Infinity;
+  const [baixo, cima] = t.cruza[0], distancia = k => { const d = Math.abs(i - Math.floor(k * n)); return Math.min(d, n - d); };
+  if (distancia(cima) <= 46) return largura / 2;
+  if (distancia(baixo) <= 34) return largura / 2 + 2;
+  return Infinity;
+}
+
+// Muro no fundo do escape: só existe onde não atravessa outro trecho da pista.
+// O mesmo mapa alimenta o desenho e a colisão, inclusive em pistas com grampos.
+const RECUO_MURO_ESCAPE = 100;
+function murosDoEscape(pts, largura, superficies, pista) {
+  const n = pts.length, cel = 128, grade = new Map();
+  const chave = (x, y) => `${x},${y}`;
+  for (const p of pts) { const k = chave(Math.floor(p.x / cel), Math.floor(p.y / cel)); if (!grade.has(k)) grade.set(k, []); grade.get(k).push(p); }
+  const livre = (x, y, L) => {
+    const cx = Math.floor(x / cel), cy = Math.floor(y / cel), raio = Math.ceil(L / cel), minimo = (L - 12) ** 2;
+    for (let a = cx - raio; a <= cx + raio; a++) for (let b = cy - raio; b <= cy + raio; b++)
+      for (const q of grade.get(chave(a, b)) || []) if ((q.x - x) ** 2 + (q.y - y) ** 2 < minimo) return false;
+    return true;
+  };
+  const lados = { 1: new Float32Array(n), [-1]: new Float32Array(n) };
+  // Brita e asfalto de escape precisam de mais espaço; interpola a transição ao longo da pista.
+  const distancia = tipo => tipo === 1 ? 110 : tipo === 2 ? 95 : 70;
+  for (let i = 0; i < n; i++) for (const lado of [-1, 1]) {
+    const box = pista?.boxes, f = i / n;
+    if (limiteViaduto(pista || {}, n, i, largura) < Infinity) continue;
+    // O corredor e as garagens ocupam a borda externa da reta: o muro não pode atravessá-los.
+    if (box && lado === box.lado) {
+      const inicio = (box.entra - 0.006 + 1) % 1, fim = (box.sai + 0.006) % 1;
+      if (inicio <= fim ? f >= inicio && f <= fim : f >= inicio || f <= fim) continue;
+    }
+    let recuo = 0; for (let j = -12; j <= 12; j++) recuo += distancia(superficies?.[lado]?.[(i + j + n) % n] || 0);
+    recuo /= 25; const L = largura / 2 + recuo, p = pts[i], nx = -p.ty, ny = p.tx;
+    lados[lado][i] = livre(p.x + nx * lado * L, p.y + ny * lado * L, L) ? recuo : 0;
+  }
+  // Pontos isolados não formam uma parede desenhável nem uma barreira física.
+  for (const lado of [-1, 1]) { const mapa = lados[lado], original = mapa.slice(); for (let i = 0; i < n; i++) if (!(i > 0 && original[i - 1]) && !(i + 1 < n && original[i + 1])) mapa[i] = 0; }
+  return lados;
+}
+
+// Mesmo trecho e recorte do Muro dos Campeões de Montreal (kit/montreal/muros.js).
+function muroCampeoes(pts) {
+  const n = pts.length, k = Math.floor(0.95 * n), p = pts[k], q = pts[(k + 3) % n];
+  const lado = p.tx * q.ty - p.ty * q.tx > 0 ? -1 : 1, lat = 86;
+  const a = Math.floor(0.953 * n), b = Math.floor(0.9745 * n); let inicio = -1, melhor = null;
+  for (let i = a; i <= b + 1; i++) {
+    const t = pts[i % n], x = t.x - t.ty * lado * lat, y = t.y + t.tx * lado * lat;
+    const ok = i <= b && pts.every(v => (v.x - x) ** 2 + (v.y - y) ** 2 >= (lat - 3) ** 2);
+    if (ok && inicio < 0) inicio = i;
+    if (!ok && inicio >= 0) { if (!melhor || i - 1 - inicio > melhor.i1 - melhor.i0) melhor = { i0: inicio, i1: i - 1, lado }; inicio = -1; }
+  }
+  return melhor && melhor.i1 - melhor.i0 >= 8 ? melhor : null;
+}
+
+const api = { limiteViaduto, SUPERFICIES_ESCAPE, mapaSuperficies, superficieEscape, muroCampeoes, RECUO_MURO_ESCAPE, murosDoEscape, WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, cruzouSetor, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);

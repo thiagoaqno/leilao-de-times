@@ -25,12 +25,18 @@ function criarPista(t, id) {
   const pts = P.pontos(t, 6), n = pts.length, W = t.width;
   for (const p of pts) { p.nx = -p.ty; p.ny = p.tx; }
   const tr = { id, t, pts, n, W, wallLat: t.walls ? W / 2 + t.wall : Infinity, pneus: new Int8Array(n) };
-  if (!t.espaco && !t.muro) { // barreiras de pneus: do lado de fora das curvas fechadas (o mesmo cálculo de pista.js)
+  if (t.superficieEscape) tr.superficiesEscape = P.mapaSuperficies(pts, t.superficieEscape);
+  if (t.escapeLivre) tr.murosEscape = P.murosDoEscape(pts, W, tr.superficiesEscape, t);
+  if (!t.espaco && !t.muro && !t.escapeLivre) { // barreiras de pneus: do lado de fora das curvas fechadas (o mesmo cálculo de pista.js)
     for (let i = 0; i < n; i++) {
       const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 170)) continue;
       const fora = p.tx * q.ty - p.ty * q.tx > 0 ? -1 : 1;
       for (let j = i - 4; j <= i + 4; j++) tr.pneus[(j + n) % n] = fora;
     }
+  }
+  if (id === "montreal") {
+    const m = P.muroCampeoes(pts);
+    if (m) for (let i = m.i0; i <= m.i1; i++) tr.pneus[i % n] = m.lado;
   }
   if (id) PISTAS_FISICAS.set(id, tr);
   return tr;
@@ -160,7 +166,7 @@ function passo(c, ent, amb, tr, ev) {
   c.fant = c.fant || !!amb.fantasma;
   // o corredor dos boxes: o carro anda sozinho
   if (c.box && passoBox(c, ent, amb, tr, p, ev)) { fechar(c, tr, amb, ev); return; }
-  const fr0 = quadro(tr, c.x, c.y, c.idx), estrada = Math.abs(fr0.lat) <= tr.W / 2 + 6;
+  const fr0 = quadro(tr, c.x, c.y, c.idx), superficie = tr.t.superficieEscape ? P.superficieEscape(tr, c.idx, fr0.lat) : (Math.abs(fr0.lat) <= tr.W / 2 + 6 ? "asfalto" : "grama"), estrada = superficie === "asfalto";
   const fx = Math.cos(c.a), fy = Math.sin(c.a);
   // o vácuo e o ar sujo
   const alvo = vacuoAlvo(c, amb.outros);
@@ -179,7 +185,7 @@ function passo(c, ent, amb, tr, ev) {
   const h0 = alturaDoChao(tr, c.x, c.y, c.idx), h1 = alturaDoChao(tr, c.x + fx * 10, c.y + fy * 10, c.idx);
   const bandeira = amb.safety ? 0.54 : amb.amarela ? 0.82 : 1;
   const amb2 = c.amb || (c.amb = {});
-  amb2.chao = estrada; amb2.subida = (h1 - h0) / 10; amb2.ar = c.air; amb2.manual = !!amb.manual; amb2.marchaManual = ent.marcha || c.marcha;
+  amb2.chao = estrada; amb2.superficie = superficie; amb2.subida = (h1 - h0) / 10; amb2.ar = c.air; amb2.manual = !!amb.manual; amb2.marchaManual = ent.marcha || c.marcha;
   amb2.pn = pn; amb2.dano = dano; amb2.drs = drs; amb2.ers = ersAtivo; amb2.vacuo = vac; amb2.curva = curva;
   amb2.limiteV = bandeira < 1 ? bandeira * spec.vmax * pn.final * dano.final * (1 + (drs ? 0.05 * (spec.drs ?? 1) : 0)) : Infinity;
   // a dinâmica
@@ -189,7 +195,8 @@ function passo(c, ent, amb, tr, ev) {
   let nx = c.x, ny = c.y;
   c.idx = procurar(tr, nx, ny, c.idx);
   const fr = quadro(tr, nx, ny, c.idx), lim = tr.wallLat - (tr.t.muroFolga ?? 8);
-  const pneu = tr.pneus && tr.pneus[c.idx], limiteL = pneu && Math.sign(fr.lat) === pneu ? tr.W / 2 + 26 : lim;
+  const pneu = tr.pneus && tr.pneus[c.idx], lado = Math.sign(fr.lat) || 1;
+  const limiteL = Math.min(P.limiteViaduto(tr.t, tr.n, c.idx, tr.W), tr.murosEscape?.[lado]?.[c.idx] ? tr.W / 2 + tr.murosEscape[lado][c.idx] - 8 : pneu && lado === pneu ? tr.W / 2 + 26 : lim);
   if (Math.abs(fr.lat) > limiteL || nx < 2 || ny < 2 || nx > tr.t.world - 2 || ny > tr.t.world - 2) {
     const q = tr.pts[c.idx], s = Math.sign(fr.lat) || 1, over = Math.abs(fr.lat) - limiteL;
     if (over > 0) { nx -= q.nx * s * over; ny -= q.ny * s * over; }

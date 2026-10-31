@@ -139,7 +139,7 @@ function passo(c, ent, amb, p, dt = PASSO) {
   // a instabilidade da batida (`c.inst`, 0..1, cai sozinha em 0,2 a 2 s conforme a força): os pneus seguram menos de lado, mais o eixo de trás
   const ins = c.inst > 0 ? c.inst : 0;
   if (ins > 0) c.inst = Math.max(0, ins - (c.instK || 1) * dt);
-  const kGrip = (pn ? pn.grip : 1) * (dn ? dn.grip : 1) * (ex.grip || 1) * (amb.chao === false ? 0.5 : 1) * (amb.vacuo ? amb.vacuo.aderencia : 1) * (1 - INST_GRIP * ins);
+  const kGrip = (pn ? pn.grip : 1) * (dn ? dn.grip : 1) * (ex.grip || 1) * (amb.chao === false ? (amb.superficie === "brita" ? 0.35 : 0.5) : 1) * (amb.vacuo ? amb.vacuo.aderencia : 1) * (1 - INST_GRIP * ins);
   const kFreio = (pn ? pn.freio : 1) * (dn ? dn.freio : 1) * (ex.freio || 1);
   const kTracao = (pn ? pn.tracao : 1) * (dn ? dn.tracao : 1) * (ex.tracao || 1);
   const fin = (pn ? pn.final : 1) * (dn ? dn.final : 1);
@@ -250,7 +250,7 @@ function passo(c, ent, amb, p, dt = PASSO) {
     // arrasto e rolagem
     const arrasto = q * p.CdA * kArr, rola = p.crr * (p.W + DF);
     let Fres = arrasto + rola;
-    const fricGrama = amb.chao === false ? p.massa * (Math.abs(c.v) / p.offMax) ** 2 * 55 * ESC : 0; // a grama segura o carro perto de offMax
+    const fricGrama = amb.chao === false ? p.massa * (Math.abs(c.v) / p.offMax) ** 2 * (amb.superficie === "brita" ? 85 : 55) * ESC : 0; // a grama segura o carro perto de offMax
     Fres += fricGrama;
     // gravidade na rampa: a inclinação no rumo (dh/ds) puxa para trás na subida e empurra na descida
     const sub_ = amb.subida || 0, Fg = -p.massa * G * (sub_ / Math.sqrt(1 + sub_ * sub_));
