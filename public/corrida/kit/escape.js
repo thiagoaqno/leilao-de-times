@@ -40,8 +40,8 @@ export function escapeGP(tr, add, cfg = {}) {
   };
   const stats = (tr.escapeGP = { brita: 0, listrado: 0, pneus: 0 });
   if (cfg.britaCurvas) { // do lado de fora de cada curva fechada, do ápice (10 pontos antes) até a saída (14 depois)
-    const fora = { "-1": new Uint8Array(n), "1": new Uint8Array(n) };
-    for (let i = 0; i < n; i++) { if ((pts[i].k || 0) < 1 / cfg.britaCurvas) continue; const s = -sinalDaCurva(pts, n, i); for (let j = i - 10; j <= i + 14; j++) fora[s][(j + n) % n] = 1; }
+    const fora = { "-1": new Uint8Array(n), "1": new Uint8Array(n) }, explicitas = window.Pistas.mapaSuperficies(pts, { brita: cfg.brita });
+    for (let i = 0; i < n; i++) { if ((pts[i].k || 0) < 1 / cfg.britaCurvas) continue; const s = -sinalDaCurva(pts, n, i); for (let j = i - 10; j <= i + 14; j++) { const k = (j + n) % n; if (explicitas[s][k] !== 1) fora[s][k] = 1; } }
     for (const s of [-1, 1]) for (let i = 0, a = -1; i <= n; i++) {
       const tem = i < n && !!fora[s][i];
       if (a >= 0 && !tem) { tira(tr, L.de(brita), a, i, s * de, s * ate, 0.3, 0.2, (a * 6) / 64, (i * 6) / 64); stats.brita += i - a; a = -1; }

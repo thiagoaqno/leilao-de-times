@@ -107,3 +107,7 @@ test("Hungaroring conserva brita na saída da curva 5 e barreira à esquerda na 
   const i14 = Math.floor(info.curvas.find(c => c.n === 14).f * tr.n);
   assert.ok(tr.murosEscape[1][i14] > 0);
 });
+test("Red Bull Ring tem brita nas saídas das duas últimas curvas", () => {
+  const tr = Sim.criarPista(P.PISTAS.redbullring, "redbullring");
+  for (const f of [0.868, 0.92]) assert.equal(tr.superficiesEscape[-1][Math.floor(f * tr.n)], 1);
+});

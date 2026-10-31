@@ -1080,7 +1080,7 @@ const SUPERFICIES_ESCAPE = {
   "austin": {"britaCurvas": 420, "largura": 26},
   "xangai": {"britaCurvas": 420, "largura": 26},
   "mexico": {"britaCurvas": 420, "largura": 26},
-  "redbullring": {"britaCurvas": 420, "largura": 26},
+  "redbullring": {"britaCurvas": 420, "largura": 26, "brita": [[0.84, 0.875, -1], [0.89, 0.93, -1]]},
   "madri": {"britaCurvas": 420, "largura": 26},
   "miami": {"britaCurvas": 420, "largura": 26},
 };
