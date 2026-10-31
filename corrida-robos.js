@@ -101,14 +101,20 @@ function processar(pista, volta) {
   const vmax = (T.CARROS[volta && volta.carro] || T.CARROS.equilibrado).vmax;
   if (!Array.isArray(s) || s.length < 100) return null;
   const somaL = new Float64Array(n), somaV = new Float64Array(n), cont = new Uint16Array(n);
+  let avaliadas = 0, distantes = 0;
   for (let k = 0; k + 1 < s.length; k++) {
     const a = s[k], b = s[k + 1], dt = (b[0] - a[0]) / 1000; if (!(dt > 0.02 && dt < 0.5)) continue;
     const i = ((Math.round(a[5]) % n) + n) % n, p = pts[i];
-    const lat = (a[1] - p.x) * -p.ty + (a[2] - p.y) * p.tx, v = Math.hypot(b[1] - a[1], b[2] - a[2]) / dt;
+    const dx = a[1] - p.x, dy = a[2] - p.y;
+    avaliadas++; if (Math.hypot(dx, dy) > t.width / 2 + 30) distantes++;
+    const lat = dx * -p.ty + dy * p.tx, v = Math.hypot(b[1] - a[1], b[2] - a[2]) / dt;
     if (Math.abs(lat) > t.width / 2 + 30 || v > vmax * 1.6) continue; // fora da pista ou pulo de posição: não serve
     // acima da velocidade final era vácuo, estilingue ou turbo de quem gravou: o robô não tem isso, então conta só o topo
     somaL[i] += lat; somaV[i] += Math.min(1, v / vmax); cont[i]++;
   }
+  // O índice gravado pertence à versão da pista em que a volta foi feita. Depois de um retraçado,
+  // ignorar só a distância lateral aceita pontos muito longe na direção da pista e produz uma linha falsa.
+  if (avaliadas && distantes / avaliadas > 0.2) return null;
   const tem = cont.reduce((q, c) => q + (c ? 1 : 0), 0); if (tem < n * 0.12) return null; // volta incompleta
   const lat = new Float64Array(n), vel = new Float64Array(n);
   for (let i = 0; i < n; i++) if (cont[i]) { lat[i] = somaL[i] / cont[i]; vel[i] = somaV[i] / cont[i]; }
