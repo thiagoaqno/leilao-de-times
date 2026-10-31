@@ -1,11 +1,11 @@
-# Corrida: stop-and-go com pneu esgotado
+# Corrida: estimar chegada dos robôs depois dos humanos
 
-O MFD recusava um stop-and-go quando não havia outro jogo do composto atual, embora cumprir a punição sem troca não consuma pneu. Agora o pedido é aceito; trocas continuam sujeitas ao estoque.
+Quando o último humano termina um GP de F1, a corrida fecha imediatamente e projeta a chegada dos robôs ainda na pista a partir do progresso e da última volta (ou de uma referência do carro). O resultado identifica os tempos estimados. Carros que abandonaram ou foram desclassificados permanecem nessa condição.
 
-O teste da simulação preparava o corredor tarde demais e falhava antes de testar o stop-and-go. Ele agora cobre a troca para chuva, e há uma verificação da escolha do servidor para chuva disponível ou esgotada.
+Os acréscimos já recebidos entram na ordem final. Stop-and-go pendente é convertido em 20 s e a regra de compostos considera os pneus já usados: a projeção não simula futuras paradas, trocas de pneus ou incidentes.
 
 ## Verificação
 
-- `node --test tests/corrida-punicoes.test.js`: 17 testes passaram.
-- No teste de navegador do MFD, a verificação do pedido com composto esgotado passou; o teste depois falhou porque o painel de pneus ficou oculto. O teste completo de navegador não passou.
-- A suíte npm completa já apresentava falhas anteriores no CI: ver o job npm-test do PR #441.
+- `node --test tests/corrida-chegada-estimada.test.js tests/corrida-chegada-relogio.test.js`: 3 passaram; cobre dois humanos, projeção, penalidade, stop-and-go, DSQ e DNF.
+- Testes de sala de box e resultado: 2 passaram.
+- O teste completo de navegador e o `npm test` completo não foram validados nesta branch; a base já apresentava 23 falhas no CI do PR #441.
