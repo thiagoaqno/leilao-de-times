@@ -15,7 +15,7 @@ const Solo = root.F1Temporada || require("./regras.js");
 
 const MAX_PESSOAS = 8, GRID = 20, CAIXA_INICIAL = 42, PATROCINIO = 6, HISTORICO_MAX = 30;
 const OPCOES_PADRAO = { tamanho: 8, voltas: 3, nivel: "medio" };
-const TAMANHOS = [4, 8], VOLTAS = [2, 3, 5], NIVEIS = ["facil", "medio", "dificil"];
+const TAMANHOS = [4, 8], VOLTAS = [2, 3, 5, 10], NIVEIS = ["facil", "medio", "dificil"];
 const nomeDaEquipe = (id) => (Pilotos.EQUIPES[id] || {}).nome || id;
 const custoDoPiloto = (p) => Math.max(5, Math.round((p.ritmo - 70) * 0.7));
 const inteiro = (n) => Number.isInteger(n) && n >= 0;

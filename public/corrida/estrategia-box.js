@@ -7,9 +7,24 @@ const SECOS = ["macio", "medio", "duro"]; // do mais rápido ao mais durável
 
 // O seco que vale para o que falta: o mais rápido que aguenta as voltas que restam; senão o que mais dura. `evitar`: compostos que não servem
 // (a regra dos dois compostos exige outro). null se não sobra nenhum jogo.
-function escolherSeco({ F, jogos, voltasRestantes, fator = 1, evitar = [] }) {
+function escolherSeco({ F, jogos, voltasRestantes, fator = 1, evitar = [], ritmo = null, pista = null, voltasTotais = voltasRestantes }) {
   const tem = (c) => !jogos || jogos[c] == null || jogos[c] > 0, vida = (c) => F.vidaEmVoltas(c, fator);
   const cands = SECOS.filter((c) => tem(c) && !evitar.includes(c)); if (!cands.length) return null;
+  // Em GPs curtos compara o tempo total, inclusive uma possível segunda parada, em vez de forçar o pneu que dura até o fim.
+  const original = ritmo && pista && ritmo.tabelaDe(pista);
+  if (original && voltasRestantes >= 1 && voltasRestantes <= 5) {
+    const tab = { ...original, compostos: Object.fromEntries(SECOS.filter((c) => original.compostos[c]).map((c) => [c, original.compostos[c]])) };
+    const usados = SECOS.filter((c) => jogos && jogos[c] != null && jogos[c] < F.JOGOS_POR_COMPOSTO);
+    let melhor = null;
+    for (const p of ritmo.planos(tab, voltasRestantes, { maxParadas: 1, fator })) {
+      const sequencia = [p.largada, ...p.paradas.map((x) => x.composto)];
+      if (!cands.includes(p.largada) || sequencia.some((c) => jogos && jogos[c] != null && sequencia.filter((x) => x === c).length > jogos[c])) continue;
+      const seca = new Set(sequencia), todos = new Set([...usados, ...sequencia]);
+      const tempo = p.tempo - (seca.size === 1 && voltasRestantes >= 2 ? ritmo.penalidadeUmComposto(voltasRestantes) : 0) + (todos.size < 2 ? ritmo.penalidadeUmComposto(voltasTotais) : 0);
+      if (!melhor || tempo < melhor.tempo) melhor = { composto: p.largada, tempo };
+    }
+    if (melhor) return melhor.composto;
+  }
   const aguenta = cands.find((c) => vida(c) >= voltasRestantes);
   return aguenta || cands.slice().sort((a, b) => vida(b) - vida(a))[0];
 }
@@ -20,20 +35,23 @@ function escolherSeco({ F, jogos, voltasRestantes, fator = 1, evitar = [] }) {
 // Devolve null (nada a sugerir) ou { composto, motivo, razao, urgencia, chave, stopGo }.
 function sugerirBox(e) {
   const F = e.F; if (!F || !e.pneu || e.emBox || e.pedido) return null;
-  if (e.voltaAtual >= e.voltas - 1) return null; // a última volta não tem box
+  if (e.voltaAtual >= e.voltas) return null; // a última volta não tem box
   const restam = e.voltas - e.voltaAtual, atual = e.pneu.composto, jogos = e.jogos || {}, seco = atual !== "chuva";
   const agua = e.agua || 0, molhado = (e.chuva || 0) > 0.05 || agua > 0.3, temChuva = jogos.chuva == null || jogos.chuva > 0;
   const mud = e.mudanca, iminente = !!mud && mud.em <= Math.max(F.AVISO_S || 40, e.tempoVolta || 0);
+  const chuvaProxima = !!mud && mud.tipo === "comeca" && mud.em <= Math.max((F.AVISO_S || 40) * 2, (e.tempoVolta || 0) * 2);
   const mk = (composto, motivo, razao, urgencia) => (composto ? { composto, motivo, razao, urgencia, chave: razao + ":" + composto, stopGo: !!e.stopGo } : null);
   const usados = SECOS.filter((c) => jogos[c] != null && jogos[c] < (F.JOGOS_POR_COMPOSTO || 2));
-  const obrigatoria = !!(e.janela && e.janela.precisa && e.janela.obrigatoria && (e.compostosUsados || 0) < 2 && !molhado);
-  const seu = (evitar) => escolherSeco({ F, jogos, voltasRestantes: restam, fator: e.fator, evitar });
+  const obrigatoria = !!(e.janela && e.janela.precisa && e.janela.obrigatoria && (e.compostosUsados || 0) < 2 && !molhado && !chuvaProxima);
+  const seu = (evitar) => escolherSeco({ F, jogos, voltasRestantes: chuvaProxima && e.tempoVolta > 0 ? Math.max(1, Math.ceil(mud.em / e.tempoVolta)) : restam, fator: e.fator, evitar, ritmo: e.ritmo, pista: e.pista, voltasTotais: chuvaProxima ? 1 : e.voltas });
 
   // 1) o clima manda: chuva chegando ou pista molhada com pneu seco; pista secando com pneu de chuva
   if (seco && temChuva && ((molhado && agua > 0.3) || (iminente && mud.tipo === "comeca"))) return mk("chuva", molhado ? "pista molhada" : "chuva chegando", "chuva", 3);
   if (!seco && !molhado && agua < 0.15 && !(iminente && mud && mud.tipo === "comeca")) return mk(seu([]), "pista secando", "seca", 3);
   if (!seco && iminente && mud && mud.tipo === "para" && agua < 0.5) return mk(seu([]), "chuva parando", "seca", 2);
   if (!seco) return null; // com o pneu de chuva e pista molhada fica
+  // Se a chuva já está perto e o pneu aguenta, espera para não fazer uma troca seca seguida de outra molhada.
+  if (chuvaProxima && !iminente && e.pneu.desgaste <= F.PENHASCO && !(e.stopGo && e.stopGo.v != null && e.stopGo.v <= 1)) return null;
 
   // 2) o pneu passou do penhasco
   if (e.pneu.desgaste > F.PENHASCO) return mk(seu(obrigatoria ? usados : []) || seu([]), "pneu no fim", "pneu", 3);

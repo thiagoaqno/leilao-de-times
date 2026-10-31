@@ -305,3 +305,10 @@ test("servidor: sair da temporada devolve o carro ao robô e o anfitrião encerr
     assert.equal((await chamar(await srv.ligar(), "entrar", { codigo, nome: "Dani" })).ok, false);
   } finally { await srv.parar(); }
 });
+
+ test("temporada em grupo permite dez voltas por GP", () => {
+  const sala = G.criarSala("ABCDE", { id: "a", nome: "Ana", tokenHash: "x" });
+  G.definirOpcoes(sala, "a", { voltas: 10 });
+  assert.equal(sala.opcoes.voltas, 10);
+  assert.throws(() => G.definirOpcoes(sala, "a", { voltas: 11 }));
+});

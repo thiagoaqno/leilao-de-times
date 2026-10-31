@@ -222,3 +222,44 @@ test("a dificuldade dos robôs vai no save, com médio como padrão", () => {
   assert.equal(R.criar("Ana", "mclaren", 8, 3, 1, "dificil").nivel, "dificil");
   assert.throws(() => R.criar("Ana", "mclaren", 8, 3, 1, "absurdo"), /Nível/);
 });
+
+// As rivais evoluem de forma determinística, sem substituir a montagem humana ou mudar ao reabrir um GP.
+test("equipes rivais desenvolvem os dois carros ao longo da temporada", () => {
+  const s = R.criar("Thiago", "cadillac", 8, 5, 170);
+  const inicial = R.desenvolvimentoRivais(s, [s.equipe]);
+  assert.equal(inicial.montagens.cadillac, undefined);
+  for (const id of Object.keys(inicial.montagens)) {
+    assert.deepEqual(inicial.montagens[id], E.montagemPadrao(id));
+    assert.equal(inicial.bonus[id], 0);
+  }
+  s.gp = 4;
+  const meio = R.desenvolvimentoRivais(s, [s.equipe]);
+  assert.deepEqual(meio, R.desenvolvimentoRivais(s, [s.equipe]));
+  for (const [id, m] of Object.entries(meio.montagens)) {
+    assert.ok(meio.bonus[id] > 0 && meio.bonus[id] <= 4);
+    assert.ok(E.validar(id, m, meio.bonus[id]).ok);
+    assert.equal(E.custoDaMontagem(m), E.custoDaMontagem(E.montagemPadrao(id)) + meio.bonus[id]);
+  }
+  s.gp = s.tamanho; const fim = R.desenvolvimentoRivais(s, [s.equipe]);
+  R.proximaTemporada(s);
+  assert.deepEqual(R.desenvolvimentoRivais(s, [s.equipe]), fim, "a virada preserva os desenvolvimentos");
+});
+
+test("o GP usa o carro desenvolvido das rivais e o mesmo carro para companheiros de equipe", () => {
+  const Robos = require("../corrida-robos.js");
+  const nsp = { on() {}, to() { return { emit() {}, volatile: { emit() {} } }; }, sockets: new Map() };
+  const corrida = require("../corrida.js")({ of: () => nsp });
+  const s = R.criar("Thiago", "cadillac", 8, 5, 170); s.gp = 4; s.montagem = E.montagemPadrao("cadillac");
+  const acesso = corrida.abrirGP(s, () => {}, () => {}), sala = corrida.salaGP(acesso.code);
+  Robos.preparar(sala, ["#a"], () => "x");
+  const companheiro = sala.order.map((id) => sala.players[id]).find((p) => p.bot && p.equipe === "cadillac");
+  assert.ok(companheiro); assert.equal(companheiro.spec.chave, E.specDaEquipe("cadillac", s.montagem).chave);
+  const rival = sala.order.map((id) => sala.players[id]).find((p) => p.bot && p.equipe !== "cadillac");
+  assert.ok(rival); assert.equal(rival.spec.chave, E.specDaEquipe(rival.equipe, sala.montagens[rival.equipe]).chave);
+  assert.ok(sala.bonusMontagem[rival.equipe] > 0);
+});
+
+ test("carreira permite dez voltas por GP", () => {
+  assert.equal(R.criar("Ana", "ferrari", 4, 10, 10).voltas, 10);
+  assert.throws(() => R.criar("Ana", "ferrari", 4, 11, 10));
+});

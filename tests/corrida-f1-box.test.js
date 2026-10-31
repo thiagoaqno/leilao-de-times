@@ -156,7 +156,7 @@ function salaDeMentira() {
   return { socket, chamar, estado: (codigo) => estados[codigo], internos: api.internos };
 }
 
-test("sala: quem corre com um composto só leva +10 s e perde a vitória para quem parou; passar do limitador custa 5 s", () => {
+test("sala: um composto só recebe penalidade proporcional e passar do limitador custa 5 s", () => {
   // (o servidor é a autoridade: o checkpoint e a parada nos boxes saem da física de cada carro, em sim.js; aqui as regras da sala
   // recebem esses eventos pelos mesmos caminhos que a física usa)
   bd.fechar(); bd.abrir(":memory:");
@@ -191,13 +191,13 @@ test("sala: quem corre com um composto só leva +10 s e perde a vitória para qu
     volta("Caio");
     const st = estado(criou.code), por = (nome) => st.players.find((p) => p.name === nome);
     assert.equal(st.phase, "results");
-    assert.equal(por("Ana").acrescimo, 10, "um composto só: +10 s");
+    assert.equal(por("Ana").acrescimo, 2, "dois giros com um composto: +2 s");
     assert.equal(por("Beto").acrescimo, 0);
     assert.equal(por("Beto").paradas, 1);
     assert.equal(por("Beto").pneuAtual, "duro");
     assert.equal(por("Caio").acrescimo, 5, "passou do limitador: +5 s");
     assert.equal(st.finishOrder[0], por("Beto").id, "o Beto ganha: parou direito");
-    assert.equal(st.finishOrder[st.finishOrder.length - 1], por("Ana").id, "a Ana, com +10 s, fica por último");
+    assert.equal(st.finishOrder[st.finishOrder.length - 1], por("Caio").id, "o Caio recebe +5 s e fica por último");
   })().finally(() => { Date.now = agora; bd.fechar(); });
 });
 
@@ -244,4 +244,12 @@ test("box (humano): o pedido do piloto leva o carro sozinho ao corredor, para na
   // na última volta o corredor passa pela chegada: sem box; na classificação também não
   assert.ok(!corrida(2).eventos.some((e) => e.t === "box"), "última volta: sem box");
   assert.ok(!corrida(0, true).eventos.some((e) => e.t === "box"), "classificação: sem box");
+});
+
+test("penalidade por um composto acompanha a duração e não vale na chuva", () => {
+  const p = { pneu: "duro", compostos: ["duro"] };
+  for (const [voltas, segundos] of [[1, 0], [2, 2], [3, 3], [5, 5], [10, 10], [20, 10]]) {
+    assert.equal(F1.acrescimoDeFinal(p, voltas), segundos);
+    assert.equal(F1.acrescimoDeFinal(p, voltas, true), 0);
+  }
 });

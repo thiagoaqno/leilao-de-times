@@ -1,11 +1,16 @@
-# Corrida: atualizar testes e tabela de estratégia
+# Corrida: estratégias, carreira e confirmação do box
 
-O CI da versão após o PR #445 registrou 22 falhas. Esta mudança corrige 14 delas sem alterar Dominó ou Carreira: atualiza as expectativas para o pneu de chuva, situações do rádio e campos atuais da sala; testa as bandeiras genéricas numa pista que as tem e verifica a suavidade da descida atual de Mônaco. Os testes de rede deixam de interpretar a colisão com a borda do mapa como salto de reconciliação; o cenário de disputa lateral faz o carro humano realmente avançar. O teste de parada antecipada inicializa o mesmo pneu na IA e no carro simulado.
+Reequilibra o ritmo dos pneus secos, preservando a ordem macio, médio e duro, e recalcula a tabela das pistas. A penalidade por terminar no seco com um só composto passa a ser de 1 segundo por volta, limitada a 10 segundos. Assim, uma estratégia sem parada pode competir numa corrida curta, assumindo a penalidade. O planejador respeita os dois jogos disponíveis por composto; os bots continuam buscando cumprir os dois compostos.
 
-Recalcula a tabela de 32 pistas com `node ferramentas/pneus-tabela.js`, sem alterar a física ou o limite de jogos. A tabela de Interlagos volta a bater com a simulação; em corridas de cinco voltas, o melhor plano muda em Barcelona, Xangai, Suzuka e Singapura. Sorvete já não tinha tabela e o simulador continuou sem obter medição confiável para essa pista.
+O engenheiro compara estratégias nas corridas curtas e considera a chuva próxima: evita recomendar uma troca seca quando o pneu atual aguenta até a chuva. Enter confirma o box no MFD sem cancelar uma solicitação existente; B continua cancelando.
+
+As equipes rivais desenvolvem seus carros de forma determinística ao longo das temporadas individuais e em grupo, inclusive em saves existentes. As duas modalidades passam a oferecer 10 voltas por GP.
 
 ## Verificação
 
-- 15 testes direcionados passaram, incluindo as 14 falhas do CI tratadas aqui e o teste de parada antecipada. Também passaram 26 testes de pneus, rádio, rede e salas.
-- O `npm test` completo não foi repetido até o fim. O CI ainda deve falhar em oito testes de Corrida: diferenças de ritmo entre compostos e estratégias, oversteer, aderência dos pneus, montagem das equipes e ritmo dos robôs. Eles não foram afrouxados para passar; precisam de decisão e calibração do comportamento.
-- O teste de navegador do MFD também falhou ao verificar a navegação do painel, fora do `npm test`; não foi alterado neste PR.
+- Testes de clima, pneus, box e punições: 47 aprovados. Testes das temporadas individual e em grupo aprovados, além de testes específicos da opção de 10 voltas.
+- Simulação de Silverstone com 19 bots, cinco voltas e mesma semente: melhores voltas de 46,6 a 49,8 segundos após a calibração (51,15 a 55 segundos antes); é uma simulação, não reprodução exata da corrida do jogador.
+- Em Mônaco, três simulações secas de 20 bots e três voltas não reproduziram batidas registradas nas curvas indicadas. O relato de contato com o muro permanece em investigação; não houve ajuste especulativo do traçado.
+- Teste de navegador confirma Enter com pedido de box existente. A opção de 10 voltas é verificada no navegador.
+- A tabela de pneus foi regenerada; Sorvete continua sem medição confiável, como antes.
+- O npm test completo foi iniciado, mas interrompido antes do fim; o teste conhecido de escudos da carreira de futebol já havia falhado. Nenhuma correção foi feita em futebol ou Dominó.

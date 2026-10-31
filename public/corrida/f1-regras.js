@@ -15,9 +15,9 @@
 // metade e o de chuva com 90%. O de chuva no seco tem o `pico` do duro, mas `derrete` (o desgaste vai a ×2,8) e `esquenta` (a
 // temperatura passa de 1, até +0,4, e a aderência cai até 25%) quando a pista está seca: dura 2 a 3 voltas.
 const PNEUS = {
-  macio: { nome: "Macio", cor: "#e8202a", pico: 1.515, vida: 1.5, aquece: 1.7, perdaAntes: 0.03, molhado: 0.5 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.278, vida: 3.8, aquece: 1.1, perdaAntes: 0.03, molhado: 0.5 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.126, vida: 7, aquece: 0.85, perdaAntes: 0.02, molhado: 0.5 },
+  macio: { nome: "Macio", cor: "#e8202a", pico: 1.38, vida: 1.5, aquece: 1.7, perdaAntes: 0.03, molhado: 0.5 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 3.8, aquece: 1.1, perdaAntes: 0.03, molhado: 0.5 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.32, vida: 7, aquece: 0.85, perdaAntes: 0.02, molhado: 0.5 },
   chuva: { nome: "Chuva", cor: "#1e7fd6", pico: 1.126, vida: 7, aquece: 0.5, perdaAntes: 0.02, molhado: 0.9, derrete: 2.8, esquenta: 0.4 },
 };
 const SECOS = ["macio", "medio", "duro"]; // os compostos de pista seca (a estratégia e a tabela de ritmo só conhecem estes)
@@ -131,7 +131,7 @@ const usarErsAuto = (carga, velocidade, vmax, reta, perto) => carga > (perto ? E
 // No corredor dos boxes o carro anda sozinho no limitador (LIMITADOR da velocidade final), para na garagem, troca os
 // pneus e volta para a pista. A parada leva um de três tempos (PARADAS): 2,0 s (perfeita), 2,7 s (normal) ou 3,3 s (ruim),
 // sorteado com a semente do GP (recarregar a página nunca muda o resultado), com chance maior de ser normal. Quem termina a corrida sem ter usado dois
-// compostos leva UM_COMPOSTO s no resultado; passar do limitador leva RAPIDO s.
+// compostos leva até UM_COMPOSTO s no resultado; passar do limitador leva RAPIDO s.
 const LIMITADOR = 0.40, PARADA_BASE = 2.0, PARADA_ERRO = 1.3, UM_COMPOSTO = 10, RAPIDO = 5;
 const RAMPA = 14, LARGURA_CORREDOR = 54, FOLGA_CORREDOR = 12, GARAGENS = 10; // duas faixas de 27 unidades; a rampa é em pontos da pista (6 unidades cada)
 const hashTexto = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
@@ -209,7 +209,9 @@ function compostoParaParada(p, pedido) {
 // o que a regra dos dois compostos tira de quem terminou com um só (corrida de uma volta não tem onde parar)
 const usouDoisCompostos = (p) => new Set(p.compostos || [p.pneu || COMPOSTO_PADRAO]).size >= 2;
 // (numa corrida com chuva a regra não vale, como na F1: `chuvoso` é o roteiro da corrida ter chuva)
-const acrescimoDeFinal = (p, voltas, chuvoso = false) => (voltas >= 2 && !chuvoso && !usouDoisCompostos(p) ? UM_COMPOSTO : 0);
+// A penalidade escala com a corrida: 2 s em duas voltas, 5 s em cinco e no máximo 10 s.
+const penalidadeUmComposto = (voltas) => voltas >= 2 ? Math.min(UM_COMPOSTO, voltas) : 0;
+const acrescimoDeFinal = (p, voltas, chuvoso = false) => (!chuvoso && !usouDoisCompostos(p) ? penalidadeUmComposto(voltas) : 0);
 // A estratégia de um robô: o composto da largada e as paradas { volta, composto } (`volta` = a volta, de 1 a voltas − 1, em
 // que ele entra no corredor, no fim dela se a entrada fica antes da linha de chegada: nunca na última). Vem da conta do
 // simulador de stint (f1-pneus-ritmo.js, a tabela da `pista` medida com a física do carro): o tempo da corrida inteira de cada
@@ -228,7 +230,7 @@ function melhoresPlanos(voltas, pista, nivel = "medio", fator = 1) {
   fator = Math.round((fator || 1) * 20) / 20; // (o gasto de pneu do carro, de 0,05 em 0,05: a conta é guardada)
   const { janela } = NIVEIS_DE_PLANO[nivel] || NIVEIS_DE_PLANO.medio, chave = `${R.tabelaDe(pista) ? pista : "interlagos"}:${voltas}:${janela}:${fator}`;
   let l = CACHE_PLANOS.get(chave);
-  if (!l) { l = R.planos(tab, voltas, { janela, max: 400, fator }).filter((p) => voltas < 2 || new Set([p.largada, ...p.paradas.map((q) => q.composto)]).size >= 2).slice(0, 80); /* o robô sempre cumpre a regra dos dois compostos */ if (CACHE_PLANOS.size > 200) CACHE_PLANOS.clear(); CACHE_PLANOS.set(chave, l); }
+  if (!l) { l = R.planos(tab, voltas, { janela, max: 400, fator, exigirDois: true }).filter((p) => voltas < 2 || new Set([p.largada, ...p.paradas.map((q) => q.composto)]).size >= 2).slice(0, 80); /* o robô sempre cumpre a regra dos dois compostos */ if (CACHE_PLANOS.size > 200) CACHE_PLANOS.clear(); CACHE_PLANOS.set(chave, l); }
   return l;
 }
 function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 1) {
@@ -544,7 +546,7 @@ function vacuoF1(draft, curva) {
 
 const api = { PONTO_VOLTA_RAPIDA, pontosDe, PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
   zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
-  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, batidaProposital, DSQ_PROPOSITAIS, AVISO_PROPOSITAIS, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, acrescimoDeFinal, estrategia, melhoresPlanos,
+  LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, batidaProposital, DSQ_PROPOSITAIS, AVISO_PROPOSITAIS, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, penalidadeUmComposto, acrescimoDeFinal, estrategia, melhoresPlanos,
   CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Regras = api;
