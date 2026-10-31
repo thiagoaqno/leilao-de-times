@@ -12,6 +12,7 @@ import { renderer, scene, hemi, sun, canvasTex } from "./cena.js";
 import { clima } from "./clima.js";
 import { Sound } from "./sons.js";
 import { $ } from "./estado.js";
+import { qualidade, aoMudar } from "./qualidade.js";
 
 const reduz = matchMedia("(prefers-reduced-motion: reduce)");
 const lim = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
@@ -212,7 +213,7 @@ function luzNoAsfalto(A, B, lx, ly, lz, hc, cp, tail, w) {
 }
 function passoSpray(dt, c, race, cam, coberto, mode) {
   const agua = suave(0.2, 0.8, clima.agua), cp = cam.position, hc = Math.max(2, cp.y - (c.z || 0));
-  if (agua > 0.01) {
+  if (agua > 0.01 || luzSecaAplicada > 0) {
     // os K carros mais perto da câmera (insere em ordem num vetor fixo)
     nEmissores = 0;
     if (race.kart && race.kart.g.visible) candidato(c, true, cp);
@@ -258,6 +259,10 @@ function passoSpray(dt, c, race, cam, coberto, mode) {
 // os materiais marcados com `userData.asfalto` (pista.js, asfalto-gp.js e a zebra do kit/chao.js) escurecem e ficam lisos conforme a
 // água. O asfalto da pista tem o sombreador de agua-pista.js (`userData.aguaPista`: poças, traçado seco, reflexos), que só precisa do
 // `uAgua`; a zebra (`asfalto: "zebra"`) só escurece e ganha brilho.
+// o asfalto seco que reflete (agua-pista.js, `uSeco`): ligado nas qualidades Média e Alta; na Baixa o sombreador fica como era
+let secoOn = qualidade() !== "baixa", luzSecaAplicada = -1;
+aoMudar((n) => { secoOn = n !== "baixa"; aplicarSeco(); });
+function aplicarSeco() { for (const u of asfU) u.uSeco.value = secoOn ? 1 : 0; luzSecaAplicada = -1; }
 let asfaltos = [], asfU = [], aguaAplicada = -1, aguaSuave = 0, difAplicada = -1, difSuave = 0, trAtual = null;
 const aguaAlvo = () => suave(0, 0.8, clima.agua);
 // quanto o asfalto diferencia o traçado seco e as poças da beirada (0 a 1): com a garoa (a água nunca passa de 0,45) fica quase 0 e a pista
@@ -280,7 +285,7 @@ function coletarAsfalto(tr) {
       if (u) asfU.push(u);
     }
   });
-  aguaSuave = aguaAlvo(); difSuave = difAlvo(); aguaAplicada = difAplicada = -1;
+  aguaSuave = aguaAlvo(); difSuave = difAlvo(); aguaAplicada = difAplicada = -1; aplicarSeco();
   preaquecer();
 }
 // ao montar a pista, já compila os sombreadores da chuva e sobe as texturas dela para a placa: senão a primeira chuva da corrida
@@ -486,7 +491,9 @@ export function passoClima(dt, race, cam, mode, src, c) {
   const alvoW = aguaAlvo(); aguaSuave += (alvoW - aguaSuave) * (1 - Math.exp(-dt * 1.5)); if (Math.abs(alvoW - aguaSuave) < 0.002) aguaSuave = alvoW;
   const alvoD = difAlvo(); difSuave += (alvoD - difSuave) * (1 - Math.exp(-dt * 1.5)); if (Math.abs(alvoD - difSuave) < 0.002) difSuave = alvoD;
   if (aguaSuave !== aguaAplicada || difSuave !== difAplicada) { aguaAplicada = aguaSuave; difAplicada = difSuave; aplicarAsfalto(aguaSuave, difSuave); }
-  if (aguaSuave > 0 && scene.fog) for (let q = 0; q < asfU.length; q++) asfU[q].uCeu.value.copy(scene.fog.color).multiplyScalar(0.9);
+  if ((aguaSuave > 0 || secoOn) && scene.fog) for (let q = 0; q < asfU.length; q++) asfU[q].uCeu.value.copy(scene.fog.color).multiplyScalar(0.9);
+  const luzSeca = secoOn && trAtual && trAtual.noite ? 1 : 0; // à noite, no seco, as luzes dos carros também riscam o asfalto (bem fraco)
+  if (luzSeca !== luzSecaAplicada) { luzSecaAplicada = luzSeca; for (const u of asfU) u.uLuzSeca.value = luzSeca; }
 
   passoSpray(dt, c, race, cam, coberto, mode);
   passoTela(dt, coberto ? "longe" : mode, sK);

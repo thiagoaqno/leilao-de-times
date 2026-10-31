@@ -6,6 +6,7 @@ import { E, PISTAS, SECTORS, COLORS, CARROS, carOf, socket, $, sNow, me, P, act,
 import { Sound } from "./sons.js";
 import { atualizarClima } from "./clima.js";
 import { passoClima, limparClima, exercitarChuva } from "./clima-visual.js";
+import { passoContato } from "./contato.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
@@ -298,6 +299,7 @@ function draw(dt) {
   abrirTV(tr, dt, motionPreference.matches);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
   passoClima(dt, race, cam, modoClima, src, c); // o visual do clima: céu, luz, neblina, chuva, asfalto molhado, borrifo, som e HUD (clima-visual.js)
+  passoContato(race, scene); // a sombra de contato de cada carro, no formato dele (contato.js)
   // desfoque de velocidade, pela fração da velocidade final do carro (vale igual para os cinco): começa em 40% (uns 90 km/h
   // no equilibrado), fica inteiro a 90% e o turbo e o estilingue borram ainda mais
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));

@@ -10,7 +10,7 @@
 import * as THREE from "three";
 
 const lim = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
-const CELULA = 1400, MAX_CAIXAS = 3600;
+const CELULA = 1e7, MAX_CAIXAS = 3600; // uma malha só: 3600 instâncias × 20 vértices é pouco para a placa, e cada região a mais seria uma chamada de desenho (Mônaco está no teto de 380 malhas)
 
 // ---------- o cenário parado ----------
 const _m = new THREE.Matrix4(), _w = new THREE.Matrix4(), _c = new THREE.Vector3(), _bb = new THREE.Box3();
@@ -75,7 +75,7 @@ uniform float uForca; varying vec3 vL; varying vec4 vD; varying vec2 vP; varying
 #include <fog_pars_fragment>
 void main() {
   float a;
-  if (vT < 0.5) { // o chão: a distância até o retângulo arredondado (negativa dentro): o escuro vale na borda e some em `sp` (vP.y)
+  if (vT < 0.5) { // o chão: a distância até o retângulo arredondado (negativa dentro): o escuro vale na borda e some em sp (vP.y)
     vec2 q = abs(vL.xy) - vD.xy + vP.x; float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - vP.x;
     float k = 1.0 - smoothstep(0.0, vP.y, d); a = vD.w * k * k;
   } else { float k = 1.0 - vL.z; a = vD.w * 0.8 * k * k; } // a parede: escuro embaixo, some subindo
@@ -92,8 +92,8 @@ function materialBandeja() {
 export function montarContato(tr, caixas, add) {
   if (!caixas || !caixas.length) return null;
   const celulas = new Map();
-  for (const d of caixas) { const k = Math.floor(d.x / CELULA) + "," + Math.floor(d.z / CELULA); (celulas.get(k) || celulas.set(k, []).get(k)).push(d); }
-  const mat = materialBandeja(), geo = geoBandeja(), meshes = [], q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), M = new THREE.Matrix4(), Y = new THREE.Vector3(0, 1, 0);
+  for (const d of caixas) { const k = CELULA > 1e6 ? "0" : Math.floor(d.x / CELULA) + "," + Math.floor(d.z / CELULA); (celulas.get(k) || celulas.set(k, []).get(k)).push(d); }
+  const mat = materialBandeja(), geo = geoBandeja(), meshes = [], q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), M = new THREE.Matrix4(), Y = new THREE.Vector3(0, 1, 0);
   for (const lista of celulas.values()) {
     const n = lista.length, dim = new Float32Array(n * 4), par = new Float32Array(n * 2), mesh = new THREE.InstancedMesh(geo, mat, n);
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, y0 = Infinity, y1 = -Infinity;
@@ -103,21 +103,20 @@ export function montarContato(tr, caixas, add) {
       p.set(d.x, d.y + 0.55, d.z); q.setFromAxisAngle(Y, d.yaw); M.compose(p, q, s); mesh.setMatrixAt(i, M);
       const R = Math.hypot(d.hx, d.hz) + sp + 1; x0 = Math.min(x0, d.x - R); x1 = Math.max(x1, d.x + R); z0 = Math.min(z0, d.z - R); z1 = Math.max(z1, d.z + R); y0 = Math.min(y0, d.y); y1 = Math.max(y1, d.y + d.h);
     });
-    geo.setAttribute; mesh.geometry = geo.clone(); // (cada região tem os seus atributos por instância; a geometria base é a mesma)
+    mesh.geometry = geo.clone(); // (cada região tem os seus atributos por instância; a geometria base é a mesma)
     mesh.geometry.setAttribute("aDim", new THREE.InstancedBufferAttribute(dim, 4)); mesh.geometry.setAttribute("aPar", new THREE.InstancedBufferAttribute(par, 2));
     mesh.instanceMatrix.needsUpdate = true;
     mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), Math.hypot(x1 - x0, z1 - z0, y1 - y0) / 2);
     mesh.frustumCulled = true; mesh.castShadow = mesh.receiveShadow = false; mesh.renderOrder = 1; mesh.name = `${tr.id}-contato`; mesh.userData.semContato = true;
     add(mesh); meshes.push(mesh);
   }
-  void e;
   tr.contato = { malhas: meshes, caixas: caixas.length, material: mat };
   return tr.contato;
 }
 
 // ---------- os carros ----------
 // o formato do carro no chão, no sistema do carro (a frente em −z, comprimento L): quatro manchas de pneu (mais escuras), a barriga entre
-// elas (suave) e um halo bem fraco em volta. `uL` é o comprimento do carro em unidades da pista.
+// elas (suave) e um halo bem fraco em volta. uL é o comprimento do carro em unidades da pista.
 const VS_CARRO = /* glsl */ `
 attribute float aFade; varying vec2 vQ; varying float vF; uniform float uL;
 #include <fog_pars_vertex>
