@@ -30,7 +30,7 @@ test("chuva chegando com pneu seco sugere o de chuva; pista secando com o de chu
 test("com o pneu de chuva e a pista molhada não sugere trocar", () => assert.equal(E.sugerirBox(base({ pneu: { composto: "chuva", desgaste: 0.1 }, agua: 0.7, chuva: 1 })), null));
 test("sem jogo de chuva não sugere chuva; última volta, pedido e box não sugerem", () => {
   assert.equal(E.sugerirBox(base({ mudanca: { tipo: "comeca", em: 10 }, jogos: { macio: 2, medio: 1, duro: 2, chuva: 0 } })), null);
-  assert.equal(E.sugerirBox(base({ voltaAtual: 19, pneu: { composto: "medio", desgaste: 0.9 } })), null);
+  assert.equal(E.sugerirBox(base({ voltaAtual: 20, pneu: { composto: "medio", desgaste: 0.9 } })), null);
   assert.equal(E.sugerirBox(base({ pedido: "duro", pneu: { composto: "medio", desgaste: 0.9 } })), null);
   assert.equal(E.sugerirBox(base({ emBox: true, pneu: { composto: "medio", desgaste: 0.9 } })), null);
 });
@@ -60,4 +60,29 @@ test("gerirSugestao: 10 s, some, e só volta depois de uma volta ou se a situaç
   const outra = { chave: "chuva:chuva", composto: "chuva" };
   r = E.gerirSugestao(r.est, outra, { agora: 91000, volta: 9 }); assert.equal(r.mostrar, true); // situação nova
   r = E.gerirSugestao(r.est, null, { agora: 92000, volta: 9 }); assert.equal(r.mostrar, false);
+});
+
+
+test("Silverstone: compara uma ou duas paradas e não sugere sempre duro para quem largou de médio", () => {
+  const ritmo = require("../public/corrida/f1-pneus-ritmo.js");
+  const op = { F, ritmo, pista: "silverstone", jogos: { macio: 2, medio: 1, duro: 2, chuva: 2 }, voltasRestantes: 1, evitar: ["medio"] };
+  assert.equal(E.escolherSeco(op), "macio");
+  assert.equal(E.escolherSeco({ ...op, jogos: { ...op.jogos, macio: 0 } }), "duro");
+  const s = E.sugerirBox(base({ ritmo, pista: "silverstone", voltaAtual: 4, voltas: 5, pneu: { composto: "medio", desgaste: 0.85 }, janela: null }));
+  assert.equal(s.composto, "macio");
+});
+
+test("a sugestão ainda pode aparecer na penúltima volta, mas não na última", () => {
+  const e = base({ voltaAtual: 4, voltas: 5, pneu: { composto: "medio", desgaste: 0.9 }, janela: null });
+  assert.ok(E.sugerirBox(e));
+  assert.equal(E.sugerirBox({ ...e, voltaAtual: 5 }), null);
+});
+
+test("chuva próxima evita sugestão seca desnecessária e prioriza chuva quando iminente", () => {
+  const e = base({ voltaAtual: 2, voltas: 5, tempoVolta: 60, mudanca: { tipo: "comeca", em: 100 }, janela: { precisa: true, abre: 2, fecha: 3, obrigatoria: true } });
+  assert.equal(E.sugerirBox(e), null, "pneu ainda bom: esperar a chuva em vez de sugerir duro");
+  assert.equal(E.sugerirBox({ ...e, mudanca: { tipo: "comeca", em: 45 } }).composto, "chuva");
+  const ritmo = require("../public/corrida/f1-pneus-ritmo.js");
+  const urgente = E.sugerirBox({ ...e, ritmo, pista: "silverstone", pneu: { composto: "medio", desgaste: 0.95 } });
+  assert.ok(urgente && urgente.composto !== "duro", "pneu no fim antes da chuva: composto de transição");
 });

@@ -434,10 +434,11 @@ module.exports = function attachCorrida(io) {
   function abrirGP(temporada, aoTerminarGP, aoMontar) {
     const gp = temporada.calendario[temporada.gp];
     if (!gp) throw Error("A temporada terminou.");
+    const rivais = require("./public/corrida/temporada/regras.js").desenvolvimentoRivais(temporada, [temporada.equipe]);
     const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: gp.pista, voltas: temporada.voltas, robos: 19, classificacao: "completa", nivel: temporada.nivel || "medio" }),
       players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, equipeTemporada: temporada.equipe,
       sementeFixa: `${temporada.semente}:${temporada.ano}:${temporada.gp}`, pilotosTemporada: require("./public/corrida/temporada/regras.js").pilotosNoGrid(temporada),
-      montagens: { [temporada.equipe]: temporada.montagem }, bonusMontagem: { [temporada.equipe]: temporada.bonus }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP, aoMontar,
+      montagens: { ...rivais.montagens, [temporada.equipe]: temporada.montagem }, bonusMontagem: { ...rivais.bonus, [temporada.equipe]: temporada.bonus }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP, aoMontar,
       tvTemporada: resumoTV(require("./public/corrida/temporada/regras.js").tabelas(temporada), { gp: temporada.gp + 1, total: temporada.tamanho, ano: temporada.ano }, (p) => p.id === "voce", (e) => e.id === temporada.equipe) };
     const eq = Pilotos.EQUIPES[temporada.equipe], id = rid(6), token = rid();
     room.players[id] = { id, name: temporada.nome, token, pawn: "🏎️", color: eq.cor, skin: "padrao", car: "equilibrado", equipe: temporada.equipe,

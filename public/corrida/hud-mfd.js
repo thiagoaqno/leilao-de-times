@@ -82,7 +82,7 @@ function voltasDePneu(pneu, F, { taxaMedida, fator } = {}) {
 function janelaDeBox({ voltaAtual, voltas, voltasDePneu: vp, compostosUsados, chuva }) {
   const ultima = voltas - 1; // a última volta em que dá para pedir a parada
   const fim = voltaAtual + Math.floor(vp), abre = voltaAtual + Math.floor(vp * 0.6);
-  const obrigatoria = !chuva && compostosUsados < 2; // sem dois compostos secos leva +10 s no resultado (UM_COMPOSTO)
+  const obrigatoria = !chuva && compostosUsados < 2; // sem dois compostos secos leva penalidade proporcional no resultado
   if (fim >= voltas && !obrigatoria) return { precisa: false, motivo: "O pneu aguenta até o fim" };
   if (ultima < voltaAtual) return { precisa: false, motivo: "Última volta: sem box" };
   const a = Math.max(voltaAtual, Math.min(abre, ultima)), f = Math.max(a, Math.min(fim, ultima));

@@ -47,7 +47,7 @@ const inteiro = (n) => Number.isInteger(n) && n >= 0;
 const NIVEIS = ["facil", "medio", "dificil"];
 function criar(nome, equipe, tamanho = 8, voltas = 3, semente = Date.now(), nivel = "medio") {
   if (!Pilotos.EQUIPES[equipe] || !Equipes.EQUIPES[equipe]) throw Error("Equipe inválida.");
-  if (![4, 8].includes(tamanho) || ![2, 3, 5].includes(voltas)) throw Error("Formato inválido.");
+  if (![4, 8].includes(tamanho) || ![2, 3, 5, 10].includes(voltas)) throw Error("Formato inválido.");
   if (!NIVEIS.includes(nivel)) throw Error("Nível dos robôs inválido.");
   const titulares = Pilotos.PILOTOS.filter((p) => p.equipe === equipe);
   const sorteado = sortearCalendario(tamanho, semente);
@@ -90,6 +90,23 @@ function contratarEngenheiro(s, area, nivel) {
 function desenvolver(s) {
   if (s.bonus >= 4) throw Error("O carro atingiu o limite de desenvolvimento.");
   gastar(s, 12 + s.bonus * 6); s.bonus++; return s;
+}
+// Equipes controladas pelo jogo desenvolvem o carro durante a temporada. A semente original e o GP
+// determinam os pontos: saves antigos funcionam e reabrir o mesmo GP nunca muda a montagem.
+function desenvolvimentoRivais({ semente, ano = 1, gp = 0, tamanho = 8 }, equipesHumanas = []) {
+  const humanos = new Set(equipesHumanas), montagens = {}, bonus = {};
+  const base = Number(semente) - (ano - 1) * 937;
+  const rodadas = Math.max(0, (ano - 1) * tamanho + gp);
+  for (const [id, equipe] of Object.entries(Equipes.EQUIPES)) {
+    if (humanos.has(id)) continue;
+    const r = gerador(`desenvolvimento:${base}:${id}`), atraso = Math.floor(r() * tamanho);
+    const pontos = Math.min(4, Math.floor((rodadas * 4 + atraso) / tamanho));
+    const ordem = embaralhar(["motor", "aero", "chassi", "freios", "suspensao"], r);
+    const m = { ...equipe.padrao };
+    for (let i = 0; i < pontos; i++) { const k = ordem[i % ordem.length]; if (m[k] < Equipes.MAX_NIVEL) m[k]++; }
+    montagens[id] = m; bonus[id] = pontos;
+  }
+  return { montagens, bonus };
 }
 function pilotosNoGrid(s) {
   const titulares = Pilotos.PILOTOS.filter((p) => p.equipe === s.equipe);
@@ -177,7 +194,7 @@ function proximaTemporada(s) {
   const sorteado = sortearCalendario(s.tamanho, s.semente, s.calendario.map((g) => g.pista));
   s.calendario = sorteado.calendario; s.calendarioSemente = sorteado.semente; return s;
 }
-const api = { CALENDARIO, PISTAS_TRABALHADAS, sortearCalendario, PONTOS, ENGENHEIROS, teto, criar, conferirMontagem, aplicarMontagem, contratarPiloto, contratarEngenheiro, desenvolver, pilotosNoGrid, registrarResultado, tabelas, metas, imersao, proximaTemporada };
+const api = { CALENDARIO, PISTAS_TRABALHADAS, sortearCalendario, PONTOS, ENGENHEIROS, teto, criar, conferirMontagem, aplicarMontagem, contratarPiloto, contratarEngenheiro, desenvolver, desenvolvimentoRivais, pilotosNoGrid, registrarResultado, tabelas, metas, imersao, proximaTemporada };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Temporada = api;
 })(typeof window !== "undefined" ? window : globalThis);

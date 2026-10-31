@@ -89,7 +89,7 @@ function proximo() {
   for (let k = 1; k <= 3; k++) { const c = ordem[(ordem.indexOf(atual) + k) % 4]; if (op.includes(c)) return c; }
   return op[0] || atual;
 }
-// pede a parada com o pneu escolhido, ou cancela se já estava pedida (a mesma conta do B e do Enter)
+// pede a parada com o pneu escolhido, ou cancela se já estava pedida (a ação do B)
 function alternarBox() {
   const B = race && race.box; if (!B || B.fase) return;
   if (B.pedido) { cancelarPedido(); return; }
@@ -188,7 +188,15 @@ function acao(id) {
     if (id === "mfdLinhaMenos") linhaMover(-1); else if (id === "mfdLinhaMais") linhaMover(1); else valorMudar(id === "mfdValorMenos" ? -1 : 1);
     mexeu(); return true;
   }
-  if (id === "confirmar") { if (confirmarSugestao()) return true; if (naPaginaBox() && !race.box.fase) { alternarBox(); mexeu(); atualizarLinhas(); return true; } return false; }
+  if (id === "confirmar") {
+    if (confirmarSugestao()) return true;
+    if (naPaginaBox() && !race.box.fase) {
+      // Confirmar é idempotente: nunca cancela um pedido já feito. B continua permitindo cancelar.
+      if (!race.box.pedido) escolherComposto(proximo()); else toast("Box já confirmado", 1200);
+      mexeu(); atualizarLinhas(); return true;
+    }
+    return false;
+  }
   return false;
 }
 // teclado: devolve true se a tecla é do MFD (controles.js então não a trata como pilotagem)
@@ -242,7 +250,7 @@ function dadosDaSugestao(ctx) {
   if (!EB || !m || !B || !race.pneu || E.S.phase !== "race" || m.finish != null || !m.started) return null;
   const S = E.S, voltas = S.config.voltas, jogos = m.jogos || {};
   const mud = S.clima && S.clima.chove && F.proximaMudanca && clima.t >= 0 ? F.proximaMudanca(S.clima, clima.t) : null;
-  const e = { F, pneu: race.pneu, voltaAtual: Math.min(voltas, (m.laps || 0) + 1), voltas, jogos, janela: ctx.janela,
+  const e = { F, ritmo: window.F1PneusRitmo, pista: S.config.pista, pneu: race.pneu, voltaAtual: Math.min(voltas, (m.laps || 0) + 1), voltas, jogos, janela: ctx.janela,
     compostosUsados: ["macio", "medio", "duro"].filter((c) => jogos[c] != null && jogos[c] < F.JOGOS_POR_COMPOSTO).length,
     agua: clima.agua, chuva: clima.chuva, mudanca: mud, tempoVolta: m.last || m.best || 0, stopGo: m.stopGo || null, pedido: B.pedido, emBox: !!B.fase, fator: (carOf(m) || {}).desgaste || 1 };
   return { e, EB };
