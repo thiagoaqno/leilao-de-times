@@ -8,6 +8,17 @@ test('MFD na corrida', async ({page}, info) => {
  await page.locator('#gpMais summary').click(); await page.locator('[data-quali="pular"]').click();
  await page.locator('#snEtapas [data-etapa-ir="grid"]').click(); await page.locator('#btnStart').click();
  try { await expect(page.locator('#race')).toBeVisible({timeout:60000}); await expect(page.locator('#hMfd .mfd-topo')).toBeVisible({timeout:60000}); } finally { console.log('ERROS',JSON.stringify(errors)); await page.screenshot({path:info.outputPath('mfd.png')}); }
+ // Um stop-and-go sem troca nao consome outro jogo do composto atual, mesmo se ele estiver esgotado.
+ const pedidoSg = await page.evaluate(async () => {
+   const { me } = await import('/corrida/estado.js');
+   const { escolherComposto, cancelarPedido } = await import('/corrida/box.js');
+   const p = me(), r = window.__corrida.race, antigo = { stopGo: p.stopGo, jogos: p.jogos, pedido: r.box.pedido, pedidoBox: r.pedidoBox };
+   cancelarPedido(); p.stopGo = { s: 8 }; p.jogos = { ...p.jogos, medio: 0 }; escolherComposto('medio');
+   const pedido = r.box.pedido;
+   p.stopGo = antigo.stopGo; p.jogos = antigo.jogos; r.box.pedido = antigo.pedido; r.pedidoBox = antigo.pedidoBox;
+   return pedido;
+ });
+ expect(pedidoSg).toBe('medio');
  await expect(page.locator('#hMfd .mfd-pg[data-pg="pneus"]')).toBeVisible();
  await expect(page.locator('[data-r="pNome"]')).toHaveText('Médio');
  await expect(page.locator('[data-r="pVidaT"]')).toHaveText(/%/);
