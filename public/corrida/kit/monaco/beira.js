@@ -47,7 +47,8 @@ const pecas = {
 export function arvores(tr, add, { hAt, predioEm }) {
   const r = sorteio(777), L = tr.wallLat, listas = { palmeira: [], platano: [], pinheiro: [] }, w = tr.t.world;
   const cabe = (x, z, raio) => x > -400 && z > -400 && x < w + 400 && z < w + 400 && livre(tr, x, z, 14 + raio) && !ocupado(tr, x, z) && !predioEm(x, z, raio * 0.5) && distanciaDoMar(x, z) < -6 && !(tr.distAt(x, z) < L + 70 && tr.pts[tr.indiceAt(x, z)].h - hAt(x, z) > 5); // (nem embaixo da pista, no barranco: a copa subiria para o nível dela)
-  const poe = (tipo, x, z, s) => { if (!cabe(x, z, 14 * s)) return false; listas[tipo].push({ x, y: hAt(x, z), z, s, r: r() * 6.3, t: 0.86 + r() * 0.26 }); return true; };
+  // (a copa do plátano abre até 36 de raio: a árvore só entra se a copa também fica fora da pista)
+  const poe = (tipo, x, z, s) => { if (!cabe(x, z, 14 * s * (tipo === "platano" ? 2.2 : tipo === "palmeira" ? 1.6 : 1))) return false; listas[tipo].push({ x, y: hAt(x, z), z, s, r: r() * 6.3, t: 0.86 + r() * 0.26 }); return true; };
   for (const [x, z] of D.arvores) {
     const costa = distanciaDoMar(x, z) > -330, alto = hAt(x, z) / VK > 45;
     poe(costa && r() < 0.62 ? "palmeira" : alto && r() < 0.4 ? "pinheiro" : "platano", x + (r() - 0.5) * 4, z + (r() - 0.5) * 4, 0.85 + r() * 0.5);
