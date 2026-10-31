@@ -24,9 +24,12 @@ test('MFD na corrida', async ({page}, info) => {
  expect(await page.locator('#hMfd [data-r="bJogos"]').evaluate(el => el.getBoundingClientRect().bottom <= el.closest('.mfd-corpo').getBoundingClientRect().bottom)).toBe(true);
  // o primeiro B só abre a página (sem pedir); 1-4 escolhem o pneu; o segundo B (ou Enter) confirma o pedido
  expect(await page.evaluate(() => window.__corrida.race.box.pedido)).toBeFalsy();
- await page.keyboard.press('Digit3'); await expect(page.locator('#hMfd .mr').first().locator('b')).toHaveText('Duro');
- expect(await page.evaluate(() => window.__corrida.race.box.pedido)).toBeFalsy();
+ // B, B sem número pede com o pneu selecionado (o seguinte ao atual); um número escolhe E pede na hora, sem setas
  await page.keyboard.press('KeyB');
+ await expect.poll(() => page.evaluate(() => window.__corrida.race.box.pedido)).toBeTruthy();
+ await page.keyboard.press('KeyB');
+ await expect.poll(() => page.evaluate(() => window.__corrida.race.box.pedido)).toBeFalsy();
+ await page.keyboard.press('Digit3');
  await expect.poll(() => page.evaluate(() => window.__corrida.race.box.pedido)).toBe('duro');
  // o relógio anda no alto à direita desde a largada
  await expect(page.locator('#htVolta')).not.toHaveText('0:00.000');

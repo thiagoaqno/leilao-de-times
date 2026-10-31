@@ -23,13 +23,23 @@ const guardarAberto = () => { try { store.set("corrida:mfd", mfd.aberto); } catc
 
 // ---------- as páginas (o HTML de cada uma, montado uma vez) ----------
 const CARRO = (cls) => `<svg class="mp-carro ${cls}" viewBox="0 0 90 120" aria-hidden="true"><rect class="mp-asa" x="18" y="2" width="54" height="7" rx="2"/><rect class="mp-roda" data-r="w0" x="3" y="14" width="19" height="28" rx="5"/><rect class="mp-roda" data-r="w1" x="68" y="14" width="19" height="28" rx="5"/><rect class="mp-roda" data-r="w2" x="2" y="72" width="21" height="30" rx="5"/><rect class="mp-roda" data-r="w3" x="67" y="72" width="21" height="30" rx="5"/><path class="mp-corpo" data-r="corpo" d="M42 9h6l2 22 9 9v22l-5 8 3 28H33l3-28-5-8V40l9-9z"/><rect class="mp-asa" data-r="asaT" x="16" y="108" width="58" height="8" rx="2"/></svg>`;
+// os ícones das abas (como no jogo: um por página)
+const ICONE = {
+  pneus: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>', danos: '<path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/>',
+  ers: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', box: '<path d="M4 21V4M4 5h13l-2 4 2 4H4"/>', tempos: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5"/>',
+  classificacao: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', ajustes: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+};
+const icone = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONE[id] || ""}</svg>`;
 const linhasDe = (id) => `<div class="mr-lista" data-linhas="${id}"></div>`;
 const HTML = {
-  pneus: `<div class="mp mp-dupla">${CARRO("pn")}<b class="mp-centro" data-r="pVida">100%</b><div class="mp-dados">
-    <div class="mp-comp"><b class="mp-bola" data-r="pLetra">M</b><span data-r="pNome">Médio</span></div>
-    <div class="mp-barra"><span>Vida</span><div><i data-r="pVidaB"></i></div><b data-r="pVidaT">100%</b></div>
-    <div class="mp-barra"><span>Temp.</span><div><i data-r="pTempB"></i></div><b data-r="pTempT">Frio</b></div>
-    <p class="mp-nota" data-r="pNota"></p><p class="mp-nota mp-fraca">Leitura do conjunto de pneus</p></div></div>`,
+  // como a página de pneus do jogo da EA (F1 24): o carro no meio com as 4 rodas coloridas pela temperatura e um anel de desgaste em cada canto
+  // (o jogo daqui mede UM conjunto de pneus, então os quatro anéis mostram o mesmo valor); embaixo o composto, a temperatura e a previsão
+  pneus: `<div class="mp mp-pneus"><div class="pn-grade">
+    <div class="pn-col"><div class="anel" data-r="a0"><b></b></div><div class="anel" data-r="a2"><b></b></div></div>
+    ${CARRO("pn")}
+    <div class="pn-col"><div class="anel" data-r="a1"><b></b></div><div class="anel" data-r="a3"><b></b></div></div></div>
+    <div class="pn-rodape"><div class="mp-comp"><b class="mp-bola" data-r="pLetra">M</b><span data-r="pNome">Médio</span></div><span class="pn-temp">Temp. <b data-r="pTempT">Ideal</b></span><span class="pn-vida">VIDA</span></div>
+    <p class="mp-nota" data-r="pNota"></p></div>`,
   danos: `<div class="mp mp-dupla">${CARRO("dn")}<b class="mp-centro" data-r="dPct">0%</b><div class="mp-dados">
     <div class="mp-barra"><span>Dano</span><div><i data-r="dBarra"></i></div><b data-r="dT">0%</b></div>
     <div class="mp-barra"><span>Desempenho</span><div><i data-r="dDes"></i></div><b data-r="dDesT">100%</b></div>
@@ -39,8 +49,8 @@ const HTML = {
     <div class="mp-barra"><span>Recarga da volta</span><div><i data-r="eRecB"></i></div><b data-r="eRecT">0%</b></div>
     <div class="mp-par"><span>Modo</span><b data-r="eModo">—</b></div><div class="mp-par"><span>DRS</span><b data-r="eDrs">—</b></div>
     <div class="mp-par"><span>Combustível</span><b>não medido no jogo</b></div></div>`,
-  box: `<div class="mp mp-box"><div class="mp-janela"><small>JANELA DE BOX</small><b data-r="bJan">—</b><em data-r="bSub"></em></div>
-    <div class="mp-par"><span>Box agora</span><b data-r="bRet">—</b></div><div class="mp-par"><span>Troca custa</span><b data-r="bPerda">—</b></div>${linhasDe("box")}<p class="mp-nota" data-r="bJogos"></p><p class="mp-nota mp-fraca" data-r="bDica"><kbd>1</kbd>–<kbd>4</kbd> pneu · <kbd>B</kbd> ou <kbd>Enter</kbd> confirma · <kbd>A</kbd> no controle</p></div>`,
+  box: `<div class="mp mp-box"><div class="mp-janela"><small>JANELA DE BOX · PIT WINDOW</small><b data-r="bJan">—</b><em data-r="bSub"></em></div>
+    <div class="mp-par"><span>Box agora, volta em</span><b data-r="bRet">—</b></div><div class="mp-par"><span>Troca custa</span><b data-r="bPerda">—</b></div><small class="mp-sub">Mudanças a aplicar:</small>${linhasDe("box")}<p class="mp-nota" data-r="bJogos"></p><p class="mp-nota mp-fraca" data-r="bDica"><kbd>1</kbd>–<kbd>4</kbd> escolhe e pede · <kbd>B</kbd> ou <kbd>Enter</kbd> pede o selecionado · <kbd>A</kbd> no controle</p></div>`,
   tempos: `<div class="mp mp-tempos"><div class="mp-par"><span>Volta atual</span><b data-r="tAtual">0:00.000</b></div><div class="mp-par"><span>Corrida</span><b data-r="tCorrida">0:00.0</b></div><div class="mp-par"><span>Última volta</span><b data-r="tUlt">—:--.---</b></div><div class="mp-par"><span>Melhor volta</span><b data-r="tMelhor">—:--.---</b></div>
     <div class="mp-par"><span>Volta mais rápida</span><b class="roxo" data-r="tVR">—</b></div>
     <div class="mp-par frente"><span>Carro da frente</span><b data-r="tFrente">—</b></div><div class="mp-par tras"><span>Carro de trás</span><b data-r="tTras">—</b></div></div>`,
@@ -73,6 +83,7 @@ const linhasDaPagina = (id = mfd.pagina) => LINHAS[id] || [];
 function proximo() {
   const op = compostosPossiveis(), atual = race.pneu ? race.pneu.composto : "medio", ordem = ["macio", "medio", "duro", "chuva"];
   if (mfd.prox && op.includes(mfd.prox)) return mfd.prox;
+  if (me() && me().stopGo) return atual; // com stop-and-go pendente o padrão é só cumpri-lo (sem trocar o pneu); outro número troca na mesma parada
   for (let k = 1; k <= 3; k++) { const c = ordem[(ordem.indexOf(atual) + k) % 4]; if (op.includes(c)) return c; }
   return op[0] || atual;
 }
@@ -80,8 +91,7 @@ function proximo() {
 function alternarBox() {
   const B = race && race.box; if (!B || B.fase) return;
   if (B.pedido) { cancelarPedido(); return; }
-  if (me() && me().stopGo) { alternarPedido(); return; } // com stop-and-go pendente o pedido é só ele (box.js)
-  escolherComposto(proximo());
+  escolherComposto(proximo()); // (box.js: com stop-and-go pendente o pedido cumpre o stop-and-go e, se o pneu for outro, troca na mesma parada)
 }
 const naPaginaBox = () => !!race && !!race.box && mfd.aberto && mfd.pagina === "box";
 // B (teclado e botão Box): abre o MFD na página do Box com o próximo pneu à vista; com ela aberta, B confirma o pedido (de novo, cancela)
@@ -91,11 +101,13 @@ export function teclaBox() {
   if (!naPaginaBox()) { mfd.prox = null; abrirBoxMfd(); return; }
   alternarBox(); mexeu(); atualizarLinhas();
 }
-// 1 a 4 com a página do Box à vista só ESCOLHEM o pneu (o B confirma); fora dela pedem a parada direto, como sempre. Devolve true se tratou.
+// 1 a 4: escolhem o pneu E confirmam o pedido na hora (o atalho rápido: B e 2, B e 4), com ou sem stop-and-go pendente. O MFD abre no Box para
+// mostrar o pedido. Sem setas. Devolve true se tratou.
 export function digitoPneu(composto) {
-  if (!naPaginaBox() || race.box.fase || race.box.pedido) return false;
-  if (!compostosPossiveis().includes(composto)) { toast(F().PNEUS[composto].nome + " esgotado", 1400); return true; }
-  mfd.prox = composto; mexeu(); atualizarLinhas(); return true;
+  if (!ativo() || !race.box || race.box.fase) return false;
+  escolherComposto(composto); // (avisa e recusa sozinho: composto esgotado, última volta...)
+  if (race.box.pedido === composto) { mfd.prox = null; abrirBoxMfd(); }
+  mexeu(); atualizarLinhas(); return true;
 }
 
 // ---------- montagem ----------
@@ -140,7 +152,7 @@ export function mexeu() { mfd.ultimo = performance.now(); }
 export function abrirBoxMfd() {
   if (!ativo() || !race.box) return;
   if (!mfd.aberto) abrir(true);
-  mfd.pagina = "box"; paginaVista = null; mexeu();
+  mfd.pagina = "box"; mfd.linha.box = 0; paginaVista = null; mexeu();
 }
 function aplicarFoco() { if (raiz) raiz.classList.toggle("foco", mfd.foco); const r = $("race"); if (r) r.classList.toggle("mfd-foco", mfd.foco); }
 function sairDoFoco() { if (!mfd.foco) return; mfd.foco = false; aplicarFoco(); }
@@ -211,7 +223,7 @@ function listaDePaginas(ctx) {
   const chave = lista.join();
   if (chave !== abas) {
     abas = chave;
-    refs.mfd.abas.innerHTML = lista.map((id, i) => `<button type="button" role="tab" data-pg="${id}" title="${M().nomeDaPagina(id)}" aria-label="${M().nomeDaPagina(id)}">${i + 1}</button>`).join("");
+    refs.mfd.abas.innerHTML = lista.map((id, i) => `<button type="button" role="tab" data-pg="${id}" title="${M().nomeDaPagina(id)}" aria-label="${M().nomeDaPagina(id)}">${icone(id)}</button>`).join("");
   }
 }
 export function atualizarMfd(ctx) {
@@ -240,10 +252,10 @@ const ATU = {
   pneus(ctx, r) {
     const pn = race.pneu; if (!pn) return;
     const F = F1U(), e = M().estadoDoPneu(pn, F), tipo = F.PNEUS[pn.composto] || F.PNEUS[F.COMPOSTO_PADRAO];
-    corRodas(r, e.nivel); set(r.pVida, "t", e.vida + "%");
-    set(r.pLetra, "t", window.HudTorre.LETRA[pn.composto] || "M"); set(r.pLetra, "style", `--c:${tipo.cor}`); set(r.pNome, "t", tipo.nome);
-    set(r.pVidaB, "w", e.vida + "%"); set(r.pVidaB, "c", e.nivel); set(r.pVidaT, "t", e.vida + "%");
-    set(r.pTempB, "w", pc(e.tempPct) + "%"); set(r.pTempB, "c", e.temp === "Ideal" ? "bom" : e.temp === "Quente" ? "baixo" : "frio"); set(r.pTempT, "t", e.temp);
+    const COR = { bom: "#2ee08a", medio: "#ffb02e", baixo: "#ff6a3d", fim: "#ff3d4a" };
+    for (const k of ["a0", "a1", "a2", "a3"]) { set(r[k], "style", `--r:${e.vida};--c:${COR[e.nivel]}`); set(r[k].firstChild, "t", e.vida + "%"); }
+    corRodas(r, e.temp === "Frio" ? "frio" : e.temp === "Quente" ? "fim" : "bom"); // a roda pela temperatura: azul frio, verde ideal, vermelho quente
+    set(r.pLetra, "t", window.HudTorre.LETRA[pn.composto] || "M"); set(r.pLetra, "style", `--c:${tipo.cor}`); set(r.pNome, "t", tipo.nome); set(r.pTempT, "t", e.temp);
     const v = ctx.tp;
     set(r.pNota, "t", e.nivel === "fim" ? "Passou do limite: o pneu despenca. Faça a parada." : v && v.voltas < 90 ? `Aguenta ~${Math.max(0, Math.floor(v.voltas))} volta${Math.floor(v.voltas) === 1 ? "" : "s"}${v.medida ? " (no seu ritmo)" : ""}` : "");
   },
