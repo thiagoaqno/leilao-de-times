@@ -7,7 +7,9 @@ const assert = require("node:assert/strict");
 test("Mônaco: poucas malhas, poucas chamadas de desenho por quadro e poucos materiais", { timeout: 120000 }, async () => {
   const { medir } = await import("./ajuda-cena/medir.mjs");
   const m = await medir("monaco");
-  assert.ok(m.malhasNaCena <= 340, `${m.malhasNaCena} malhas (teto 340)`);
+  // O teto de malhas da cena de Mônaco subiu de 340 para 380 (só para Mônaco, autorizado pelo Thiago): o cenário tem agora a galera, os fiscais, as hospitalidades, o Fairmont e o pit lane de verdade. As chamadas de
+  // desenho por quadro (o que pesa na placa) continuam com os mesmos tetos abaixo, porque as malhas fora da câmera não são desenhadas.
+  assert.ok(m.malhasNaCena <= 380, `${m.malhasNaCena} malhas (teto 380)`);
   assert.ok(m.camera.chamadas <= 200, `${m.camera.chamadas} chamadas por quadro na vista do jogo (teto 200)`);
   assert.ok(m.camera.chamadasTotalComSombra <= 240, `${m.camera.chamadasTotalComSombra} com as sombras (teto 240)`);
   assert.ok(m.camera.triangulos <= 330000, `${m.camera.triangulos} triângulos na vista (teto 330 mil)`);
