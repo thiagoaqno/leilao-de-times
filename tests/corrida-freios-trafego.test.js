@@ -26,16 +26,16 @@ function frear(v0, v1, pneu, agua = 0) {
 }
 const novo = (composto, desgaste = 0, temp = 1) => ({ composto, desgaste, temp });
 
-test("freio de F1: 300 a 100 km/h em 95 a 135 m, até uns 5 g com a carga aerodinâmica e sem travar no seco", () => {
-  for (const [composto, de, ate] of [["macio", 90, 115], ["medio", 100, 125], ["duro", 105, 135]]) {
+test("freio de F1 (+20%): 300 a 100 km/h em 75 a 118 m, até uns 5,5 g com a carga aerodinâmica e sem travar no seco", () => {
+  for (const [composto, de, ate] of [["macio", 75, 98], ["medio", 83, 108], ["duro", 90, 118]]) {
     const r = frear(300, 100, novo(composto));
     assert.ok(r.d > de && r.d < ate, `${composto}: 300 a 100 km/h em ${r.d.toFixed(0)} m`);
-    assert.ok(r.t > 1.6 && r.t < 2.5, `${composto}: ${r.t.toFixed(2)} s`);
-    assert.ok(r.g > 3.4 && r.g < 5.2, `${composto}: pico de ${r.g.toFixed(2)} g`);
+    assert.ok(r.t > 1.35 && r.t < 2.4, `${composto}: ${r.t.toFixed(2)} s`);
+    assert.ok(r.g > 3.6 && r.g < 5.8, `${composto}: pico de ${r.g.toFixed(2)} g`);
     assert.equal(r.trav, 0, `${composto} novo não trava em linha reta`);
   }
   const lento = frear(200, 80, novo("macio"));
-  assert.ok(lento.d > 45 && lento.d < 70, `200 a 80 km/h em ${lento.d.toFixed(0)} m`);
+  assert.ok(lento.d > 38 && lento.d < 60, `200 a 80 km/h em ${lento.d.toFixed(0)} m`);
   // com menos carga aerodinâmica (menos velocidade) freia menos: o g de 100 km/h é bem menor que o de 300
   assert.ok(D.frenagemMaxima(mclaren, 400) > 1.6 * D.frenagemMaxima(mclaren, 133), "a 300 km/h freia bem mais que a 100 km/h");
 });

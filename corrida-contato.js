@@ -77,10 +77,16 @@ const chave = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
 // culpa quando cada carro avisa a sua batida (o do batido só avisa depois, com as velocidades já trocadas).
 const IMPACTO_VALE_MS = 8000;
 function impactoDe(room, a, b) { const i = estado(room).impactos.get(chave(a, b)); return i || null; }
+// (a freada de cada um nos 300 ms antes do impacto, em u/s²: positiva é freando)
+function freada(K, id, t) {
+  const H = K.hist.get(id); if (!H || !H.n) return 0;
+  const a = {}, b = {}; em(H, t - 300, a); em(H, t, b);
+  return (Math.hypot(a.vx, a.vy) - Math.hypot(b.vx, b.vy)) / 0.3;
+}
 function guardarImpacto(K, idA, e, t) {
   if (!e.pre) return;
   for (const [k, i] of K.impactos) if (t - i.t > IMPACTO_VALE_MS) K.impactos.delete(k);
-  K.impactos.set(chave(idA, e.id), { t, forca: e.forca, culpado: e.culpa === 1 ? idA : e.culpa === -1 ? e.id : null, de: idA, pre: e.pre });
+  K.impactos.set(chave(idA, e.id), { t, forca: e.forca, culpado: e.culpa === 1 ? idA : e.culpa === -1 ? e.id : null, de: idA, pre: e.pre, freada: { [idA]: freada(K, idA, t), [e.id]: freada(K, e.id, t) } });
 }
 
 // Depois de cada passo do carro `c` do jogador `p`, na hora `tFim` (ms do servidor): aplica os impulsos que os outros deixaram para

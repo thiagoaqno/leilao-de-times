@@ -1,5 +1,5 @@
 // Corrida da Galera, regras de F1: a escala de punições das batidas entre carros (leve +3 s, média +6 s, grave stop-and-go de 8 s,
-// reincidência e bandeira preta na sexta batida causada), a gravidade pela velocidade de aproximação ANTES do impulso e a proteção
+// sem reincidência; bandeira preta com 12 batidas PROPOSITAIS), a gravidade pela velocidade relativa ANTES do impulso e a proteção
 // de quem foi batido.
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -27,12 +27,20 @@ test("gravidade pela velocidade de aproximação: ~80 km/h a mais na traseira é
   assert.ok(kmh(F1.COLISAO_GRAVE) <= 80 && kmh(F1.COLISAO_GRAVE) > 75);
 });
 
-test("escala: reincidência até a quinta e bandeira preta na sexta, inclusive na largada", () => {
-  assert.equal(F1.nivelDaPunicao("leve", 1, true).nivel, "leve");
-  for (let n = 2; n <= 5; n++) assert.equal(F1.nivelDaPunicao("leve", n, true).nivel, "media");
-  assert.equal(F1.nivelDaPunicao("grave", 5).nivel, "grave");
-  assert.equal(F1.nivelDaPunicao("leve", 6).nivel, "preta");
+test("escala: o nível é só a gravidade (sem reincidência e sem agravante na largada)", () => {
+  for (const g of ["leve", "media", "grave"]) for (const n of [1, 2, 6, 11]) assert.equal(F1.nivelDaPunicao(g, n, true).nivel, g);
   assert.equal(F1.nivelDaPunicao(null, 1), null);
+});
+
+test("batida proposital: culpa clara, diferença de velocidade média ou grave, atingido sem derrapar nem frear forte", () => {
+  const base = { gravidade: "media", culpado: true, atingidoDerrapava: false, atingidoFreava: false };
+  assert.equal(F1.batidaProposital(base), true);
+  assert.equal(F1.batidaProposital({ ...base, gravidade: "grave" }), true);
+  assert.equal(F1.batidaProposital({ ...base, gravidade: "leve" }), false, "toque leve não conta");
+  assert.equal(F1.batidaProposital({ ...base, culpado: false }), false, "sem culpa clara (incidente de corrida)");
+  assert.equal(F1.batidaProposital({ ...base, atingidoDerrapava: true }), false);
+  assert.equal(F1.batidaProposital({ ...base, atingidoFreava: true }), false);
+  assert.equal(F1.DSQ_PROPOSITAIS, 12);
 });
 
 test("direção de prova: o causador leva +3 s e o dano, o batido não leva punição nem dano", () => {
@@ -46,22 +54,36 @@ test("direção de prova: o causador leva +3 s e o dano, o batido não leva puni
   assert.ok(log.some((s) => /Beto.*atingido: sem punição/.test(s)));
 });
 
-test("direção de prova: média +6 s; a segunda batida causada sobe; a sexta é bandeira preta", () => {
+test("direção de prova: média +6 s sempre (a 2ª não sobe); a grave é stop-and-go de 8 s", () => {
   const room = sala(), a = room.players.a, log = [];
   impacto(room, 70, "a");
   Direcao.bater(room, a, 70, "carro", 5000, (s) => log.push(s), "carro:b");
   assert.equal(a.penal, 6); assert.equal(a.dano, 2);
-  a.batidaPares = {}; impacto(room, 70, "a"); // a segunda: média vira stop-and-go
+  a.batidaPares = {}; impacto(room, 70, "a"); // a segunda média: de novo +6 s, sem stop-and-go
   Direcao.bater(room, a, 70, "carro", 20000, (s) => log.push(s), "carro:b");
+  assert.equal(a.penal, 12); assert.equal(a.stopGo, undefined);
+  a.batidaPares = {}; impacto(room, 200, "a");
+  Direcao.bater(room, a, 200, "carro", 40000, (s) => log.push(s), "carro:b");
   assert.equal(a.stopGo.s, F1.STOPGO_S); assert.equal(a.stopGo.ate, 2 + F1.STOPGO_VOLTAS);
   assert.ok(log.some((s) => /Stop-and-go 8 s: cumpra em 3 voltas/.test(s)), log.join("|"));
-  for (let n = 3; n <= 6; n++) {
-    a.batidaPares = {}; impacto(room, 30, "a");
-    Direcao.bater(room, a, 30, "carro", n * 20000, (s) => log.push(s), "carro:b");
-    if (n < 6) assert.ok(!a.dnf);
+});
+
+test("direção de prova: 12 batidas propositais (média ou grave) são bandeira preta, com a contagem no log a partir da 9ª; leves não contam", () => {
+  const room = sala(30, 2), a = room.players.a, log = [];
+  for (let n = 1; n <= 20; n++) { a.batidaPares = {}; impacto(room, 30, "a"); Direcao.bater(room, a, 30, "carro", n * 20000, (s) => log.push(s), "carro:b"); }
+  assert.equal(a.propositais || 0, 0); assert.ok(!a.dsq, "20 toques leves não desclassificam");
+  for (let n = 1; n <= 12; n++) {
+    a.batidaPares = {}; impacto(room, 70, "a");
+    Direcao.bater(room, a, 70, "carro", 1e6 + n * 20000, (s) => log.push(s), "carro:b");
+    if (n < 12) assert.ok(!a.dsq, `${n} propositais ainda não`);
   }
-  assert.ok(a.dsq && a.dnf, "bandeira preta: desclassificado");
+  assert.equal(a.propositais, 12); assert.ok(a.dsq && a.dnf, "bandeira preta");
+  assert.ok(log.some((s) => /10\/12 batidas propositais/.test(s)), "avisa a contagem");
   assert.ok(log.some((s) => /bandeira preta/.test(s)));
+  // se o atingido derrapava ou freava forte, não é proposital
+  const r2 = sala(30, 2), b2 = r2.players.a;
+  Contato.estado(r2).impactos.set("a|b", { t: 5000, forca: 70, culpado: "a", de: "a", pre: {}, freada: { b: 200, a: 0 } });
+  Direcao.bater(r2, b2, 70, "carro", 5000, semLog, "carro:b"); assert.equal(b2.propositais || 0, 0);
 });
 
 test("direção de prova: na primeira volta a punição é igual às demais", () => {
@@ -150,7 +172,9 @@ test("stop-and-go com troca na mesma parada: B.troca = { parada, t } e a fase va
 test("pneus na água: o macio sofre até na garoa, o de chuva é só um pouco melhor na garoa e claramente melhor na pista encharcada", () => {
   const g = (composto, agua) => F1.aderencia({ composto, desgaste: 0.1, temp: 0.75 }, agua).grip;
   for (const c of ["medio", "duro"]) assert.ok(g("macio", 0.45) / g("macio", 0) < g(c, 0.45) / g(c, 0), "o macio perde mais que os outros secos");
-  assert.ok(g("chuva", 0.45) > g("medio", 0.45) && g("chuva", 0.45) < 1.15 * Math.max(g("macio", 0.45), g("medio", 0.45), g("duro", 0.45)), "garoa: de chuva meio ruim");
+  const secos = (a) => Math.max(g("macio", a), g("medio", a), g("duro", a));
+  assert.ok(g("chuva", 0.45) > 1.2 * secos(0.45), "garoa: o de chuva claramente acima dos secos");
+  assert.ok(g("chuva", 1) > g("chuva", 0.45), "e na chuva forte, melhor ainda");
   assert.ok(g("chuva", 1) > 1.8 * Math.max(g("macio", 1), g("medio", 1), g("duro", 1)), "encharcada: de chuva muito melhor");
 });
 
