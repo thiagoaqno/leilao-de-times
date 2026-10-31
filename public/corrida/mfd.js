@@ -114,7 +114,7 @@ export function digitoPneu(composto) {
 export function montarMfd() {
   if (raiz) return;
   raiz = $("hMfd"); if (!raiz) return;
-  mfd.aberto = lerAberto();
+  mfd.aberto = lerAberto(); mexeu(); // (a contagem dos 3 s começa agora)
   raiz.innerHTML = `<div class="mfd-topo"><b class="mfd-nome" data-r="nome">PNEUS</b><div class="mfd-abas" data-r="abas" role="tablist"></div><button class="mfd-x" data-r="fechar" aria-label="Fechar o MFD" title="Fechar o MFD">▾</button></div>
     <div class="mfd-corpo">${Object.entries(HTML).map(([id, h]) => `<section class="mfd-pg" data-pg="${id}" hidden>${h}</section>`).join("")}</div>
     <div class="mfd-dicas" data-r="dicas"><span class="kb ajuda"><kbd>M</kbd><kbd>N</kbd> página</span><span class="kb ajuda"><kbd>Tab</kbd> ajustar</span><span class="gp ajuda"><kbd class="b">L3</kbd><kbd class="b">R3</kbd> página</span><span class="gp ajuda"><kbd class="b st">Start</kbd> ajustar</span><span class="foco-dica"><kbd>↑</kbd><kbd>↓</kbd> linha</span><span class="foco-dica"><kbd>←</kbd><kbd>→</kbd> valor</span><span class="foco-dica"><kbd>Tab</kbd> sair</span></div>`;
@@ -143,10 +143,16 @@ export function montarMfd() {
 }
 function aplicarAberto() {
   const r = $("race"); if (!raiz || !r) return;
-  raiz.classList.toggle("fechado", !mfd.aberto); r.classList.toggle("mfd-on", mfd.aberto);
+  clearTimeout(aplicarAberto.t); r.classList.toggle("mfd-on", mfd.aberto);
+  if (mfd.aberto) raiz.classList.remove("fechado", "descendo");
+  else if (matchMedia("(prefers-reduced-motion: reduce)").matches || raiz.classList.contains("fechado")) raiz.classList.add("fechado");
+  else { raiz.classList.add("descendo"); aplicarAberto.t = setTimeout(() => { raiz.classList.remove("descendo"); raiz.classList.add("fechado"); }, 230); } // desce (CSS) e só então some
   const bt = $("bMfd"); if (bt) bt.setAttribute("aria-expanded", String(mfd.aberto));
 }
-function abrir(v) { mfd.aberto = !!v; if (!v) sairDoFoco(); guardarAberto(); aplicarAberto(); paginaVista = null; }
+function abrir(v, guardar = true) { mfd.aberto = !!v; if (v) mexeu(); else sairDoFoco(); if (guardar) guardarAberto(); aplicarAberto(); paginaVista = null; }
+// 3 s sem interação: o painel desce sozinho (no PC e no celular), sai do modo ajustar e devolve as setas à pilotagem. Qualquer tecla ou botão do MFD
+// (M, N, B, 1-4, Tab, D-pad ajustando, toques no painel) chama mexeu() e reinicia a contagem. Não grava a escolha: o próximo GP começa com o painel à vista.
+const RECOLHE_MS = 3000;
 export function mexeu() { mfd.ultimo = performance.now(); }
 // B e o botão de box mostram a estratégia sem tirar as setas da pilotagem.
 export function abrirBoxMfd() {
@@ -229,7 +235,8 @@ function listaDePaginas(ctx) {
 export function atualizarMfd(ctx) {
   if (!raiz) return;
   const t = performance.now();
-  if (mfd.foco && t - mfd.ultimo > 8000) sairDoFoco(); // ninguém mexeu: devolve as setas ao carro
+  if (mfd.aberto && t - mfd.ultimo > RECOLHE_MS) abrir(false, false); // (sai do modo ajustar junto)
+  { const bt = $("bMfd"), B = race.box, rot = bt && bt.querySelector("span"); if (rot) set(rot, "t", B && B.pedido && !B.fase ? "BOX " + F1U().PNEUS[B.pedido].nome.toUpperCase() : B && B.fase ? "NO BOX" : "MFD"); if (bt) set(bt, "c", "mfd-botao" + (B && (B.pedido || B.fase) ? " pedido" : "")); } // fechado, o pedido de box segue à vista no botão
   raiz.dataset.entrada = mfd.entrada;
   const rr = $("race"); if (rr && rr.dataset.entrada !== mfd.entrada) rr.dataset.entrada = mfd.entrada;
   Object.assign(LEITURA, ctx);

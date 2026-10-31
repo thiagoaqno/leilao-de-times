@@ -253,3 +253,10 @@
 .pn-temp{color:#ffffffb8}.pn-temp b{color:#fff}
 .pn-vida{margin-left:auto;font-size:11px;letter-spacing:.14em;color:#ffffff80}
 .mp-pneus .mp-nota{font-size:13px}
+
+/* o MFD desce sozinho depois de 3 s sem interação (mfd.js põe .descendo por 230 ms e então .fechado); fechado, o botão mostra o pedido de box */
+#race.f1hud #hMfd.descendo{animation:mfdDesce .22s ease-in forwards;pointer-events:none}
+@keyframes mfdDesce{to{transform:translateY(28px);opacity:0}}
+@media (pointer:coarse),(max-width:700px){@keyframes mfdDesce{from{transform:translateX(-50%)}to{transform:translateX(-50%) translateY(28px);opacity:0}}}
+#race.f1hud .mfd-botao.pedido{color:#0a0c12;background:#ffd23f;border-color:#ffd23f}
+@media (prefers-reduced-motion:reduce){#race.f1hud #hMfd.descendo{animation:none}}
