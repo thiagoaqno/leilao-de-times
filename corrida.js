@@ -61,10 +61,11 @@ module.exports = function attachCorrida(io) {
       nivel: Robos.NIVEIS[c.nivel] ? c.nivel : "medio",
     };
   };
-  // Uma sala nova (o botão "Abrir sala nova", que não manda config) nasce com as regras de F1, 5 voltas e os robôs no nível médio; o pneu
-  // da largada de cada piloto já nasce médio (`F1.COMPOSTO_PADRAO`, em `addPlayer`). O organizador muda tudo depois, e quem manda uma
-  // config parcial (os testes, a carreira) continua recebendo os padrões de `cleanConfig`.
-  const CONFIG_SALA_NOVA = { regras: "f1", voltas: 5, nivel: "medio" };
+  // Uma sala nova (o botão "Abrir sala nova", que não manda config) nasce em Mônaco, com as regras de F1, 5 voltas, grid de 20 (19 robôs
+  // médios), clima variável e a classificação pulada; o pneu da largada de cada piloto já nasce médio (`F1.COMPOSTO_PADRAO`, em `addPlayer`) e
+  // cada um já entra com uma equipe (`equipeLivre`), não com o carro avulso. O organizador muda tudo depois, e quem manda uma config
+  // parcial (os testes, a carreira) continua recebendo os padrões de `cleanConfig` e sem equipe.
+  const CONFIG_SALA_NOVA = { pista: "monaco", regras: "f1", voltas: 5, nivel: "medio", robos: Robos.GRID_F1 - 1, clima: "variavel", classificacao: "pular" };
   const nameOf = (room, id) => (room.players[id] ? room.players[id].name : "?");
   function log(room, text) { room.log.push({ t: Date.now(), text }); if (room.log.length > 80) room.log.splice(0, room.log.length - 80); }
 
@@ -85,6 +86,17 @@ module.exports = function attachCorrida(io) {
   // Cada equipe tem um orçamento em pontos para as peças (f1-equipes.js). A montagem da equipe fica em `room.montagens[equipe]`
   // (só quando o chefe mexeu: sem ela vale a padrão) e vale para os dois carros dela, humanos ou robôs. O chefe é o primeiro
   // humano da equipe na ordem da sala. Dois amigos podem dividir a mesma equipe; cada equipe tem só 2 carros.
+  // a equipe com que entra quem chega numa sala nova: uma das que ainda têm vaga (as com menos humanos primeiro), sorteada
+  const equipeLivre = (room) => {
+    const ids = Object.keys(Pilotos.EQUIPES).filter((id) => Equipes.EQUIPES[id] && humanosDa(room, id).length < 2);
+    if (!ids.length) return null;
+    const menor = Math.min(...ids.map((id) => humanosDa(room, id).length)), ls = ids.filter((id) => humanosDa(room, id).length === menor);
+    return ls[Math.floor(Math.random() * ls.length)];
+  };
+  function entrarNaEquipe(room, p) {
+    const id = equipeLivre(room), eq = id && Pilotos.EQUIPES[id]; if (!eq) return;
+    p.equipe = id; if (T.MODS.pintura[eq.pintura]) p.mods = { ...p.mods, pintura: eq.pintura }; // a pintura da equipe (dá para trocar depois)
+  }
   const humanosDa = (room, equipe) => room.order.filter((id) => room.players[id] && !room.players[id].bot && room.players[id].equipe === equipe);
   const chefes = (room) => { const out = {}; for (const id of room.order) { const p = room.players[id]; if (p && !p.bot && p.equipe && !out[p.equipe]) out[p.equipe] = id; } return out; };
   const limparMontagens = (room) => { if (!room.montagens) return; for (const eq of Object.keys(room.montagens)) if (!humanosDa(room, eq).length) delete room.montagens[eq]; if (room.pecasEq) for (const eq of Object.keys(room.pecasEq)) if (!room.montagens || !room.montagens[eq]) delete room.pecasEq[eq]; if (!Object.keys(room.montagens).length) delete room.montagens; };
@@ -466,9 +478,10 @@ module.exports = function attachCorrida(io) {
     socket.on("create", (data = {}, cb) => {
       const name = cleanName(data.name);
       if (!name) return fail(cb, "Coloque o seu nome.");
-      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config || CONFIG_SALA_NOVA), players: {}, order: [], finishOrder: [], log: [], t: Date.now() };
+      const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config || CONFIG_SALA_NOVA), players: {}, order: [], finishOrder: [], log: [], t: Date.now(), ...(data.config ? {} : { salaNova: true }) };
       rooms.set(room.code, room);
       const p = addPlayer(room, name, data.skin);
+      if (room.salaNova && room.config.regras === "f1") entrarNaEquipe(room, p);
       room.host = p.id;
       bind(room, p.id);
       log(room, `Box aberto por ${name}.`);
@@ -491,6 +504,7 @@ module.exports = function attachCorrida(io) {
       if (room.order.length >= MAX_PLAYERS) return fail(cb, `A sala já tem ${MAX_PLAYERS} pilotos. Você pode entrar para assistir.`);
       if (nomeEmUso(room, name)) return fail(cb, "Já tem alguém com esse nome na sala.");
       const p = addPlayer(room, name, data.skin);
+      if (room.salaNova && room.config.regras === "f1") entrarNaEquipe(room, p); // quem chega numa sala nova também já entra com uma equipe livre
       bind(room, p.id);
       log(room, `${name} chegou ao box.`);
       ok(cb, { code: room.code, id: p.id, token: p.token });
