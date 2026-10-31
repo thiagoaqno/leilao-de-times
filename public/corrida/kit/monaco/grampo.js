@@ -1,43 +1,32 @@
 // Mônaco — o grampo do Fairmont (curva 6), na foto de referência: o canteiro redondo de pedra com palmeiras e arbustos e os postes de rua verdes de estilo antigo. No jogo as duas pernas do U se tocam
 // (a pista é bem mais larga que a de verdade), então o miolo do U não existe: o canteiro fica no ponto livre mais perto do ápice, atrás da barreira, e nada dele entra na pista. Duas malhas só.
 import * as THREE from "three";
-import { D, fundoMonaco } from "./mundo.js";
+import { D } from "./mundo.js";
 
 const cor = (g, c) => { const k = new THREE.Color(c), n = g.attributes.position.count, v = []; for (let i = 0; i < n; i++) v.push(k.r, k.g, k.b); g.setAttribute("color", new THREE.Float32BufferAttribute(v, 3)); return g.index ? g.toNonIndexed() : g; };
 const junta = (gs) => { const pos = [], nor = [], col = []; for (const g of gs) { pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array); col.push(...g.attributes.color.array); } const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); return g; };
 
 export function grampoMonaco(tr, add, hAt, predioEm) {
   const { pts, n } = tr, L = tr.wallLat, ap = pts[Math.floor(D.frac.curvas.hairpin * n)];
-  // o miolo do U: o centro de curvatura do ponto mais fechado do grampo. A curva foi aberta em pistas.js (raio ~57) para sobrar, por dentro do asfalto, um círculo livre de uns 15 de raio: o canteiro cabe ali
-  let bi = Math.floor(D.frac.curvas.hairpin * n), bk = 0;
-  for (let i = bi - 40; i < bi + 40; i++) { const k = Math.abs(pts[(i + n) % n].k); if (k > bk) { bk = k; bi = (i + n) % n; } }
-  const p0 = pts[bi], q0 = pts[(bi + 3) % n], sg = p0.tx * q0.ty - p0.ty * q0.tx > 0 ? 1 : -1, cx = p0.x + p0.nx * sg / bk, cz = p0.y + p0.ny * sg / bk;
-  const livre = tr.distAt(cx, cz) - tr.W / 2; // folga do círculo até a borda do asfalto
+  // O miolo do U: o obstáculo sólido declarado na pista (pistas.js `obstaculosDaPista`, a MESMA conta que a física usa em sim.js e fisica.js): o canteiro fica ACIMA do asfalto (o chão a 2,4 e o meio-fio a 3,0
+  // acima da pista mais baixa em volta, ~0,7 a 0,9 m) e tem colisão: o carro bate nele como num muro. A saia de pedra desce 30 abaixo, sem ver por baixo.
+  const ob = (tr.obstaculos || [])[0];
   let canteiro = 0, melhor = null;
-  const raio = Math.min(12, livre - 3.6);
-  if (raio >= 8) {
-    melhor = { x: cx, z: cz };
-    // O miolo do U fica entre duas pernas de alturas diferentes (até 12 de diferença): o chão do canteiro segue as pistas (média ponderada pela distância, um pouco abaixo delas), de modo que não há
-    // buraco nem degrau entre a perna de baixo e a de cima; a borda de pedra e a zebra acompanham esse chão, e uma saia de pedra desce de cada setor até bem abaixo (sem ver por baixo).
-    const vizinhas = pts.filter((q) => (q.x - cx) ** 2 + (q.y - cz) ** 2 < 130 * 130);
-    const baixa = Math.min(...vizinhas.map((q) => q.h));
-    const alt = (x, z) => { let sw = 0, sh = 0; for (const q of vizinhas) { const d2 = Math.max(100, (q.x - x) ** 2 + (q.y - z) ** 2); const w = 1 / (d2 * d2); sw += w; sh += w * q.h; } return Math.min(sh / sw - 2, baixa + 1.2); }; // (nunca mais de 1,2 acima da perna mais baixa: o canteiro não pode passar de ~2 m sobre a pista de nenhuma das duas pernas)
-    const y0 = alt(cx, cz), gs = [], SEC = 24, RA = 5; // y0: a altura do chão no centro
-    // o chão: um disco em anéis (RA) e setores (SEC), com a altura de cada vértice
-    { const pos = [], idx = []; pos.push(0, alt(cx, cz) - y0, 0); for (let r = 1; r <= RA; r++) for (let k = 0; k < SEC; k++) { const an = (k / SEC) * Math.PI * 2, d = (raio - 0.6) * (r / RA), x = Math.cos(an) * d, z = Math.sin(an) * d; pos.push(x, alt(cx + x, cz + z) - y0, z); }
-      for (let k = 0; k < SEC; k++) idx.push(0, 1 + k, 1 + ((k + 1) % SEC)); for (let r = 1; r < RA; r++) for (let k = 0; k < SEC; k++) { const a0 = 1 + (r - 1) * SEC + k, a1 = 1 + (r - 1) * SEC + ((k + 1) % SEC), b0 = 1 + r * SEC + k, b1 = 1 + r * SEC + ((k + 1) % SEC); idx.push(a0, b0, a1, a1, b0, b1); }
-      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); gs.push(cor(g, "#4f7a3d")); }
-    for (let k = 0; k < SEC; k++) { // a borda: cada setor sobe do fundo até a altura do chão naquele ponto, com a zebra por cima
-      const a0 = (k / SEC) * Math.PI * 2, a1 = ((k + 1) / SEC) * Math.PI * 2, am = (a0 + a1) / 2, hb = alt(cx + Math.cos(am) * raio, cz + Math.sin(am) * raio) - y0;
-      const col = new THREE.CylinderGeometry(raio + 0.6, raio + 0.6, 30 + hb, 1, 1, false, Math.PI / 2 - a1, a1 - a0); col.translate(0, hb - (30 + hb) / 2 + 0.7, 0); gs.push(cor(col, "#b9b2a3"));
-      const g = new THREE.RingGeometry(raio, raio + 1.5, 1, 1, a0, a1 - a0); g.rotateX(-Math.PI / 2); g.translate(0, hb + 0.75, 0); const gg = g.index ? g.toNonIndexed() : g; gs.push(cor(gg, k % 2 ? "#f4f4f0" : "#d62828")); // a zebra vermelha e branca por dentro
+  if (ob) {
+    const cx = ob.x, cz = ob.y, raio = ob.raio; melhor = { x: cx, z: cz };
+    const yc = ob.z + 2.4, yb = ob.z + ob.alt, gs = [], SEC = 24; // yc: o chão do canteiro; yb: o topo do meio-fio
+    { const g = new THREE.CircleGeometry(raio - 0.4, 24); g.rotateX(-Math.PI / 2); g.translate(0, yc, 0); gs.push(cor(g.index ? g.toNonIndexed() : g, "#4f7a3d")); } // a terra e a grama em cima
+    const col = new THREE.CylinderGeometry(raio + 0.6, raio + 0.6, 30 + (yb - ob.z), 24, 1, false); col.translate(0, yb - (30 + (yb - ob.z)) / 2, 0); gs.push(cor(col, "#b9b2a3")); // o meio-fio de pedra, do fundo até o topo
+    { const topo = new THREE.RingGeometry(raio - 0.4, raio + 0.6, 24, 1); topo.rotateX(-Math.PI / 2); topo.translate(0, yb + 0.05, 0); gs.push(cor(topo.index ? topo.toNonIndexed() : topo, "#c9c3b6")); }
+    for (let k = 0; k < SEC; k++) { // a zebra vermelha e branca na borda externa do meio-fio
+      const a0 = (k / SEC) * Math.PI * 2, a1 = ((k + 1) / SEC) * Math.PI * 2, g = new THREE.RingGeometry(raio + 0.6, raio + 1.5, 1, 1, a0, a1 - a0); g.rotateX(-Math.PI / 2); g.translate(0, ob.z + 0.7, 0); gs.push(cor(g.index ? g.toNonIndexed() : g, k % 2 ? "#f4f4f0" : "#d62828"));
     }
-    for (const [px, pz, h] of [[-2.5, 1, 50], [3, -2.5, 46]]) { // as duas palmeiras
-      const t = new THREE.CylinderGeometry(1, 1.5, h, 6); t.translate(px, h / 2 - 0.5, pz); gs.push(cor(t, "#7a5e3f"));
-      const c1 = new THREE.ConeGeometry(14, 7, 8, 1, true); c1.translate(px, h + 1, pz); gs.push(cor(c1, "#2f7d38")); const c2 = new THREE.ConeGeometry(7.5, 5, 7, 1, true); c2.translate(px, h + 4.5, pz); gs.push(cor(c2, "#3f9a46"));
+    for (const [px, pz, h] of [[-2.5, 1, 50], [3, -2.5, 46]]) { // as duas palmeiras, plantadas no chão do canteiro
+      const t = new THREE.CylinderGeometry(1, 1.5, h, 6); t.translate(px, yc + h / 2 - 0.5, pz); gs.push(cor(t, "#7a5e3f"));
+      const c1 = new THREE.ConeGeometry(14, 7, 8, 1, true); c1.translate(px, yc + h + 1, pz); gs.push(cor(c1, "#2f7d38")); const c2 = new THREE.ConeGeometry(7.5, 5, 7, 1, true); c2.translate(px, yc + h + 4.5, pz); gs.push(cor(c2, "#3f9a46"));
     }
-    for (const [px, pz, rr, c] of [[5, 4, 3, "#3a8a3a"], [-6, -2.5, 3.4, "#2f7d38"], [0.5, 6, 2.6, "#48a048"], [-4, 5, 2.8, "#2f7d38"]]) { const bsh = new THREE.IcosahedronGeometry(rr, 0); bsh.translate(px, rr * 0.5 - 0.2, pz); gs.push(cor(bsh, c)); } // os arbustos
-    const m = add(new THREE.Mesh(junta(gs), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }))); m.position.set(cx, y0, cz); m.name = "monaco-canteiro"; m.castShadow = false;
+    for (const [px, pz, rr, c] of [[5, 4, 3, "#3a8a3a"], [-6, -2.5, 3.4, "#2f7d38"], [0.5, 6, 2.6, "#48a048"], [-4, 5, 2.8, "#2f7d38"]]) { const bsh = new THREE.IcosahedronGeometry(rr, 0); bsh.translate(px, yc + rr * 0.5 - 0.2, pz); gs.push(cor(bsh, c)); } // os arbustos
+    const m = add(new THREE.Mesh(junta(gs), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }))); m.position.set(cx, 0, cz); m.name = "monaco-canteiro"; m.castShadow = false; m.userData.obstaculo = true; // (sólido declarado na física: fora da checagem de invasão)
     (tr.reservado ||= []).push([cx, cz, 26]); canteiro = 1;
   }
   // os postes de rua verdes, de estilo antigo, em volta do grampo (fora do muro, sem prédio)

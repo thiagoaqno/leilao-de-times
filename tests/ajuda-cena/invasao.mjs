@@ -33,7 +33,7 @@ export function invasoes(THREE, tr, { folga = 10, altMin = 2.2, altMax = 24, ign
   };
   tr.grp.updateMatrixWorld(true);
   tr.grp.traverse((o) => {
-    if (!o.isMesh || !o.geometry || FITAS.test(o.name) || ignorar(o)) return;
+    if (!o.isMesh || !o.geometry || FITAS.test(o.name) || o.userData.obstaculo || ignorar(o)) return; // (userData.obstaculo: sólido declarado na física da pista, como o canteiro do grampo de Mônaco: o carro bate nele)
     for (let p = o.parent; p && p !== tr.grp; p = p.parent) if (/-balizador$/.test(p.name)) return; // os balizadores leves das pistas antigas ficam dentro da pista de propósito
     const g = o.geometry, pos = g.attributes.position;
     if (o.isInstancedMesh) {

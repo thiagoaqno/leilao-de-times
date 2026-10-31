@@ -75,6 +75,7 @@ export function buildTrack(id) {
   for (const p of pts) { p.nx = -p.ty; p.ny = p.tx; }
   const mini = document.createElement("canvas"); mini.width = mini.height = 240; drawPreview(mini, id);
   const tr = { id, t, pts, n, W, look: LOOK[id], theme: THEMES[id], mini, wallLat: t.walls ? W / 2 + t.wall : Infinity, grp: new THREE.Group() };
+  tr.obstaculos = window.Pistas.obstaculosDaPista(t, pts); // sólidos da física (sim.js e fisica.js usam a mesma conta)
   if (t.superficieEscape) tr.superficiesEscape = window.Pistas.mapaSuperficies(pts, t.superficieEscape);
   if (t.escapeLivre) tr.murosEscape = window.Pistas.murosDoEscape(pts, W, tr.superficiesEscape, t);
   // grade de distância até a pista (para o relevo e para espalhar enfeites sem cair na pista)

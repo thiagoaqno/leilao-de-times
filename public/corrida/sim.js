@@ -26,6 +26,7 @@ function criarPista(t, id) {
   for (const p of pts) { p.nx = -p.ty; p.ny = p.tx; }
   const tr = { id, t, pts, n, W, wallLat: t.walls ? W / 2 + t.wall : Infinity, pneus: new Int8Array(n) };
   if (t.superficieEscape) tr.superficiesEscape = P.mapaSuperficies(pts, t.superficieEscape);
+  tr.obstaculos = P.obstaculosDaPista(t, pts); // os obstáculos sólidos da pista (o canteiro do grampo de Mônaco), os mesmos do navegador e do servidor
   if (t.escapeLivre) tr.murosEscape = P.murosDoEscape(pts, W, tr.superficiesEscape, t);
   if (!t.espaco && !t.muro && !t.escapeLivre) { // barreiras de pneus: do lado de fora das curvas fechadas (o mesmo cálculo de pista.js)
     for (let i = 0; i < n; i++) {
@@ -211,6 +212,18 @@ function passo(c, ent, amb, tr, ev) {
     c.vx *= pancada * raspa; c.vy *= pancada * raspa;
     const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca;
     if (vn > 0 && ev) { if (hit > 60) ev.push({ t: "bump", forca: hit }); ev.push({ t: "muro", forca: hit }); }
+  }
+  // os obstáculos sólidos (círculos com meio-fio): o carro não entra; bate como no muro. O canteiro bloqueia o carro também quando ele tenta passar por cima.
+  for (const o of tr.obstaculos) {
+    const dx = nx - o.x, dy = ny - o.y, d = Math.hypot(dx, dy) || 1, R = o.r + 11;
+    if (d >= R) continue;
+    const ux = dx / d, uy = dy / d, contra = -(c.vx * ux + c.vy * uy), hit = Math.abs(contra);
+    nx = o.x + ux * R; ny = o.y + uy * R;
+    if (contra > 0) { c.vx += ux * contra * 1.2; c.vy += uy * contra * 1.2; }
+    const pancada = 1 - (1 - spec.wall) * 0.5 * ALIVIO * Math.min(1, hit / 260) * (contra > 0 ? 1 : 0), raspa = Math.exp(-(1 - spec.wall) * 0.7 * dt);
+    c.vx *= pancada * raspa; c.vy *= pancada * raspa;
+    const ca = Math.cos(c.a), sa = Math.sin(c.a); c.v = c.vx * ca + c.vy * sa; c.vl = -c.vx * sa + c.vy * ca;
+    if (contra > 0 && ev) { if (hit > 60) ev.push({ t: "bump", forca: hit }); ev.push({ t: "muro", forca: hit }); }
   }
   // a mureta do corredor dos boxes é de verdade: quem não vai parar fica na pista
   if (c.box && !c.box.fase && tr.mostrarBoxes !== false) {
