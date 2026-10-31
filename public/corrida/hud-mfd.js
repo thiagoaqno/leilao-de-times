@@ -123,13 +123,16 @@ function donoDaVoltaRapida(jogadores) {
 // Os intervalos para o carro da frente e o de trás, em segundos. `carros`: na ordem da corrida, [{ id, prog, v, dnf }];
 // `esc` as unidades de pista por índice; a diferença é a distância dividida pela velocidade de quem vem atrás (o mesmo
 // critério da torre): para o da frente, a minha velocidade; para o de trás, a dele.
-function intervalos(carros, meuId, esc, vMin = 22) {
+function intervalos(carros, meuId, esc, vMin = 22, cron = null, agora = 0) {
   const i = carros.findIndex((c) => c.id === meuId); if (i < 0) return { frente: null, tras: null };
   const eu = carros[i], f = carros.slice(0, i).reverse().find((c) => !c.dnf), t = carros.slice(i + 1).find((c) => !c.dnf);
   const seg = (dist, v) => (v >= vMin ? Math.max(0, dist) * esc / v : null);
+  // com a cronometragem (hud-torre.js) o intervalo é o tempo medido; sem histórico, a conta antiga (distância / velocidade)
+  const medido = (idFrente, progTras) => (cron && Number.isFinite(progTras) && progTras > -1e8 ? cron.atraso(idFrente, progTras, agora) : null);
+  const valido = (c) => Number.isFinite(c.prog) && c.prog > -1e8;
   return {
-    frente: f ? { id: f.id, seg: seg(f.prog - eu.prog, eu.v) } : null,
-    tras: t ? { id: t.id, seg: seg(eu.prog - t.prog, t.v) } : null,
+    frente: f && valido(f) ? { id: f.id, seg: medido(f.id, eu.prog) ?? seg(f.prog - eu.prog, eu.v) } : null,
+    tras: t && valido(t) ? { id: t.id, seg: medido(eu.id, t.prog) ?? seg(eu.prog - t.prog, t.v) } : null,
   };
 }
 

@@ -245,6 +245,18 @@
         </div>
       </div>
     </div>
+
+    <div class="sn-sobre hidden" id="snSobre" role="dialog" aria-modal="true" aria-labelledby="sobreTit">
+      <div class="sn-sobre-foto" id="sobreFoto" aria-hidden="true"></div>
+      <div class="sn-sobre-grad" aria-hidden="true"></div>
+      <button class="sn-sobre-x" id="sobreFechar" data-sobre-fechar aria-label="Fechar (Esc ou B)">✕</button>
+      <div class="sn-sobre-corpo" id="sobreCorpo"></div>
+      <footer class="sn-sobre-pe">
+        <button class="sn-sobre-nav" id="sobreAnt" data-sobre-pista="-1"><i aria-hidden="true">‹</i><span><small></small><b>GP anterior</b></span></button>
+        <small class="sn-sobre-cred" id="sobreCred"></small>
+        <button class="sn-sobre-nav prox" id="sobreProx" data-sobre-pista="1"><span><small></small><b>Próximo GP</b></span><i aria-hidden="true">›</i></button>
+      </footer>
+    </div>
   </section>
 </div>
 
@@ -281,6 +293,8 @@
 <script src="/comum.js"></script>
 <script src="/corrida/logos/index.js"></script>
 <script src="/corrida/pistas.js"></script>
+<script src="/corrida/gp-fotos/creditos.js"></script>
+<script src="/corrida/gp-info.js"></script>
 <script src="/corrida/f1-regras.js"></script>
 <script src="/corrida/previsao.js"></script>
 <script src="/corrida/dinamica.js"></script>

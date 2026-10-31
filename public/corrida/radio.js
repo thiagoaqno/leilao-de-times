@@ -1,5 +1,5 @@
 // Corrida da Galera — o engenheiro de equipe no rádio. Script comum (window.Radio) usado na garagem, na temporada e na corrida.
-// Toca radio/<id>.mp3 (gerado por gerar-radio.bat); sem o arquivo, não toca nada (sem texto na tela e sem erro). O botão do fone liga e
+// Toca radio/<id>.mp3 (gerado por GERAR-VOZES-CORRIDA.bat); sem o arquivo, não toca nada (sem texto na tela e sem erro). O botão do fone liga e
 // desliga a voz (store `corrida:radio`), sem mexer no som geral; sem legenda. A voz passa por um filtro de rádio
 // (passa-faixa de 300 a 3000 Hz, com chiado e um clique antes e depois) e pelo volume geral (`master` de sons.js).
 (function (root) {

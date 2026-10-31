@@ -225,7 +225,7 @@ function inclinacao(tr, x, y, a, idx, L, W, vz, noAr, v) {
   return { pitch: Math.atan2(frente - tras, L), roll: Math.atan2(dir - esq, W) };
 }
 const fxDe = (p, now, extra = {}) => { const bala = !!(p && p.balaUntil > now) || !!extra.bala;
-  return { f1: race.tr.id === "interlagos" || race.tr.id === "monaco" || race.tr.id === "barcelona" || race.tr.id === "silverstone" || race.tr.id === "monza" || !!race.tr.t.f1, zebra: !!extra.zebra, turbo: !!(p && p.boostUntil > now) || !!extra.turbo, estrela: !!(p && p.starUntil > now), rodando: !bala && (!!(p && (p.spinUntil > now || race.atingidos?.[p.id] > now)) || !!extra.rodando), derrapa: extra.derrapa || 0, pneu: extra.pneu !== undefined ? extra.pneu : race.pneu && p ? p.pneuAtual || p.pneu || null : null,
+  return { f1: race.tr.id === "interlagos" || race.tr.id === "monaco" || race.tr.id === "barcelona" || race.tr.id === "silverstone" || race.tr.id === "monza" || !!race.tr.t.f1, zebra: !!extra.zebra, turbo: !!(p && p.boostUntil > now) || !!extra.turbo, estrela: !!(p && p.starUntil > now), rodando: !bala && (!!(p && (p.spinUntil > now || race.atingidos?.[p.id] > now)) || !!extra.rodando), derrapa: extra.derrapa || 0, drs: extra.drs !== undefined ? extra.drs : !!(p && p.drsZona >= 0), pneu: extra.pneu !== undefined ? extra.pneu : race.pneu && p ? p.pneuAtual || p.pneu || null : null,
     pequeno: !bala && !!(p && p.shrinkUntil > now), bala }; };
 // câmera atrás do kart (quem só assiste segue o primeiro colocado)
 function draw(dt) {
@@ -237,7 +237,7 @@ function draw(dt) {
     const spec = CARS3[me()?.car] || CARS3.equilibrado, inc = inclinacao(tr, c.x, c.y, c.a, race.idx, spec.L * KS, spec.W * KS, c.vz, c.air, c.v);
     race.pitch = inc.pitch;
     const turbo = race.boostUntil > now || race.sling > 0, rodando = race.spinUntil > now, bala = race.balaUntil > now;
-    poseKart(race.kart, c.x, c.y, c.z, c.a + (race.net ? 0 : slide * 0.25), c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { turbo, rodando, bala, pneu: race.pneu ? race.pneu.composto : null, zebra: (!tr.zebras || !!tr.zebras[race.idx]) && Math.abs(Math.abs((c.x - tr.pts[race.idx].x) * tr.pts[race.idx].nx + (c.y - tr.pts[race.idx].y) * tr.pts[race.idx].ny) - tr.W / 2) < 9, derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
+    poseKart(race.kart, c.x, c.y, c.z, c.a + (race.net ? 0 : slide * 0.25), c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { drs: !!race.drsAtivo, turbo, rodando, bala, pneu: race.pneu ? race.pneu.composto : null, zebra: (!tr.zebras || !!tr.zebras[race.idx]) && Math.abs(Math.abs((c.x - tr.pts[race.idx].x) * tr.pts[race.idx].nx + (c.y - tr.pts[race.idx].y) * tr.pts[race.idx].ny) - tr.W / 2) < 9, derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
     // derrapagem: fumaça branca saindo dos pneus de trás, mais grossa quanto mais o carro escorrega
     if (c.slip > 40 && !c.air) { const forte = Math.min(1, (c.slip - 40) / 120); for (const s of [-1, 1]) if (Math.random() < 0.55 + forte * 0.45) puff(c.x - Math.cos(c.a) * 15 + -Math.sin(c.a) * s * 9, c.z + 3, c.y - Math.sin(c.a) * 15 + Math.cos(c.a) * s * 9, "#eeeeee", 3.2 + forte * 3, 0.8 + forte * 0.6, 1.7, 0.3 + forte * 0.22); }
     if (race.offroad && Math.random() < 0.5) puff(c.x - Math.cos(c.a) * 18, c.z + 2, c.y - Math.sin(c.a) * 18, tr.id === "interlagos" ? "#b39c66" : "#9a9a9a", 2.5);
