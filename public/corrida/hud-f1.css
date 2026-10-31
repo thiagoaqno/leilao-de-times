@@ -20,6 +20,8 @@
 #tLinhas{background:#0a0c12cf}
 /* as colunas têm lugar fixo (explícito): uma linha sem plaquinha não puxa as outras para o lado */
 .tl{display:grid;grid-template-columns:26px 4px minmax(0,1fr) auto 20px 58px 18px;align-items:center;column-gap:6px;height:26px;padding:0 6px 0 0;border-bottom:1px solid #ffffff10;font-size:14px;font-weight:600;position:relative;contain:layout paint}
+/* grid-row:1 é essencial: sem ele a plaquinha (coluna 4, depois do pneu na coluna 5 no HTML) volta uma linha e leva a diferença junto para uma segunda linha escondida pela altura da linha: o intervalo sumia para todos */
+.tl>*{grid-row:1}
 .tl>.n{grid-column:1}.tl>.eq{grid-column:2}.tl>.sg{grid-column:3}.tl>.ic{grid-column:4}.tl>.pn{grid-column:5}.tl>.df{grid-column:6}.tl>.vrx{grid-column:7}
 .tl.hidden{display:none}
 .tl .n{justify-self:stretch;height:100%;display:grid;place-items:center;background:#ffffff1a;font-size:13px;font-weight:700}
