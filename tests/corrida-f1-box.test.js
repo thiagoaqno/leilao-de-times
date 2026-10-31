@@ -163,7 +163,7 @@ test("sala: quem corre com um composto só leva +10 s e perde a vitória para qu
   const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
   return (async () => {
     const { socket, chamar, estado, internos } = salaDeMentira(), ana = socket(), beto = socket(), caio = socket();
-    const criou = await chamar(ana, "create", { name: "Ana", config: { pista: "interlagos", voltas: 2, regras: "f1", classificacao: "pular" } });
+    const criou = await chamar(ana, "create", { name: "Ana", config: { pista: "interlagos", voltas: 2, regras: "f1", classificacao: "pular", clima: "seco" } });
     await chamar(beto, "join", { code: criou.code, name: "Beto" }); await chamar(caio, "join", { code: criou.code, name: "Caio" });
     const act = (s, dados) => chamar(s, "act", dados);
     // o navegador não manda mais checkpoint, box nem batida: o servidor ignora (a física dele é que conta)
@@ -178,7 +178,7 @@ test("sala: quem corre com um composto só leva +10 s e perde a vitória para qu
     for (const nome of ["Ana", "Beto", "Caio"]) internos.onSector(room, jogador(nome), 0, relogio); // a largada
     // o Beto e o Caio param nos boxes na volta 1 (o tempo no corredor é o da física: aqui, o do Caio é rápido demais)
     internos.concluirParada(room, jogador("Caio"), { composto: "duro", tempo: 4, volta: 1 }); // 4 s: rápido demais
-    internos.concluirParada(room, jogador("Beto"), { composto: "chuva", tempo: 23, volta: 1 }); // composto que não existe: não vale
+    internos.concluirParada(room, jogador("Beto"), { composto: "inexistente", tempo: 23, volta: 1 }); // composto que não existe: não vale
     assert.equal((jogador("Beto").paradas || []).length, 0);
     internos.concluirParada(room, jogador("Beto"), { composto: "duro", tempo: 23, volta: 1 }); // 23 s: certo
     relogio += 26000;
