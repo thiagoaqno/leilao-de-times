@@ -12,7 +12,7 @@ test('MFD na corrida', async ({page}, info) => {
  await expect(page.locator('[data-r="pNome"]')).toHaveText('Médio');
  await expect(page.locator('[data-r="pVidaT"]')).toHaveText(/%/);
  await expect(page.locator('[data-r="pTempT"]')).toHaveText(/Frio|Ideal|Quente/);
- await page.keyboard.press('KeyM'); await expect(page.locator('#hMfd .mfd-pg[data-pg="danos"]')).toBeVisible();
+ await page.keyboard.press('KeyM'); await expect(page.locator('#hMfd .mfd-pg[data-pg="box"]')).toBeVisible(); // (Box fica logo ao lado de Pneus)
  await page.keyboard.press('KeyN'); await expect(page.locator('#hMfd .mfd-pg[data-pg="pneus"]')).toBeVisible();
  // B pede o box e mostra a página de estratégia, sem capturar as setas de direção.
  await page.locator('#hMfd .mfd-x').click();

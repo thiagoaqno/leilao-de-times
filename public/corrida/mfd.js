@@ -10,6 +10,7 @@ import { race } from "./jogo.js";
 import { alternarPedido, escolherComposto, cancelarPedido, jogosDe, textoJogos } from "./box.js";
 import { set } from "./hud-painel.js";
 import { acoesDaTecla, teclasDe, nomeDaTecla, nomeDoBotao, botoesDe, ui } from "./teclas.js";
+import { clima } from "./clima.js";
 
 const M = () => window.HudMfd, F = () => window.F1Regras;
 export const mfd = { aberto: true, pagina: "pneus", lista: [], linha: {}, ultimo: 0, entrada: "teclado" };
@@ -117,7 +118,7 @@ export function montarMfd() {
   raiz = $("hMfd"); if (!raiz) return;
   mfd.aberto = lerAberto(); mexeu(); // (a contagem dos 3 s começa agora)
   raiz.innerHTML = `<div class="mfd-topo"><b class="mfd-nome" data-r="nome">PNEUS</b><div class="mfd-abas" data-r="abas" role="tablist"></div><button class="mfd-x" data-r="fechar" aria-label="Fechar o MFD" title="Fechar o MFD">▾</button></div>
-    <div class="mfd-corpo">${Object.entries(HTML).map(([id, h]) => `<section class="mfd-pg" data-pg="${id}" hidden>${h}</section>`).join("")}</div>
+    <div class="mfd-sug" data-r="sug" hidden role="alert"><small>BOX SUGERIDO</small><div class="sg-linha"><b class="mp-bola" data-r="sgLetra">M</b><strong data-r="sgNome">Médio</strong><span class="sg-cont" data-r="sgCont">10</span></div><em data-r="sgMotivo"></em><p class="sg-dica" data-r="sgDica"></p><i class="sg-barra"><s data-r="sgBarra"></s></i></div><div class="mfd-corpo">${Object.entries(HTML).map(([id, h]) => `<section class="mfd-pg" data-pg="${id}" hidden>${h}</section>`).join("")}</div>
     <div class="mfd-dicas" data-r="dicas"></div>`;
   const q = (sel, ctx = raiz) => ctx.querySelector(sel);
   refs.mfd = {}; for (const el of raiz.querySelectorAll("[data-r]")) refs.mfd[el.dataset.r] = el;
@@ -187,7 +188,7 @@ function acao(id) {
     if (id === "mfdLinhaMenos") linhaMover(-1); else if (id === "mfdLinhaMais") linhaMover(1); else valorMudar(id === "mfdValorMenos" ? -1 : 1);
     mexeu(); return true;
   }
-  if (id === "confirmar") { if (naPaginaBox() && !race.box.fase) { alternarBox(); mexeu(); atualizarLinhas(); return true; } return false; }
+  if (id === "confirmar") { if (confirmarSugestao()) return true; if (naPaginaBox() && !race.box.fase) { alternarBox(); mexeu(); atualizarLinhas(); return true; } return false; }
   return false;
 }
 // teclado: devolve true se a tecla é do MFD (controles.js então não a trata como pilotagem)
@@ -231,9 +232,45 @@ function listaDePaginas(ctx) {
     refs.mfd.abas.innerHTML = lista.map((id, i) => `<button type="button" role="tab" data-pg="${id}" title="${M().nomeDaPagina(id)}" aria-label="${M().nomeDaPagina(id)}">${icone(id)}</button>`).join("");
   }
 }
+// ---------- a sugestão de box (estrategia-box.js decide; aqui só aparece o cartão) ----------
+// Quando a hora chega (a 1 volta da janela, pneu no fim, chuva chegando ou parando, falta o 2º composto, stop-and-go no prazo) o MFD abre sozinho com
+// "BOX SUGERIDO: <composto>" e 10 s de contagem; Enter (ou A, ou o botão confirmar da tela Controles) pede a parada com aquele composto. Sem confirmar, some
+// e só volta se a situação mudar ou depois de uma volta (nada de spam).
+let sugEst = null, sugAtual = null, sugVisivel = false;
+function dadosDaSugestao(ctx) {
+  const m = ctx.m, B = race.box, EB = window.EstrategiaBox, F = F1U();
+  if (!EB || !m || !B || !race.pneu || E.S.phase !== "race" || m.finish != null || !m.started) return null;
+  const S = E.S, voltas = S.config.voltas, jogos = m.jogos || {};
+  const mud = S.clima && S.clima.chove && F.proximaMudanca && clima.t >= 0 ? F.proximaMudanca(S.clima, clima.t) : null;
+  const e = { F, pneu: race.pneu, voltaAtual: Math.min(voltas, (m.laps || 0) + 1), voltas, jogos, janela: ctx.janela,
+    compostosUsados: ["macio", "medio", "duro"].filter((c) => jogos[c] != null && jogos[c] < F.JOGOS_POR_COMPOSTO).length,
+    agua: clima.agua, chuva: clima.chuva, mudanca: mud, tempoVolta: m.last || m.best || 0, stopGo: m.stopGo || null, pedido: B.pedido, emBox: !!B.fase, fator: (carOf(m) || {}).desgaste || 1 };
+  return { e, EB };
+}
+function atualizarSugestao(ctx, agora) {
+  const d = dadosDaSugestao(ctx), r = d ? d.EB.gerirSugestao(sugEst, d.EB.sugerirBox(d.e), { agora, volta: d.e.voltaAtual }) : { est: sugEst, mostrar: false, restante: 0, sug: null };
+  sugEst = r.est;
+  if (r.mostrar && r.sug) {
+    if (!sugVisivel) { sugVisivel = true; abrir(true); try { if (window.Radio) window.Radio.dizer("box"); } catch (e) {} } // abre sozinho e o engenheiro fala junto
+    sugAtual = r.sug; mexeu(); // enquanto o cartão está na tela o painel não recolhe
+    const F = F1U(), tipo = F.PNEUS[r.sug.composto], R = refs.mfd;
+    R.sug.hidden = false; set(R.sgLetra, "t", window.HudTorre.LETRA[r.sug.composto] || "M"); set(R.sgLetra, "style", `--c:${tipo.cor}`); set(R.sgNome, "t", tipo.nome.toUpperCase());
+    set(R.sgMotivo, "t", r.sug.motivo + (r.sug.stopGo && ctx.m && ctx.m.stopGo ? " · cumpre o stop-and-go junto" : ""));
+    set(R.sgCont, "t", Math.ceil(r.restante / 1000)); set(R.sgBarra, "w", Math.round((r.restante / 10000) * 100) + "%");
+    const k = teclasDe("confirmar")[0], b = botoesDe("confirmar")[0];
+    set(R.sgDica, "t", [k ? nomeDaTecla(k) : "", b != null ? nomeDoBotao(b) + " no controle" : ""].filter(Boolean).join(" · ") + " confirma");
+  } else if (sugVisivel) { sugVisivel = false; sugAtual = null; if (refs.mfd && refs.mfd.sug) refs.mfd.sug.hidden = true; }
+}
+// Enter / A / o botão confirmar: pede o box com o composto sugerido (o box.js cuida do stop-and-go junto) e marca a sugestão como atendida
+function confirmarSugestao() {
+  if (!sugVisivel || !sugAtual || !race.box || race.box.fase) return false;
+  const c = sugAtual.composto; sugVisivel = false; sugAtual = null; if (refs.mfd && refs.mfd.sug) refs.mfd.sug.hidden = true;
+  escolherComposto(c); abrirBoxMfd(); mexeu(); return true;
+}
 export function atualizarMfd(ctx) {
   if (!raiz) return;
   const t = performance.now();
+  atualizarSugestao(ctx, t);
   if (mfd.aberto && t - mfd.ultimo > RECOLHE_MS) abrir(false, false);
   { const bt = $("bMfd"), B = race.box, rot = bt && bt.querySelector("span"); if (rot) set(rot, "t", B && B.pedido && !B.fase ? "BOX " + F1U().PNEUS[B.pedido].nome.toUpperCase() : B && B.fase ? "NO BOX" : "MFD"); if (bt) set(bt, "c", "mfd-botao" + (B && (B.pedido || B.fase) ? " pedido" : "")); } // fechado, o pedido de box segue à vista no botão
   raiz.dataset.entrada = mfd.entrada;

@@ -260,3 +260,17 @@
 @media (pointer:coarse),(max-width:700px){@keyframes mfdDesce{from{transform:translateX(-50%)}to{transform:translateX(-50%) translateY(28px);opacity:0}}}
 #race.f1hud .mfd-botao.pedido{color:#0a0c12;background:#ffd23f;border-color:#ffd23f}
 @media (prefers-reduced-motion:reduce){#race.f1hud #hMfd.descendo{animation:none}}
+
+/* a sugestão de box: um cartão por cima do painel, com a contagem de 10 s */
+.mfd-sug{position:absolute;left:0;right:0;top:32px;bottom:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 14px;background:#0b0d13f5;border-top:3px solid #ffd23f}
+.mfd-sug[hidden]{display:none}
+.mfd-sug small{font-size:13px;font-weight:700;letter-spacing:.18em;color:#ffd23f}
+.sg-linha{display:flex;align-items:center;gap:12px}
+.sg-linha strong{flex:1;font-size:34px;font-weight:700;line-height:1;letter-spacing:.04em}
+.sg-linha .mp-bola{width:38px;height:38px;font-size:20px}
+.sg-cont{display:grid;place-items:center;width:42px;height:42px;font-size:24px;font-weight:700;border:3px solid #ffd23f;border-radius:50%;font-variant-numeric:tabular-nums}
+.mfd-sug em{font-style:normal;font-size:16px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff}
+.sg-dica{margin:0;font-size:13px;color:#ffffffb8}
+.sg-barra{display:block;height:4px;background:#ffffff24}
+.sg-barra s{display:block;height:100%;width:100%;background:#ffd23f;text-decoration:none;transition:width .1s linear}
+@media (prefers-reduced-motion:reduce){.sg-barra s{transition:none}}

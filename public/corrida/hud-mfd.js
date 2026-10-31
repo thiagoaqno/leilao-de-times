@@ -5,9 +5,9 @@
 // As páginas do MFD, na ordem em que aparecem. `quando(ctx)` diz se a página tem dado nesta corrida: página sem dado não aparece.
 const PAGINAS = [
   { id: "pneus", nome: "PNEUS", quando: (c) => !!c.pneu },
+  { id: "box", nome: "BOX", quando: (c) => !!c.box }, // logo ao lado de Pneus: a parada nasce do desgaste
   { id: "danos", nome: "DANOS", quando: (c) => !!c.eu },
   { id: "ers", nome: "ERS", quando: (c) => !!c.ers },
-  { id: "box", nome: "BOX", quando: (c) => !!c.box },
   { id: "tempos", nome: "TEMPOS", quando: (c) => !!c.eu },
   { id: "classificacao", nome: "CLASSIF.", quando: (c) => !!c.compacta && c.total > 0 }, // com a torre completa na tela, ela já é a classificação
   { id: "ajustes", nome: "AJUSTES", quando: () => true },
