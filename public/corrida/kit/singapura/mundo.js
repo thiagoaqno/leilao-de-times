@@ -23,11 +23,23 @@ export function poligonoDentro(P, x, z) {
   return c;
 }
 
+// o rio Singapura só vem como linha no OpenStreetMap: vira uma faixa de água (de ~27 m de largura, a boca do rio) em volta dela
+const MEIA_LARGURA_RIO = 100;
+function rioComoAnel(P) {
+  const E = [], Dd = [];
+  for (let i = 0; i < P.length; i++) {
+    const a = P[Math.max(0, i - 1)], b = P[Math.min(P.length - 1, i + 1)]; let tx = b[0] - a[0], tz = b[1] - a[1]; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
+    E.push([P[i][0] - tz * MEIA_LARGURA_RIO, P[i][1] + tx * MEIA_LARGURA_RIO]); Dd.push([P[i][0] + tz * MEIA_LARGURA_RIO, P[i][1] - tx * MEIA_LARGURA_RIO]);
+  }
+  return E.concat(Dd.reverse());
+}
+export const ANEIS = [...(D.agua || []), ...(D.rios || []).filter((r) => /Singapore River/.test(r.nome) && r.P.length >= 3).map((r) => rioComoAnel(r.P))];
+
 // ---------- a água: a distância com sinal até a margem de OpenStreetMap (positivo dentro d'água), numa grade bilinear ----------
 let sdf = null;
 const CEL = 36, MARGEM = 1600;
 function montarAgua() {
-  const aneis = D.agua || [], mundo = D.projecao.mundo, x0 = -MARGEM, N = Math.ceil((mundo + MARGEM * 2) / CEL) + 1, g = new Float32Array(N * N).fill(-1e4);
+  const aneis = ANEIS, mundo = D.projecao.mundo, x0 = -MARGEM, N = Math.ceil((mundo + MARGEM * 2) / CEL) + 1, g = new Float32Array(N * N).fill(-1e4);
   const segs = [];
   for (const P of aneis) { const caixa = [1e9, 1e9, -1e9, -1e9]; for (const [x, z] of P) { caixa[0] = Math.min(caixa[0], x); caixa[1] = Math.min(caixa[1], z); caixa[2] = Math.max(caixa[2], x); caixa[3] = Math.max(caixa[3], z); } segs.push({ P, caixa }); }
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
@@ -35,12 +47,14 @@ function montarAgua() {
     for (const { P, caixa } of segs) {
       // longe demais do anel (mais de 360) e fora da caixa dele: não pesa
       if (x < caixa[0] - 360 || x > caixa[2] + 360 || z < caixa[1] - 360 || z > caixa[3] + 360) continue;
+      let dentroDele = false;
       for (let a = 0, n = P.length; a < n; a++) {
         const [x1, z1] = P[a], [x2, z2] = P[(a + 1) % n];
-        if ((z1 > z) !== (z2 > z) && x < ((x2 - x1) * (z - z1)) / (z2 - z1) + x1) dentro = !dentro;
+        if ((z1 > z) !== (z2 > z) && x < ((x2 - x1) * (z - z1)) / (z2 - z1) + x1) dentroDele = !dentroDele;
         const dx = x2 - x1, dz = z2 - z1, l2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - x1) * dx + (z - z1) * dz) / l2)), ex = x - x1 - dx * t, ez = z - z1 - dz * t, d = ex * ex + ez * ez;
         if (d < d2) d2 = d;
       }
+      if (dentroDele) dentro = true; // a união dos anéis (a baía e a faixa do rio)
     }
     g[j * N + i] = d2 > 1e17 ? -1e4 : dentro ? Math.sqrt(d2) : -Math.sqrt(d2);
   }

@@ -36,6 +36,7 @@ function trechos(tr, lado) {
 export function barreiras(tr, add, cfg = {}) {
   const { pts, n, W } = tr, sponsors = cfg.marcas || PATROCINIO_SG, tec = cfg.tecpro || [];
   if (!tr.murosEscape) return;
+  const pintada = (i, lado) => { const f = (((i % n) + n) % n) / n; return pint.some(([a, b, l]) => f >= a && f <= b && (l === 0 || l === lado)); };
   const emTecpro = (i, lado) => { const f = (((i % n) + n) % n) / n; return tec.some(([a, b, l]) => f >= a && f <= b && (l === 0 || l === lado || l === undefined)); };
   // ---- os materiais ----
   const painel = (nome) => marcaTex(nome, 256, 64);
@@ -64,6 +65,12 @@ export function barreiras(tr, add, cfg = {}) {
   mRede.userData.semContato = true;
   const mPoste = M(0xb9bfc5, { roughness: 0.5, metalness: 0.5 });
   const asfaltoTex = canvasTex(64, 64, (x, w, hh, rr) => { x.fillStyle = "#56575c"; x.fillRect(0, 0, w, hh); for (let i = 0; i < 900; i++) { x.fillStyle = rr() < 0.5 ? "#00000016" : "#ffffff0d"; x.fillRect(rr() * w, rr() * hh, 2, 2); } });
+  const livreaTex = canvasTex(128, 256, (x, w, hh, rr) => { // o escape pintado de azul e dourado, com as listras brancas e o nome da companhia
+    x.fillStyle = "#1c2a96"; x.fillRect(0, 0, w, hh); x.fillStyle = "#f2b705"; x.fillRect(0, 0, 7, hh); x.fillRect(w - 7, 0, 7, hh); x.fillStyle = "#ffffff"; x.fillRect(11, 0, 4, hh); x.fillRect(w - 15, 0, 4, hh);
+    x.save(); x.translate(w / 2, hh / 2); x.rotate(-Math.PI / 2); x.fillStyle = "#ffffff"; x.font = "900 34px Arial"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("SINGAPORE AIRLINES", 0, 0, 220); x.restore();
+    for (let i = 0; i < 400; i++) { x.fillStyle = rr() < 0.5 ? "#00000012" : "#ffffff10"; x.fillRect(rr() * w, rr() * hh, 2, 2); }
+  });
+  const mPintura = new THREE.MeshStandardMaterial({ map: livreaTex, roughness: 0.85, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); mPintura.userData.asfalto = "zebra";
   const mAsfalto = new THREE.MeshStandardMaterial({ map: asfaltoTex, roughness: 0.92, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   mAsfalto.userData.asfalto = "zebra"; // (só escurece na chuva: o sombreador da pista é só da fita principal)
   // ---- a geometria, por material ----
@@ -87,14 +94,14 @@ export function barreiras(tr, add, cfg = {}) {
         const t = 2.6, ox = -p.nx * lado * t, oz = -p.ny * lado * t, ox0 = -ant.p.nx * lado * t, oz0 = -ant.p.ny * lado * t; // a tampa (para dentro do muro)
         quad(g(topo), { p0: [ant.f.p1[0], ant.f.p1[1], ant.f.p1[2]], p1: [ant.f.p1[0] - ox0, ant.f.p1[1], ant.f.p1[2] - oz0], u0: 0, v0: 0, u1: 0, v1: 0 }, { p0: [x, h + ALTO, z], p1: [x - ox, h + ALTO, z - oz], u0: 0, v0: 0, u1: 0, v1: 0 });
         // o asfalto entre a borda da pista e o muro (a faixa da rua que sobra), no nível da pista
-        if (rec > 8) quad(g(mAsfalto), { p0: [ant.xb, ant.h + 0.46, ant.zb], p1: [ant.f.p0[0], ant.f.p0[1] + 0.26, ant.f.p0[2]], u0: 0, v0: ant.acc / 24, u1: 1, v1: ant.acc / 24 }, { p0: [xb, h + 0.46, zb], p1: [x, h + 0.46, z], u0: 0, v0: acc / 24, u1: 1, v1: acc / 24 });
+        if (rec > 8) quad(g(pintada(q, lado) ? mPintura : mAsfalto), { p0: [ant.xb, ant.h + 0.46, ant.zb], p1: [ant.f.p0[0], ant.f.p0[1] + 0.26, ant.f.p0[2]], u0: 0, v0: ant.acc / 24, u1: 1, v1: ant.acc / 24 }, { p0: [xb, h + 0.46, zb], p1: [x, h + 0.46, z], u0: 0, v0: acc / 24, u1: 1, v1: acc / 24 });
         // a tela de detritos, inclinada para dentro no alto (o poste se curva): sobe do topo do muro até o alto do poste
         if (!tecpro || true) {
-          const lean = 9, ax = x - p.nx * lado * lean, az = z - p.ny * lado * lean, cx = ant.x - ant.p.nx * lado * lean, cz = ant.z - ant.p.ny * lado * lean;
+          const lean = 6, ax = x - p.nx * lado * lean, az = z - p.ny * lado * lean, cx = ant.x - ant.p.nx * lado * lean, cz = ant.z - ant.p.ny * lado * lean;
           quad(g(mRede), { p0: [ant.x, ant.h + ALTO, ant.z], p1: [cx, ant.h + ALTO + TELA, cz], u0: ant.acc / 48, v0: 0, u1: ant.acc / 48, v1: 1 }, { p0: [x, h + ALTO, z], p1: [ax, h + ALTO + TELA, az], u0: uT, v0: 0, u1: uT, v1: 1 });
         }
       }
-      if (acc - ultimoPoste >= 24 && ant) { ultimoPoste = acc; const lean = 9; postes.push({ x, y: h + ALTO, z, nx: p.nx * lado, nz: p.ny * lado }); bracos.push({ x: x - p.nx * lado * lean / 2, y: h + ALTO + TELA - 1, z: z - p.ny * lado * lean / 2, r: Math.atan2(-p.nx * lado, -p.ny * lado) }); }
+      if (acc - ultimoPoste >= 24 && ant) { ultimoPoste = acc; const lean = 6; postes.push({ x, y: h + ALTO, z, nx: p.nx * lado, nz: p.ny * lado }); bracos.push({ x: x - p.nx * lado * lean / 2, y: h + ALTO + TELA - 1, z: z - p.ny * lado * lean / 2, r: Math.atan2(-p.nx * lado, -p.ny * lado) }); }
       ant = { x, z, h, u, f: frente, p, mat, xb, zb, acc };
     }
     comprimento += acc;
@@ -102,7 +109,7 @@ export function barreiras(tr, add, cfg = {}) {
   for (const [mat, L] of G) {
     if (!L.idx.length) continue;
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(L.vs, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(L.uv, 2)); geo.setIndex(L.idx); geo.computeVertexNormals();
-    const m = add(new THREE.Mesh(geo, mat)); m.receiveShadow = true; m.castShadow = mat !== mRede && mat !== mAsfalto; m.name = mat === mRede ? "singapura-tela" : mat === mAsfalto ? "singapura-apron" : "singapura-muro";
+    const m = add(new THREE.Mesh(geo, mat)); m.receiveShadow = true; m.castShadow = mat !== mRede && mat !== mAsfalto && mat !== mPintura; m.name = mat === mRede ? "singapura-tela" : mat === mAsfalto || mat === mPintura ? "singapura-apron" : "singapura-muro";
     if (mat === mRede) m.userData.semContato = true;
   }
   // os postes (e a ponta curvada para dentro): InstancedMesh

@@ -4,11 +4,11 @@
 import * as THREE from "three";
 import { canvasTex, M } from "../../cena.js";
 import { soDeNoite, luzDaNoite } from "../bahrein/base.js";
-import { D, NIVEL_AGUA, distanciaDaAgua } from "./mundo.js";
+import { D, ANEIS, NIVEL_AGUA, distanciaDaAgua } from "./mundo.js";
 
 // o plano de água: cada anel vira um polígono (a água do Marina Bay é verde-azulada de dia e quase preta de noite, com a cidade refletida)
 export function agua(tr, add) {
-  const aneis = (D.agua || []).filter((P) => P.length >= 4);
+  const aneis = ANEIS.filter((P) => P.length >= 4);
   const tex = canvasTex(256, 256, (x, w, hh, rr) => {
     x.fillStyle = "#ffffff"; x.fillRect(0, 0, w, hh);
     for (let i = 0; i < 320; i++) { x.fillStyle = rr() < 0.5 ? "#00000026" : "#ffffff30"; x.fillRect(rr() * w, rr() * hh, 8 + rr() * 34, 2); }
@@ -34,7 +34,7 @@ export function agua(tr, add) {
 // o paredão da margem: uma tira vertical de concreto do fundo até a calçada (o chão do jogo desce numa rampa suave, o paredão tapa a rampa)
 export function paredoes(tr, add, { alcance = 900 } = {}) {
   const vs = [], idx = [], mat = M(0x9a9a94, { roughness: 0.95, side: THREE.DoubleSide });
-  for (const P of D.agua || []) for (let i = 0; i < P.length; i++) {
+  for (const P of ANEIS) for (let i = 0; i < P.length; i++) {
     const a = P[i], b = P[(i + 1) % P.length], l = Math.hypot(b[0] - a[0], b[1] - a[1]), passos = Math.max(1, Math.ceil(l / 28));
     for (let s = 0; s < passos; s++) {
       const t0 = s / passos, t1 = (s + 1) / passos, q = [0, 1].map((k) => { const t = k ? t1 : t0, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t; return [x, z]; });

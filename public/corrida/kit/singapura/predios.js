@@ -9,32 +9,34 @@ import { emissivoDaNoite } from "../bahrein/base.js";
 import { D, K, distanciaDaAgua, poligonoDentro } from "./mundo.js";
 
 const M_ALTURA = K * 1.0; // unidades de altura por metro de parede
-const JANELA = 3.2 * K, ANDAR = 3.7 * K; // o módulo da fachada: 3,2 m de largura e 3,7 m de altura
+const JANELA = 1.9 * K, ANDAR = 3.8 * K; // o módulo da fachada: 1,9 m de largura e 3,8 m de altura
 const CELULA = 1600;
 const PAREDES = [[0.46, 0.64, 0.82], [0.38, 0.64, 0.64], [0.3, 0.37, 0.47], [0.87, 0.87, 0.83], [0.8, 0.74, 0.62], [0.68, 0.72, 0.77], [0.72, 0.68, 0.62], [0.72, 0.82, 0.9]];
 const TERRACO = [0.46, 0.47, 0.49];
 const hash = (n) => { let h = (n * 2654435761) >>> 0; h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; return (h >>> 0) / 4294967296; };
 const area2 = (P) => { let s = 0; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; s += a[0] * b[1] - b[0] * a[1]; } return s; };
 
-// a fachada: 8 × 16 janelas. A cor de dia (vidro escuro com caixilho e laje) e o mapa das acesas (a luz que sai de cada janela de noite)
+// a fachada: 16 × 32 janelas pequenas (cortina de vidro). A cor de dia (vidro escuro com caixilho e laje) e o mapa das acesas (a luz que sai de
+// cada janela de noite: andares inteiros de escritório acesos, uns apagados, alguns tons mais frios)
 function texturas() {
-  const COLS = 8, LIN = 16, cw = 64, ch = 32;
+  const COLS = 16, LIN = 32, cw = 32, ch = 16;
   const lit = Array.from({ length: LIN }, () => Array.from({ length: COLS }, () => 0));
   let s = 77; const rr = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-  for (let a = 0; a < LIN; a++) for (let c = 0; c < COLS; c++) lit[a][c] = rr() < 0.58 ? 1 + ((rr() * 3) | 0) : 0; // o tom da luz de cada janela acesa
+  for (let a = 0; a < LIN; a++) { const andar = rr() < 0.72, tom = rr() < 0.3 ? 3 : 1 + ((rr() * 2) | 0); for (let c = 0; c < COLS; c++) lit[a][c] = (andar && rr() < 0.88) || rr() < 0.05 ? (rr() < 0.15 ? 3 : tom) : 0; }
   const dia = canvasTex(COLS * cw, LIN * ch, (x, w, h) => {
     x.fillStyle = "#ffffff"; x.fillRect(0, 0, w, h);
     for (let a = 0; a < LIN; a++) for (let c = 0; c < COLS; c++) {
-      const x0 = c * cw, y0 = a * ch, g = x.createLinearGradient(0, y0, 0, y0 + ch);
-      g.addColorStop(0, "#5e7488"); g.addColorStop(1, "#2f3c4a"); x.fillStyle = g; x.fillRect(x0 + 3, y0 + 3, cw - 6, ch - 8);
-      x.fillStyle = "#ffffff55"; x.fillRect(x0 + 4, y0 + 4, 10, ch - 10);
-      x.fillStyle = "#00000024"; x.fillRect(x0, y0 + ch - 5, cw, 5); // a laje
+      const x0 = c * cw, y0 = a * ch, g = x.createLinearGradient(0, y0, 0, y0 + ch), v = 0.9 + rr() * 0.2;
+      g.addColorStop(0, `rgb(${(110 * v) | 0},${(136 * v) | 0},${(158 * v) | 0})`); g.addColorStop(1, `rgb(${(52 * v) | 0},${(66 * v) | 0},${(82 * v) | 0})`);
+      x.fillStyle = g; x.fillRect(x0 + 1, y0 + 1, cw - 2, ch - 4);
+      x.fillStyle = "#ffffff30"; x.fillRect(x0 + 2, y0 + 2, 6, ch - 6);
+      x.fillStyle = "#0000002a"; x.fillRect(x0, y0 + ch - 3, cw, 3); // a laje
     }
   });
   const noite = canvasTex(COLS * cw, LIN * ch, (x, w, h) => {
     x.fillStyle = "#000000"; x.fillRect(0, 0, w, h);
-    const cores = ["#000000", "#ffd98e", "#fff2cf", "#b9d4ff"];
-    for (let a = 0; a < LIN; a++) for (let c = 0; c < COLS; c++) if (lit[a][c]) { x.fillStyle = cores[lit[a][c]]; x.fillRect(c * cw + 4, a * ch + 4, cw - 8, ch - 10); }
+    const cores = ["#000000", "#ffd98e", "#fff2cf", "#bcd6ff"];
+    for (let a = 0; a < LIN; a++) for (let c = 0; c < COLS; c++) if (lit[a][c]) { x.fillStyle = cores[lit[a][c]]; x.fillRect(c * cw + 2, a * ch + 2, cw - 4, ch - 7); }
   });
   return { dia, noite };
 }
@@ -90,7 +92,7 @@ export function materialFachada(tr) {
   if (tr.matFachadaSG) return tr.matFachadaSG;
   const T = texturas();
   const m = new THREE.MeshStandardMaterial({ map: T.dia, vertexColors: true, roughness: 0.55, metalness: 0.25, emissive: 0xffffff, emissiveMap: T.noite, emissiveIntensity: 0 });
-  emissivoDaNoite(tr, m, 0, 1.35);
+  emissivoDaNoite(tr, m, 0, 0.9);
   return (tr.matFachadaSG = m);
 }
 export { PAREDES, JANELA, ANDAR, M_ALTURA };
@@ -105,7 +107,7 @@ export function predios(tr, add, lista, { ignorar = (b) => b.esp } = {}) {
     let u = semente * 8;
     for (let i = 0; i < n; i++) {
       const a = P[i], c = P[(i + 1) % n], dx = c[0] - a[0], dz = c[1] - a[1], l = Math.hypot(dx, dz); if (l < 0.5) continue;
-      const nx = dz / l, nz = -dx / l, u0 = u, u1 = u + l / (JANELA * 8), v1 = (y1 - y0) / (ANDAR * 16), tx = b.dt ? b.dt[0] : 0, tz = b.dt ? b.dt[1] : 0; // `dt`: o topo desloca (a perna inclinada do Marina Bay Sands)
+      const nx = dz / l, nz = -dx / l, u0 = u, u1 = u + l / (JANELA * 16), v1 = (y1 - y0) / (ANDAR * 32), tx = b.dt ? b.dt[0] : 0, tz = b.dt ? b.dt[1] : 0; // `dt`: o topo desloca (a perna inclinada do Marina Bay Sands)
       const q = par.v(a[0], y0, a[1], nx, 0, nz, u0, 0, cor), r = par.v(c[0], y0, c[1], nx, 0, nz, u1, 0, cor), s = par.v(c[0] + tx, y1, c[1] + tz, nx, 0, nz, u1, v1, cor), t = par.v(a[0] + tx, y1, a[1] + tz, nx, 0, nz, u0, v1, cor);
       par.i.push(q, s, r, q, t, s); u = u1; paredes++;
     }

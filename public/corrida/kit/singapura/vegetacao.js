@@ -30,8 +30,8 @@ export function vegetacao(tr, add) {
   const mat = (c, o2 = {}) => M(c, { roughness: 0.95, ...o2 });
   if (chuvas.length) {
     const tronco = new THREE.CylinderGeometry(1.6 * K * 0.5, 2.6 * K * 0.5, 1, 6); tronco.translate(0, 0.5, 0);
-    const copa = new THREE.SphereGeometry(1, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.62); copa.translate(0, 0.2, 0);
-    const it = new THREE.InstancedMesh(tronco, mat(0x4a3f33), chuvas.length), ic = new THREE.InstancedMesh(copa, mat(0xffffff, { flatShading: true }), chuvas.length);
+    const copa = new THREE.SphereGeometry(1, 14, 9, 0, Math.PI * 2, 0, Math.PI * 0.62); copa.translate(0, 0.2, 0);
+    const it = new THREE.InstancedMesh(tronco, mat(0x4a3f33), chuvas.length), ic = new THREE.InstancedMesh(copa, mat(0xffffff), chuvas.length);
     chuvas.forEach((q, k) => {
       const s = 0.8 + r() * 0.5, h = 15 * K * s, y = tr.chao(q.x, q.z) - 1;
       o.position.set(q.x, y, q.z); o.rotation.set(0, r() * 6.28, 0); o.scale.set(s, h, s); o.updateMatrix(); it.setMatrixAt(k, o.matrix);

@@ -29,7 +29,7 @@ function prisma(mont, mat, base, topo, cor) {
   const g = new THREE.BufferGeometry(), pos = [], uv = [], idx = [];
   const f = (a, b, c, d, u1, v1) => { const k = pos.length / 3; pos.push(...a, ...b, ...c, ...d); uv.push(0, 0, u1, 0, u1, v1, 0, v1); idx.push(k, k + 1, k + 2, k, k + 2, k + 3); };
   const alt = topo[0][1] - base[0][1];
-  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4, l = Math.hypot(base[j][0] - base[i][0], base[j][2] - base[i][2]); f(base[i], base[j], topo[j], topo[i], l / (JANELA * 8), alt / (ANDAR * 16)); }
+  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4, l = Math.hypot(base[j][0] - base[i][0], base[j][2] - base[i][2]); f(base[i], base[j], topo[j], topo[i], l / (JANELA * 16), alt / (ANDAR * 32)); }
   f(topo[0], topo[1], topo[2], topo[3], 0.01, 0.01); f(base[3], base[2], base[1], base[0], 0.01, 0.01);
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
   mont.geo(mat, g, { cor });
@@ -128,17 +128,18 @@ function esplanade(tr, add, mont, mats) {
     const sh = new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
     mont.geo(mats.cupula, sh, { x: c.x, y: y0 + 4 * K, z: c.z, ry: -c.a, sx: a, sy: h, sz: b, cor: "#3b3f46" });
     // as escamas: aletas de alumínio triangulares em espiral sobre a casca (cada uma aponta para fora da superfície)
-    const N = 330;
+    const N = 520;
     for (let i = 0; i < N; i++) {
       const t = (i + 0.5) / N, phi = Math.acos(1 - t), th = i * 2.399963; // espiral de ouro no hemisfério
       const sx = Math.sin(phi) * Math.cos(th), sz = Math.sin(phi) * Math.sin(th), sy = Math.cos(phi);
       const lx = sx * a, ly = sy * h, lz = sz * b, cs = Math.cos(-c.a), sn = Math.sin(-c.a);
-      escamas.push({ x: c.x + lx * cs + lz * sn, y: y0 + 4 * K + ly, z: c.z - lx * sn + lz * cs, nx: sx / a, ny: sy / h, nz: sz / b, ca: cs, sa: sn, tam: 4.2 * K });
+      const ex = c.x + lx * cs + lz * sn, ez = c.z - lx * sn + lz * cs; if (tr.distAt(ex, ez) < tr.W / 2 + 40) continue; // nenhuma escama perto da pista
+      escamas.push({ x: c.x + lx * cs + lz * sn, y: y0 + 4 * K + ly, z: c.z - lx * sn + lz * cs, nx: sx / a, ny: sy / h, nz: sz / b, ca: cs, sa: sn, tam: 2.6 * K });
     }
     tr.reservado.push([c.x, c.z, Math.max(a, b) + 40]);
   }
   if (escamas.length) {
-    const cone = new THREE.ConeGeometry(1, 2.6, 4); cone.translate(0, 1.3, 0);
+    const cone = new THREE.ConeGeometry(1, 2.2, 4); cone.translate(0, 1.3, 0);
     const im = new THREE.InstancedMesh(cone, mats.escama, escamas.length), o = new THREE.Object3D(), up = new THREE.Vector3(0, 1, 0), v = new THREE.Vector3(), q = new THREE.Quaternion();
     escamas.forEach((e, k) => { v.set(e.nx * e.ca + e.nz * e.sa, e.ny, -e.nx * e.sa + e.nz * e.ca).normalize(); q.setFromUnitVectors(up, v); o.position.set(e.x, e.y, e.z); o.quaternion.copy(q); o.scale.set(e.tam * 0.8, e.tam, e.tam * 0.8); o.updateMatrix(); im.setMatrixAt(k, o.matrix); });
     im.castShadow = false; im.name = "singapura-esplanade-escamas"; im.userData.semContato = true; add(im);
@@ -213,12 +214,12 @@ export function marcos(tr, add) {
     casco: solido(), pedra: solido(), verde: solido(),
     luz: materialDaNoite(tr, "#cfd6dc", "#fff4d6", { fog: true }), piscina: materialDaNoite(tr, "#2d7bb0", "#58e0ff"), aro: materialDaNoite(tr, "#f0f0f0", "#ff7aa8"),
     cupula: new THREE.MeshStandardMaterial({ roughness: 0.4, metalness: 0.5, vertexColors: true, side: THREE.DoubleSide }),
-    escama: new THREE.MeshStandardMaterial({ color: 0xc9ced4, roughness: 0.3, metalness: 0.8, emissive: 0xffc56a, emissiveIntensity: 0 }),
+    escama: new THREE.MeshStandardMaterial({ color: 0xc9ced4, roughness: 0.3, metalness: 0.8, emissive: 0xffa640, emissiveIntensity: 0 }),
     merlion: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, emissive: 0xffffff, emissiveIntensity: 0 }), agua: solido(),
     balao: new THREE.MeshBasicMaterial({ color: 0xfff1d0 }),
   };
   mats.balao.userData.bloom = 2.2;
-  emissivoDaNoite(tr, mats.escama, 0, 0.9); emissivoDaNoite(tr, mats.merlion, 0, 0.55);
+  emissivoDaNoite(tr, mats.escama, 0, 0.4); emissivoDaNoite(tr, mats.merlion, 0, 0.55);
   mats.torre = materialFachada(tr);
   marinaBaySands(tr, add, mont, mats);
   flyer(tr, add, mont, mats);

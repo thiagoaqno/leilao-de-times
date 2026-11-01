@@ -1063,8 +1063,14 @@ for (const t of Object.values(PISTAS)) {
 }
 
 // Singapura: os muros só onde a pista real tem barreira (ver `murosPorTrechos`). Frações da volta e o que há em cada trecho (conferido nas fotos do circuito):
-const MUROS_SINGAPURA = [[0, 1, 0, 14]];
-if (PISTAS.singapura) PISTAS.singapura.muros = MUROS_SINGAPURA;
+const MUROS_SINGAPURA = [
+  [0, 1, 0, 18], // a rua inteira: muro baixo de concreto com a tela alta, dos dois lados, a ~2 m da borda do asfalto (a mureta dos boxes, do lado do corredor, é do kit)
+  [0.05, 0.068, 1, 30], [0.33, 0.348, 1, 34], [0.575, 0.605, 1, 30], [0.695, 0.715, -1, 30], [0.848, 0.858, -1, 28], [0.862, 0.872, 1, 28], // os escapes curtos com Tecpro: T1, T7 (Memorial), o grampo da T13, a T14 e a chicane T16-T17
+  [0.9, 0.962, 1, 40], // T18 e T19: o escape largo e pintado do lado da baía, até a cerca da orla
+  [0.905, 0.955, -1, 0], // e por dentro, o gramado do Flyer, aberto: nada de muro
+];
+PISTAS.singapura && (PISTAS.singapura.barreiras = { tecpro: [[0.05, 0.068, 1], [0.33, 0.348, 1], [0.575, 0.605, 1], [0.695, 0.715, -1], [0.848, 0.858, -1], [0.862, 0.872, 1]], pintura: [[0.9, 0.962, 1]] });
+if (PISTAS.singapura) { PISTAS.singapura.muros = MUROS_SINGAPURA; PISTAS.singapura.horaPadrao = "noite"; } // o GP de Singapura é à noite: a sala nasce de noite (corrida.js e menus.js)
 
 // Faixas de escape usadas pela cena e pela física (frações da volta).
 const SUPERFICIES_ESCAPE = {
@@ -1386,7 +1392,7 @@ function murosDoEscape(pts, largura, superficies, pista) {
     if (porTrechos) { recuo = porTrechos[lado][i]; if (!recuo) { lados[lado][i] = 0; continue; } } // `muros` da pista: só onde há barreira, na distância dela
     else { for (let j = -12; j <= 12; j++) recuo += distancia(superficies?.[lado]?.[(i + j + n) % n] || 0); recuo /= 25; }
     const L = largura / 2 + recuo, p = pts[i], nx = -p.ty, ny = p.tx;
-    lados[lado][i] = livre(p.x + nx * lado * L, p.y + ny * lado * L, L) ? recuo : 0;
+    lados[lado][i] = livre(p.x + nx * lado * L, p.y + ny * lado * L, porTrechos ? L + 8 : L) ? recuo : 0; // (com `muros`, mais folga: nenhum ponto de outro trecho a menos de L - 4 da barreira)
   }
   // Pontos isolados não formam uma parede desenhável nem uma barreira física.
   for (const lado of [-1, 1]) { const mapa = lados[lado], original = mapa.slice(); for (let i = 0; i < n; i++) if (!(i > 0 && original[i - 1]) && !(i + 1 < n && original[i + 1])) mapa[i] = 0; }

@@ -44,7 +44,7 @@ export const THEMES = {
   zandvoort: { preview: "#b6ad74", sky: ["#8ea3b3", "#dde3e4"], fog: "#cdd6d6", oob: 0xffb6ad74, roadCol: "#4d4e53" },
   madri: { preview: "#a9a35a", sky: ["#3f93dc", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4d4e53" },
   baku: { preview: "#bdb6a6", sky: ["#4fa9f5", "#d9f0ff"], fog: "#cfe6f2", oob: 0xffbdb6a6, roadCol: "#4d4e53" },
-  singapura: { preview: "#a99c84", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xffa99c84, roadCol: "#4d4e53" },
+  singapura: { preview: "#3d6b5f", sky: ["#5c9fd6", "#dbe8ee"], fog: "#c6d6de", oob: 0xff8a8f86, roadCol: "#4d4e53" },
   austin: { preview: "#a9a35a", sky: ["#3f93dc", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4d4e53" },
   mexico: { preview: "#4f8b3d", sky: ["#6f9fd0", "#e2e8e6"], fog: "#d2dbd6", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
   lasvegas: { preview: "#a99c84", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xffa99c84, roadCol: "#4d4e53" },

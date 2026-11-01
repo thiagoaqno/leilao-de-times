@@ -46,6 +46,9 @@ exports.entorno = async function entorno(c) {
     if (e.type === "way" && e.geometry) aguaPartes.push(anel(e.geometry));
     else if (e.type === "relation") for (const m of e.members || []) if (m.role === "outer" && m.geometry) aguaPartes.push(anel(m.geometry));
   }
+  // a Marina Reservoir (a baía) é uma relação grande: vem à parte (osm-reservoir.json: `relation(9542146); out geom;`)
+  const resFile = path.join(c.CACHE, "osm-reservoir.json");
+  if (!c.semOsm && fs.existsSync(resFile)) for (const el of JSON.parse(fs.readFileSync(resFile, "utf8"))) for (const m of el.members || []) if (m.role === "outer" && m.geometry) aguaPartes.push(anel(m.geometry));
   const aguaAneis = encadear(aguaPartes).map((P) => dp(P, 2, true)).filter((P) => P.length >= 4 && Math.abs(area(P)) * metroPorUnidade * metroPorUnidade > 400);
   // o canal e os rios que só vêm como linha (waterway=river/canal) ganham uma faixa de água
   const rios = [];

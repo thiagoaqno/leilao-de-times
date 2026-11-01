@@ -76,6 +76,7 @@ async function overpass(consulta) {
 }
 const CONSULTAS = {
   predios: (b) => `[out:json][timeout:180];(way["building"]${b};relation["building"]${b};);out tags geom;`,
+  // (a relação da baía, Marina Reservoir, é pedida à parte: ver singapura-entorno.js)
   resto: (b) => `[out:json][timeout:180];(way["natural"~"coastline|water|wood|scrub|grassland|bare_rock"]${b};way["waterway"~"river|canal|riverbank"]${b};way["leisure"~"park|garden|pitch|playground|track|stadium"]${b};way["landuse"~"grass|forest|recreation_ground|flowerbed"]${b};way["man_made"~"pier|bridge|breakwater|quay"]${b};way["bridge"="yes"]["highway"]${b};node["natural"="tree"]${b};);out tags geom;`,
 };
 async function baixarEntorno(tipo) {

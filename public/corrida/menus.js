@@ -71,7 +71,7 @@ function animarEntrada(no) {
   no.classList.remove("entra"); void no.offsetWidth; no.classList.add("entra");
   clearTimeout(no._t); no._t = setTimeout(() => no.classList.remove("entra"), 1100);
 }
-const cfg = (patch) => act("config", { config: { ...E.S.config, ...patch } });
+const cfg = (patch) => act("config", { config: { ...E.S.config, ...(patch.pista && PISTAS[patch.pista]?.horaPadrao && patch.pista !== E.S.config.pista ? { hora: PISTAS[patch.pista].horaPadrao } : {}), ...patch } }); // (a pista que só corre à noite, Singapura, põe a noite ao ser escolhida; dá para trocar depois)
 
 // ----- as etapas: ir, voltar, continuar -----
 export function irPara(k) {

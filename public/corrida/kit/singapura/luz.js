@@ -21,7 +21,7 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
       acc[lado] = 0;
       const lat = lado * (W / 2 + recuoDe(i, lado) + 8), x = p.x + p.nx * lat, z = p.y + p.ny * lat, y = tr.chao(x, z);
       if (tr.distAt(x, z) < W / 2 + 14) continue; // nunca em cima de outro trecho da pista
-      if (tr.ocupadoSG?.(x, z)) continue; // água ou prédio
+      if (tr.ocupadoSG?.(x, z) && tr.distAt(x, z) > W / 2 + 34) continue; // água ou prédio (na ponte o poste fica na beira do tabuleiro)
       postes.push({ x, y, z, lado, nx: p.nx, ny: p.ny, ph: p.h, i, tx: p.tx, ty: p.ty });
     }
   }
@@ -59,7 +59,7 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   postes.forEach((t, k) => { const rot = Math.atan2(-t.nx * t.lado, -t.ny * t.lado); o.position.set(t.x - t.nx * t.lado * 17, t.y + alto - 3, t.z - t.ny * t.lado * 17); o.rotation.set(0, rot, 0); o.updateMatrix(); halos.setMatrixAt(k, o.matrix); });
   halos.frustumCulled = false; halos.renderOrder = 4; halos.name = "singapura-halos"; soDeNoite(tr, add(halos)); halos.userData.semContato = true;
   // ---- a luz no chão ----
-  const poca = canvasTex(128, 128, (c, w, h) => { const g = c.createRadialGradient(64, 64, 6, 64, 64, 64); g.addColorStop(0, "rgba(255,240,206,0.2)"); g.addColorStop(0.55, "rgba(255,232,190,0.1)"); g.addColorStop(1, "rgba(255,226,170,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
+  const poca = canvasTex(128, 128, (c, w, h) => { const g = c.createRadialGradient(64, 64, 6, 64, 64, 64); g.addColorStop(0, "rgba(255,240,206,0.085)"); g.addColorStop(0.55, "rgba(255,232,190,0.045)"); g.addColorStop(1, "rgba(255,226,170,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
   const pocaMat = new THREE.MeshBasicMaterial({ map: poca, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, fog: true });
   const pocaGeo = new THREE.PlaneGeometry(W + 80, 118); pocaGeo.rotateX(-Math.PI / 2);
   const pocasIM = new THREE.InstancedMesh(pocaGeo, pocaMat, pocas.length);
