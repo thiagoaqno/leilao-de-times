@@ -79,7 +79,7 @@ let pendente = null;
 export function aplicarCeu(tr, look, noite = false, podeMudarLuz = () => true) {
   const chave = `${tr.id}:${noite}`;
   atual = chave; scene.background = null; scene.environment = null; tr.sol = null; pendente = null;
-  const cfg = noite ? { brilho: 0.52, luz: 0.32, noite: true } : CEUS[tr.id]; if (!cfg) return Promise.resolve();
+  const cfg = noite ? { brilho: 0.52, luz: 0.32, noite: true } : CEUS[tr.id]; if (!cfg) { if (look.sol) tr.sol = look.sol; return Promise.resolve(); } // (`look.sol`: a luz baixa do entardecer de Baku, sem foto de céu)
   // Qwantani Night (Pure Sky), Poly Haven CC0; já usado em Tóquio e compartilhado pelas versões noturnas.
   return carregar(noite ? "tokyo" : cfg.arquivo || tr.id).then((s) => {
     if (!s || atual !== chave) return;
