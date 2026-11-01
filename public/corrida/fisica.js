@@ -116,7 +116,7 @@ export function physics(dt, spec = carOf(me())) {
   const fr = trackFrame(tr, nx, ny, race.idx), lim = tr.wallLat - (tr.t.muroFolga ?? 8);
   // barreira de pneus: só do lado de fora das curvas fechadas (tr.pneus diz o lado de cada ponto)
   const pneu = tr.pneus && tr.pneus[race.idx], ladoMuro = Math.sign(fr.lat) || 1;
-  const limite = Math.min(window.Pistas.limiteViaduto(tr.t, tr.n, race.idx, tr.W), tr.murosEscape?.[ladoMuro]?.[race.idx] ? tr.W / 2 + tr.murosEscape[ladoMuro][race.idx] - 8 : pneu && ladoMuro === pneu ? tr.W / 2 + 26 : lim);
+  const limite = Math.min(window.Pistas.limiteViaduto(tr.t, tr.n, race.idx, tr.W), tr.murosEscape?.[ladoMuro]?.[race.idx] ? tr.W / 2 + tr.murosEscape[ladoMuro][race.idx] - (tr.t.muroFolga ?? 8) : pneu && ladoMuro === pneu ? tr.W / 2 + 26 : lim);
   if (Math.abs(fr.lat) > limite || nx < 2 || ny < 2 || nx > tr.t.world - 2 || ny > tr.t.world - 2) {
     const p = tr.pts[race.idx], s = Math.sign(fr.lat) || 1, over = Math.abs(fr.lat) - limite;
     if (over > 0) { nx -= p.nx * s * over; ny -= p.ny * s * over; }

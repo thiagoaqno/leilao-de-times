@@ -69,6 +69,9 @@ export function gridSpot(pts, g, W, f1 = false) {
 
 // ---------- a pista: pontos com altura, chão, asfalto, zebras, muros e enfeites ----------
 const TRACKS = {};
+// os GPs com relevo, mar e cor do terreno de verdade (dados do OpenStreetMap e do SRTM): Mônaco (monaco.js) e os que trazem `mundo` na configuração (Baku: kit/baku/mundo.js).
+// relevo(tr) -> (x, z, f, idx, malha) · fundo(tr, x, z) (positivo na água) · agua(tr, x, z) · cor() -> (x, z, h, ny) · nivelMar · banda(tr): até onde a pista, a calçada e a barreira mandam no chão
+const mundoDe = (id) => (id === "monaco" ? { relevo: relevoMonaco, fundo: fundoMonaco, agua: (tr, x, y) => fundoMonaco(tr, x, y) > 0, cor: corDoChaoMonaco, nivelMar: NIVEL_DO_MAR, banda: (tr) => tr.wallLat } : GPS[id]?.mundo || null);
 export function buildTrack(id) {
   if (TRACKS[id]) return TRACKS[id];
   const t = PISTAS[id], pts = window.Pistas.pontos(t, 6), n = pts.length, W = t.width;
@@ -102,7 +105,8 @@ export function buildTrack(id) {
   const alcance = W / 2 + t.flat + t.fall + cell;
   tr.chao = (x, y) => (tr.distAprox(x, y) > alcance ? 0 : groundH(tr, x, y, tr.indiceAt(x, y)));
   // GPs com relevo de verdade (Mônaco: o morro do EU-DEM/SRTM em volta da pista): `tr.relevoGP(x, y, f, idx)` manda em groundH e o chão vale em toda parte, não só perto da pista
-  if (id === "monaco") {
+  const mundo = mundoDe(id);
+  if (mundo) {
     // em Mônaco a pista passa por cima de si mesma (Beau Rivage / Mirabeau / grampo, o morro empilhado): o ponto mais perto de verdade, de qualquer trecho, e não o da célula da grade
     const C = 48, hash = new Map(), ch = (a, b) => a * 100003 + b;
     pts.forEach((p, i) => { const k = ch(Math.floor(p.x / C), Math.floor(p.y / C)); (hash.get(k) || hash.set(k, []).get(k)).push(i); });
@@ -112,7 +116,7 @@ export function buildTrack(id) {
       for (let r = 1; r <= 4 && best < 0; r++) { for (let a = cx - r; a <= cx + r; a++) for (let b = cy - r; b <= cy + r; b++) for (const q of hash.get(ch(a, b)) || []) { const d = (pts[q].x - x) ** 2 + (pts[q].y - y) ** 2; if (d < bd) { bd = d; best = q; } } if (best >= 0 && bd > (r * C) ** 2) best = -1; }
       return best >= 0 ? best : antigo(x, y);
     };
-    tr.relevoGP = relevoMonaco(tr); tr.chao = (x, y) => groundH(tr, x, y, tr.indiceAt(x, y));
+    tr.relevoGP = mundo.relevo(tr); tr.chao = (x, y) => groundH(tr, x, y, tr.indiceAt(x, y));
   }
   // pista que passa por cima de si mesma (`cruza`, o oito de Suzuka): perto do cruzamento o chão é o do trecho de baixo, e o
   // de cima fica no ar, na ponte do GP
@@ -170,6 +174,7 @@ const rioSea = (x, y) => { const K = PISTAS.rio.scale; return x < 230 * K + (y -
 const aguaTex = (cor) => canvasTex(256, 256, (x, w, hh, rr) => { x.fillStyle = cor; x.fillRect(0, 0, w, hh); for (let i = 0; i < 260; i++) { x.fillStyle = rr() < 0.5 ? "#ffffff22" : "#00000018"; x.fillRect(rr() * w, rr() * hh, 10 + rr() * 30, 2); } });
 function buildWorld(tr) {
   const { pts, n, W, look, id, grp } = tr, t = tr.t, add = (o) => (grp.add(o), o), r = rng(id.length * 977), gp = GPS[id];
+  const mundo = mundoDe(id);
   tr.reservado = []; // onde os enfeites soltos não entram (o kit e o cenário de cada GP vão pondo aqui)
   tr.sem = gp?.sem || {}; // o que este GP não tem e vida.js / vida-mais.js não devem pôr (Mônaco: olhos de gato, setas, mastros, roda-gigante...)
   // Reserva as duas faixas e o prédio antes do cenário, do ambiente e da vida da pista.
@@ -192,16 +197,16 @@ function buildWorld(tr) {
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + WORLD / 2, y = pos.getZ(i) + WORLD / 2;
     const longe = !tr.relevoGP && tr.distAprox(x, y) > W / 2 + t.flat + t.fall + WORLD / 96, bi = longe ? 0 : tr.indiceAt(x, y);
-    const lat = longe ? 1e9 : Math.abs(trackFrame(tr, x, y, bi).lat), perto = !longe && (id === "monaco" ? lat < tr.wallLat + 30 : lat < W / 2 + 26); // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
-    let h = t.espaco ? -700 : (longe ? 0 : id === "monaco" ? tr.relevoGP(x, y, trackFrame(tr, x, y, bi), bi, true) : groundH(tr, x, y, bi)) - (id === "monaco" ? 1.5 + 7.5 * (1 - Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)))) * (perto ? 1 : 0) : perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
-    if (id === "monaco") { const s = fundoMonaco(tr, x, y); if (s > -90) h = s > 0 ? Math.max(-34, NIVEL_DO_MAR - 7 - s * 0.35) : Math.min(h, NIVEL_DO_MAR + 1 + 3.2 * -s); } // a bacia do porto e o mar, o cais em paredão e a falésia do Rochedo (3 de altura por unidade)
+    const lat = longe ? 1e9 : Math.abs(trackFrame(tr, x, y, bi).lat), perto = !longe && (mundo ? lat < mundo.banda(tr) + 30 : lat < W / 2 + 26); // embaixo da pista o chão afunda mais (a malha é grossa e furava o asfalto nas rampas)
+    let h = t.espaco ? -700 : (longe ? 0 : mundo ? tr.relevoGP(x, y, trackFrame(tr, x, y, bi), bi, true) : groundH(tr, x, y, bi)) - (mundo ? 1.5 + 7.5 * (1 - Math.min(1, Math.max(0, (lat - mundo.banda(tr)) / 30)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (lat - mundo.banda(tr)) / 30)))) * (perto ? 1 : 0) : perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
+    if (mundo) { const s = mundo.fundo(tr, x, y); if (s > -90) h = s > 0 ? Math.max(-34, mundo.nivelMar - 7 - s * 0.35) : Math.min(h, mundo.nivelMar + 1 + 3.2 * -s); } // a bacia do porto e o mar, o cais em paredão e a falésia do Rochedo (3 de altura por unidade)
     if (id === "rio" && rioSea(x, y)) h = Math.min(h, -14); // o mar de Copacabana
     if (gp?.terreno?.altura) h = gp.terreno.altura(tr, x, y, h, lat); // o GP com água ou relevo próprio (Singapura: a baía e o rio afundam o chão)
     if (tr.sobPonte) h = Math.min(h, tr.sobPonte(x, y) - 4); // embaixo da ponte (Suzuka)
     pos.setY(i, h);
   }
   geo.computeVertexNormals();
-  const corDoGP = id === "monaco" ? corDoChaoMonaco() : gp?.terreno?.cor?.(tr); // a cor do terreno por vértice (Mônaco e quem pedir em `terreno.cor`)
+  const corDoGP = mundo?.cor ? mundo.cor() : gp?.terreno?.cor?.(tr); // a cor do terreno por vértice (Mônaco e Baku: `mundo.cor`; os outros GPs pedem em `terreno.cor`)
   if (corDoGP) { // rua e calçada de pedra, jardins, mata, paredão de pedra e o mato do morro (monaco.js)
     const cor = corDoGP, cores = new Float32Array(pos.count * 3), nor = geo.attributes.normal;
     for (let k = 0; k < pos.count; k++) { const c = cor(pos.getX(k) + WORLD / 2, pos.getZ(k) + WORLD / 2, pos.getY(k), nor.getY(k)); cores[k * 3] = c[0]; cores[k * 3 + 1] = c[1]; cores[k * 3 + 2] = c[2]; }
@@ -219,7 +224,7 @@ function buildWorld(tr) {
   }
   if (lisos.length) { const m = add(new THREE.Mesh(mergeGeometries(lisos, false), chaoM)); m.position.set(WORLD / 2, 0, WORLD / 2); m.receiveShadow = true; m.name = `${id}-terreno`; lisos.forEach((g) => g.dispose()); } // os pedaços lisos, uma chamada só
   geo.dispose();
-  if (id === "monaco") {
+  if (mundo) {
     // Fecha a lateral do asfalto suspenso até abaixo do terreno, sem mudar a colisão.
     // Deixa livres os pontos em que outra parte da pista passa por perto, como no grampo.
     const vs = [], indices = [], lat = W / 2 + 7;
@@ -448,7 +453,7 @@ function buildWorld(tr) {
       placa.scale.set(33, 13, 1); tr.drsPlacas.add(placa);
     }
   }
-  const terra = (x, y) => id !== "monaco" || (!aguaMonaco(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
+  const terra = (x, y) => !mundo || (!mundo.agua(tr, x, y) && !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr));
   const livreRes = (x, y) => !tr.reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr); // fora das arquibancadas e prédios do GP
   // `beira` do GP (kit/gp-simples.js): árvores, palmeiras, prédios (com janelas) e prédios de vidro, nas proporções de `b`;
   // perto da pista (p) o prédio fica mais para trás, de frente para ela; longe, solto
@@ -470,7 +475,7 @@ function buildWorld(tr) {
       const near = (tr.wallLat < 1e9 ? tr.wallLat : W / 2 + 36) + 10 + r() * 60, x = p.x + p.nx * side * near, y = p.y + p.ny * side * near;
       if (!free(x, y, 20) || (tr.boxesInfo && !livreRes(x, y))) continue; // nem em cima das garagens do corredor dos boxes
       const k = r();
-      if (id === "monaco") { /* a cidade de verdade (prédios, palmeiras e plátanos) vem de kit/monaco, em monaco.js */ }
+      if (mundo) { /* a cidade de verdade (prédios, palmeiras e plátanos) vem de kit/monaco, em monaco.js */ }
       else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "silverstone") { if (k < (id === "nurburgring" ? 0.9 : id === "laguna" ? 0.22 : id === "interlagos" || id === "barcelona" || id === "silverstone" ? 0.07 : 0.52) && ((id !== "barcelona" && id !== "silverstone") || livreRes(x, y))) trees.push({ x, y, h: hAt(x, y), s: 1 + r() * 0.8 }); }
       else if (id === "deserto") { if (k < 0.11) palms.push({ x, y, h: hAt(x, y), s: 0.9 + r() * 0.4, r: r() * 6 }); }
       else if (gp?.parque) { /* o bosque fechado vem de kit/parque.js */ }
@@ -497,7 +502,7 @@ function buildWorld(tr) {
   for (let k = 0; k < (t.espaco ? 0 : Math.round(220 * K * K)); k++) {
     const x = -pad + 100 + r() * (WORLD + 2 * pad - 200), y = -pad + 100 + r() * (WORLD + 2 * pad - 200);
     if (!free(x, y, 160)) continue;
-    if (id === "monaco") { /* o morro e a cidade em degraus vêm do relevo real e das plantas de kit/monaco */ }
+    if (mundo) { /* o morro e a cidade em degraus vêm do relevo real e das plantas de kit/monaco */ }
     else if (id === "interlagos" || id === "luigi" || id === "sorvete" || id === "serra" || id === "nurburgring" || id === "laguna" || id === "silverstone") { if ((id !== "laguna" && id !== "barcelona" && id !== "silverstone") || r() < (id === "silverstone" ? 0.1 : id === "barcelona" ? 0.12 : 0.3)) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // Laguna: morros dourados com poucos carvalhos; Nürburgring: floresta fechada
     else if (id === "deserto") { if (r() < 0.07) palms.push({ x, y, h: hAt(x, y), s: 1.2, r: r() * 6 }); }
     else if (gp?.parque) { if (r() < 0.1) trees.push({ x, y, h: hAt(x, y), s: 1.2 + r() * 1.2 }); } // o parque continua longe da pista

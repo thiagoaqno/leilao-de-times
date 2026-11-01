@@ -14,9 +14,18 @@ test("autódromos têm barreira afastada, recortada sem invadir outros trechos; 
       assert.ok(tr.pts.every(q => (q.x-x)**2 + (q.y-y)**2 >= (L-12)**2 - 1e-5));
     }
   }
-  for (const id of ["monaco", "baku", "jeddah", "lasvegas"]) { // (Singapura saiu da lista: seus muros são por trecho, `muros` em pistas.js)
+  for (const id of ["monaco", "jeddah", "lasvegas"]) { // (Singapura e Baku saíram da lista: seus muros são por trecho, `muros` em pistas.js)
     const tr = Sim.criarPista(P.PISTAS[id], id); assert.equal(tr.murosEscape, undefined); assert.ok(Number.isFinite(tr.wallLat));
   }
+  // Baku: sem muro em volta; a barreira só existe onde `muros` diz (a mesma matriz da física e do desenho), a pista estreita na Cidade Velha e o carro sai da pista onde não há barreira
+  const baku = Sim.criarPista(P.PISTAS.baku, "baku"), n = baku.n, W = baku.W;
+  assert.ok(!Number.isFinite(baku.wallLat), "sem muro genérico");
+  const cidadeVelha = Math.floor(n * 0.43), aberto = Math.floor(n * 0.9965); // o miolo da Cidade Velha; o lado do corredor dos boxes, sem muro
+  assert.ok(baku.murosEscape[1][cidadeVelha] < 0 && baku.murosEscape[-1][cidadeVelha] < 0, "a barreira entra no asfalto na Cidade Velha");
+  assert.ok(Math.abs(W / 2 + baku.murosEscape[1][cidadeVelha] - 28) < 1, "a pista tem 56 de largura entre as barreiras");
+  assert.ok(baku.murosEscape[1][Math.floor(n * 0.03)] > 40, "o escape da curva 1 fica longe da pista");
+  assert.equal(baku.murosEscape[-1][aberto], 0, "do lado do corredor dos boxes não há muro");
+  assert.ok(baku.murosEscape[1][aberto] > 0, "do outro lado da reta há barreira");
 });
 
 test("ganhar posição fora da pista recebe punição, mas sair sem ultrapassar não", () => {
