@@ -55,20 +55,20 @@ export function physics(dt, spec = carOf(me())) {
   const bala = (m && m.balaUntil > sNow()) || race.balaUntil > sNow(), pequeno = !bala && m && m.shrinkUntil > sNow();
   const F1 = window.F1Regras, pn = race.pneu ? F1.aderencia(race.pneu) : null;
   const dano = pn ? F1.efeitoDoDano(m && m.dano) : null; // cada 1% de dano reduz os atributos do carro em 1%
-  const direcao = E.S?.direcao, setor = Math.floor(race.idx / (tr.n / SECTORS));
-  const zona = F1.zonaDRS(race.idx / tr.n, tr.t.drs), amarela = direcao?.amarelo?.setor === setor;
-  const drs = !!(pn && m && m.drsZona === zona && zona >= 0 && !keys.brake && !amarela && !direcao?.safety);
+  const dirProva = E.S?.direcao, setor = Math.floor(race.idx / (tr.n / SECTORS));
+  const zona = F1.zonaDRS(race.idx / tr.n, tr.t.drs), amarela = dirProva?.amarelo?.setor === setor;
+  const drs = !!(pn && m && m.drsZona === zona && zona >= 0 && !keys.brake && !amarela && !dirProva?.safety);
   const ers = race.ers;
   if (ers) F1.carregarErs(ers, dt, keys.brake && vf > 40, !keys.gas, m?.laps || 0);
   const ersAuto = E.S?.config.ers !== "manual";
-  const usarErs = !!(ers && keys.gas && !direcao?.safety && (ersAuto ? F1.usarErsAuto(ers.carga, vf, spec.vmax, (tr.pts[race.idx].k || 0) < 1e-4, race.draft > 0.25) : keys.ers));
+  const usarErs = !!(ers && keys.gas && !dirProva?.safety && (ersAuto ? F1.usarErsAuto(ers.carga, vf, spec.vmax, (tr.pts[race.idx].k || 0) < 1e-4, race.draft > 0.25) : keys.ers));
   const ersAtivo = ers ? F1.gastarErs(ers, dt, usarErs, !ersAuto || race.draft > 0.25) : false;
   race.drsAtivo = drs; race.ersAtivo = ersAtivo;
   const curva = (tr.pts[race.idx].k || 0) > 1 / 600, vac = pn ? F1.vacuoF1(race.draft, curva) : null; // nas regras de F1: vácuo na reta, ar sujo na curva
   race.arSujo = vac ? 1 - vac.aderencia : 0;
   const aero = pn ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 * (spec.drs ?? 1) : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
   const boostK = bala ? BALA : (1 + aero + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0)) * (pequeno ? ENCOLHIDO : 1);
-  const bandeiraLimite = direcao?.safety ? 0.54 : amarela ? 0.82 : 1;
+  const bandeiraLimite = dirProva?.safety ? 0.54 : amarela ? 0.82 : 1;
   const vmax = (road ? spec.vmax * (pn?.final || 1) * (dano?.final || 1) : spec.offMax) * Math.min(boostK, bandeiraLimite);
   // câmbio: no automático a marcha só acompanha (som e painel); no manual ela manda na força e no corte de giro
   const manual = E.S && E.S.config.cambio === "manual", vmaxF1 = spec.vmax * boostK * (pn?.final || 1) * (dano?.final || 1);
@@ -79,7 +79,7 @@ export function physics(dt, spec = carOf(me())) {
     if (keys.gas) vf += (vf < 0 ? spec.brake : forca * spec.acc * (pn?.tracao || 1) * (dano?.tracao || 1) * (1 + (vac ? vac.acel : race.draft * 0.6 + (race.sling > 0 ? 0.8 : 0)) + catchup * 2 + (boostAtivo ? 0.8 : 0) + (estrelaAtiva ? 0.4 : 0) + (ersAtivo ? 0.25 : 0)) * (1 - 0.8 * Math.pow(Math.max(0, vf) / (spec.vmax * boostK), 1.6))) * dt; // arranca forte, demora a chegar no topo
     else if (keys.brake) vf -= (vf > 0 ? spec.brake * (pn?.freio || 1) * (dano?.freio || 1) : 120) * dt;
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (70 + (manual && vf > 0 ? (NUM + 1 - race.marcha) * 18 : 0)) * dt); // no manual, marcha baixa segura o carro (freio-motor)
-    if (vf > vmax) vf = direcao?.safety || amarela ? Math.max(vmax, vf - spec.brake * dt) : Math.max(vmax, vf - (road ? window.Pistas.TURBO_SOLTA : 700) * dt); // sob bandeira reduz de verdade
+    if (vf > vmax) vf = dirProva?.safety || amarela ? Math.max(vmax, vf - spec.brake * dt) : Math.max(vmax, vf - (road ? window.Pistas.TURBO_SOLTA : 700) * dt); // sob bandeira reduz de verdade
     if (manual && vf > topo(race.marcha, vmaxF1)) vf = Math.max(topo(race.marcha, vmaxF1), vf - 260 * dt); // corte de giro
     // ladeira: a gravidade puxa para baixo da pista
     const h1 = groundH(tr, c.x + fx * 10, c.y + fy * 10, race.idx), h0 = groundH(tr, c.x, c.y, race.idx);
