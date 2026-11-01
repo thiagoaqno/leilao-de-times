@@ -14,7 +14,7 @@ test("autódromos têm barreira afastada, recortada sem invadir outros trechos; 
       assert.ok(tr.pts.every(q => (q.x-x)**2 + (q.y-y)**2 >= (L-12)**2 - 1e-5));
     }
   }
-  for (const id of ["monaco", "jeddah", "lasvegas"]) { // (Singapura e Baku saíram da lista: seus muros são por trecho, `muros` em pistas.js)
+  for (const id of ["monaco", "jeddah"]) { // (Singapura, Baku e Las Vegas saíram da lista: seus muros são por trecho, `muros` em pistas.js)
     const tr = Sim.criarPista(P.PISTAS[id], id); assert.equal(tr.murosEscape, undefined); assert.ok(Number.isFinite(tr.wallLat));
   }
   // Baku: sem muro em volta; a barreira só existe onde `muros` diz (a mesma matriz da física e do desenho), a pista estreita na Cidade Velha e o carro sai da pista onde não há barreira
@@ -134,5 +134,22 @@ test("Singapura: barreira só onde a pista real tem (muros por trecho), aberta n
   for (const lado of [-1, 1]) for (let i = 0; i < n; i += 11) if (m[lado][i]) {
     const L = tr.W / 2 + m[lado][i], p = tr.pts[i], x = p.x - p.ty * lado * L, y = p.y + p.tx * lado * L;
     assert.ok(tr.pts.every((q) => (q.x - x) ** 2 + (q.y - y) ** 2 >= (L - 12) ** 2 - 1e-5));
+  }
+});
+
+test("Las Vegas: barreira só onde a pista real tem (muros por trecho), escapes largos de asfalto nas curvas e a rua murada dos dois lados na Strip", () => {
+  const tr = Sim.criarPista(P.PISTAS.lasvegas, "lasvegas"), n = tr.n, m = tr.murosEscape;
+  assert.ok(m, "murosEscape existe");
+  assert.ok(!Number.isFinite(tr.wallLat), "sem muro genérico");
+  const f = (x) => Math.floor(x * n);
+  assert.ok(m[1][f(0.65)] > 0 && m[-1][f(0.65)] > 0, "a Strip tem barreira dos dois lados");
+  assert.equal(m[-1][f(0.0)], 0, "do lado do corredor dos boxes não há muro (a mureta do box é da física dos boxes)");
+  assert.ok(m[1][f(0.03)] > 40, "o escape da curva 1 fica longe da pista (asfalto largo do lado de fora)");
+  assert.ok(m[-1][f(0.23)] > 40, "o escape da curva 5 fica longe da pista");
+  assert.ok(m[1][f(0.5)] > 30, "o escape da curva 12 fica longe da pista");
+  assert.equal(tr.superficiesEscape[1][f(0.03)], 2, "o escape da curva 1 é de asfalto");
+  for (const lado of [-1, 1]) for (let i = 0; i < n; i += 11) if (m[lado][i]) {
+    const L = tr.W / 2 + m[lado][i], p = tr.pts[i], x = p.x - p.ty * lado * L, y = p.y + p.tx * lado * L;
+    assert.ok(tr.pts.every((q) => (q.x - x) ** 2 + (q.y - y) ** 2 >= (L - 12) ** 2 - 1e-5), "nenhum ponto de outro trecho junto da barreira, fração " + (i / n).toFixed(3));
   }
 });
