@@ -557,22 +557,31 @@ const PISTAS = {
     ],
   },
   baku: {
-    name: "Baku", sub: "Baku City Circuit: as retas largas da beira do mar Cáspio, a passagem estreita pela muralha da Cidade Velha e a reta de 2 km até a chegada", f1: true,
-    // Baku City Circuit: 5986 m. Traçado de bacinger/f1-circuits (az-2016, licença MIT: ver o cabeçalho dos traçados convertidos)
-    // convertido por ferramentas/circuitos-f1.js: a linha central real em 75 vértices, a linha de chegada no primeiro
-    scale: 3.88, width: 104, minLap: 35, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: 0.867,
-    hills: [[0,12], [0.04,8], [0.08,14], [0.12,19], [0.16,22], [0.2,19], [0.24,16], [0.28,19], [0.32,22], [0.36,36], [0.4,29], [0.44,34], [0.48,56], [0.52,80], [0.56,68], [0.6,75], [0.64,33], [0.68,21], [0.72,22], [0.76,24], [0.8,35], [0.84,17], [0.88,17], [0.92,25], [0.96,6], [1,12]],
+    name: "Baku", sub: "Baku City Circuit: a reta enorme de Neftchilar à beira do mar Cáspio, o castelo e a subida estreitíssima da Cidade Velha junto da muralha medieval, a Torre da Donzela e as Flame Towers", f1: true,
+    // Baku City Circuit: 6003 m. Linha central de bacinger/f1-circuits (az-2016, licença MIT: ver o cabeçalho dos traçados convertidos), conferida com o mapa oficial das 20 curvas e com o
+    // desenho do OpenStreetMap, e ajustada em vértices por ferramentas/baku-dados.js (a mesma conversão de Mônaco: vértices nas interseções das tangentes, o raio mínimo, os trechos que se
+    // tocariam afastados), norte em cima, na proporção de verdade; o relevo é o SRTM de 30 m (do mar Cáspio, a -27 m, à subida da Cidade Velha).
+    // Rua SEM muro em volta: a barreira só existe onde a pista real tem (`muros`, em frações da volta; recuo = da borda do asfalto até a face da barreira; negativo = a pista estreita, na Cidade
+    // Velha, a ~7,6 m de largura de verdade) e a física usa o mesmo mapa (`murosDoEscape`); onde não há muro, o carro sai da pista. As áreas de asfalto pintado de escape estão em SUPERFICIES_ESCAPE.
+    scale: 3.81, width: 96, exagero: 1.2, minLap: 35, flat: 20, fall: 120, largada: 0.661344537815126, hillsSuave: true, muroFolga: 12,
+    muros: [
+      [0, 1, 1, 9, 1], [0.0235, 0.9765, -1, 9, 6], // a rua toda, menos o lado do corredor dos boxes (sem muro: a mureta do box é da física dos boxes)
+      [0.012, 0.058, 1, 62, 14], [0.078, 0.1, 1, 40, 12], // curva 1 e curva 2: a área de escape de asfalto pintado do lado de fora
+      [0.226, 0.254, 1, 30, 12], [0.262, 0.288, -1, 22, 10], // curvas 3 e 4
+      [0.403, 0.466, 0, -20, 36], // a Cidade Velha (curvas 8 a 12): a barreira entra no asfalto dos dois lados e a pista fica com 56 de largura (a de 96 em volta)
+      [0.575, 0.62, 1, 26, 12], [0.645, 0.675, 1, 20, 12], // curvas 15 e 16
+    ],
+    hills: [[0,0.95], [0.0051,1.2], [0.0102,1.4], [0.0152,1.47], [0.0203,1.37], [0.0254,1.09], [0.0305,0.7], [0.0356,0.31], [0.0407,0.04], [0.0457,0], [0.0508,0.26], [0.0559,0.81], [0.061,1.59], [0.0661,2.48], [0.0712,3.35], [0.0762,4.12], [0.0813,4.73], [0.0864,5.24], [0.0915,5.73], [0.0966,6.34], [0.1017,7.18], [0.1067,8.33], [0.1118,9.81], [0.1169,11.55], [0.122,13.44], [0.1271,15.32], [0.1321,17.03], [0.1372,18.4], [0.1423,19.34], [0.1474,19.82], [0.1525,19.85], [0.1576,19.5], [0.1626,18.88], [0.1677,18.12], [0.1728,17.34], [0.1779,16.6], [0.183,15.93], [0.1881,15.32], [0.1931,14.73], [0.1982,14.1], [0.2033,13.38], [0.2084,12.52], [0.2135,11.56], [0.2186,10.53], [0.2236,9.5], [0.2287,8.53], [0.2338,7.73], [0.2389,7.16], [0.244,6.89], [0.249,6.96], [0.2541,7.36], [0.2592,8.06], [0.2643,9], [0.2694,10.06], [0.2745,11.1], [0.2795,11.99], [0.2846,12.64], [0.2897,13.02], [0.2948,13.15], [0.2999,13.07], [0.305,12.92], [0.31,12.81], [0.3151,12.82], [0.3202,12.99], [0.3253,13.32], [0.3304,13.76], [0.3355,14.21], [0.3405,14.57], [0.3456,14.74], [0.3507,14.66], [0.3558,14.28], [0.3609,13.62], [0.3659,12.72], [0.371,11.7], [0.3761,10.68], [0.3812,9.8], [0.3863,9.21], [0.3914,9.02], [0.3964,9.32], [0.4015,10.1], [0.4066,11.32], [0.4117,12.88], [0.4168,14.65], [0.4219,16.47], [0.4269,18.21], [0.432,19.81], [0.4371,21.28], [0.4422,22.69], [0.4473,24.18], [0.4524,25.93], [0.4574,28.05], [0.4625,30.63], [0.4676,33.64], [0.4727,36.96], [0.4778,40.42], [0.4828,43.83], [0.4879,47.02], [0.493,49.86], [0.4981,52.31], [0.5032,54.36], [0.5083,56.06], [0.5133,57.48], [0.5184,58.67], [0.5235,59.69], [0.5286,60.56], [0.5337,61.32], [0.5388,61.96], [0.5438,62.44], [0.5489,62.7], [0.554,62.68], [0.5591,62.32], [0.5642,61.53], [0.5693,60.29], [0.5743,58.57], [0.5794,56.41], [0.5845,53.8], [0.5896,50.74], [0.5947,47.24], [0.5997,43.33], [0.6048,39.03], [0.6099,34.44], [0.615,29.68], [0.6201,24.95], [0.6252,20.44], [0.6302,16.34], [0.6353,12.8], [0.6404,9.88], [0.6455,7.64], [0.6506,6.03], [0.6557,4.99], [0.6607,4.4], [0.6658,4.17], [0.6709,4.18], [0.676,4.29], [0.6811,4.39], [0.6861,4.39], [0.6912,4.25], [0.6963,3.96], [0.7014,3.55], [0.7065,3.09], [0.7116,2.67], [0.7166,2.36], [0.7217,2.18], [0.7268,2.14], [0.7319,2.21], [0.737,2.32], [0.7421,2.41], [0.7471,2.44], [0.7522,2.39], [0.7573,2.29], [0.7624,2.16], [0.7675,2.07], [0.7726,2.09], [0.7776,2.25], [0.7827,2.57], [0.7878,3.05], [0.7929,3.64], [0.798,4.28], [0.803,4.91], [0.8081,5.47], [0.8132,5.93], [0.8183,6.28], [0.8234,6.52], [0.8285,6.72], [0.8335,6.95], [0.8386,7.28], [0.8437,7.75], [0.8488,8.39], [0.8539,9.21], [0.859,10.12], [0.864,11.04], [0.8691,11.86], [0.8742,12.49], [0.8793,12.85], [0.8844,12.93], [0.8895,12.77], [0.8945,12.45], [0.8996,12.1], [0.9047,11.85], [0.9098,11.77], [0.9149,11.93], [0.9199,12.28], [0.925,12.7], [0.9301,13.04], [0.9352,13.13], [0.9403,12.81], [0.9454,12.01], [0.9504,10.76], [0.9555,9.14], [0.9606,7.33], [0.9657,5.51], [0.9708,3.87], [0.9759,2.53], [0.9809,1.55], [0.986,0.97], [0.9911,0.73], [0.9962,0.76], [1,0.95]],
     points: [
-      [1347, 565, 0], [1437, 526, 210], [1446, 519, 21], [1450, 509, 26], [1446, 491, 333], [1401, 395, 0], [1377, 337, 196], [1370, 327, 22],
-      [1360, 323, 20], [1353, 323, 42], [1341, 327, 550], [1272, 356, 0], [1149, 404, 0], [875, 529, 1143], [868, 534, 26], [864, 539, 18],
-      [862, 545, 22], [862, 553, 65], [871, 578, 723], [906, 658, 199], [908, 669, 21], [904, 678, 20], [896, 684, 245], [810, 720, 581],
-      [745, 759, 253], [736, 767, 45], [731, 774, 36], [728, 782, 65], [727, 798, 35], [719, 808, 412], [541, 944, 244], [531, 945, 20],
-      [527, 944, 17], [525, 940, 39], [521, 924, 557], [501, 863, 338], [494, 849, 25], [488, 845, 66], [464, 836, 94], [443, 834, 52],
-      [436, 832, 19], [430, 825, 51], [422, 802, 39], [417, 797, 19], [410, 795, 22], [397, 797, 125], [361, 810, 1118], [288, 842, 951],
-      [240, 868, 584], [194, 897, 99], [187, 907, 57], [180, 924, 564], [151, 1029, 254], [150, 1051, 972], [157, 1170, 366], [159, 1179, 22],
-      [168, 1188, 73], [192, 1202, 0], [331, 1270, 1106], [347, 1277, 29], [358, 1275, 19], [363, 1271, 30], [369, 1263, 537], [415, 1176, 669],
-      [423, 1164, 321], [529, 1065, 196], [537, 1046, 157], [545, 1004, 103], [554, 989, 158], [563, 977, 74], [572, 968, 1003], [703, 868, 0],
-      [758, 829, 361], [782, 807, 355], [970, 725, 0],
+      [1346, 565, 0], [1407, 539, 0], [1433, 526, 0], [1453, 508, 0], [1421, 440, 0], [1396, 386, 0], [1385, 360, 0], [1371, 326, 33],
+      [1362, 321, 15], [1338, 329, 164], [1269, 358, 0], [1189, 388, 0], [1157, 401, 0], [1121, 416, 0], [898, 518, 0], [874, 531, 44],
+      [859, 543, 20], [862, 560, 150], [878, 596, 0], [903, 650, 0], [910, 668, 22], [907, 677, 14], [885, 687, 158], [811, 718, 302],
+      [740, 761, 113], [729, 774, 24], [729, 789, 0], [729, 801, 15], [709, 817, 256], [577, 919, 0], [552, 935, 57], [528, 945, 13],
+      [521, 924, 0], [496, 854, 30], [475, 834, 60], [446, 833, 35], [426, 814, 0], [412, 792, 18], [382, 802, 0], [347, 816, 0],
+      [307, 833, 0], [271, 850, 0], [241, 867, 0], [207, 889, 124], [188, 904, 41], [180, 922, 298], [168, 966, 0], [153, 1016, 0],
+      [149, 1034, 147], [157, 1160, 114], [159, 1182, 22], [178, 1194, 0], [216, 1214, 0], [326, 1267, 0], [350, 1279, 19], [360, 1277, 14],
+      [372, 1256, 214], [409, 1186, 0], [423, 1162, 138], [518, 1076, 117], [535, 1056, 70], [541, 1024, 0], [544, 1002, 18], [555, 981, 110],
+      [581, 960, 0], [713, 859, 0], [740, 840, 0], [771, 816, 140], [802, 797, 0],
     ],
   },
   singapura: {
@@ -1093,6 +1102,7 @@ const SUPERFICIES_ESCAPE = {
   "redbullring": {"britaCurvas": 420, "largura": 26, "brita": [[0.84, 0.875, -1], [0.89, 0.93, -1]]},
   "madri": {"britaCurvas": 420, "largura": 26},
   "miami": {"britaCurvas": 420, "largura": 26},
+  "baku": {"listrado": [[0.016, 0.056, 1], [0.08, 0.098, 1], [0.228, 0.252, 1]], "largura": 56},
 };
 
 // Nos autódromos de GP o escape começa depois da zebra. As pistas de rua mantêm o muro existente.
@@ -1268,7 +1278,7 @@ const DRS = {
   hungaroring: [[0.87, 0.92, 0.06], [0.63, 0.67, 0.73]],
   zandvoort: [[0.91, 0.94, 0], [1, 0.04, 0.08]],
   madri: [[0.9, 0.94, 0.02], [0.05, 0.09, 0.15]],
-  baku: [[0.81, 0.86, 0.01], [0.07, 0.11, 0.22]],
+  baku: [[0.805, 0.86, 0.01], [0.1, 0.115, 0.22]],
   singapura: [[0.935, 0.965, 0.05], [0.172, 0.19, 0.325], [0.607, 0.627, 0.695], [0.77, 0.79, 0.845]], // a reta dos boxes, a Raffles Boulevard (curva 5 a 7), a Esplanade Drive (13 a 14) e a Raffles Avenue (15 a 16)
   austin: [[0.89, 0.93, 0.03], [0.49, 0.53, 0.62]],
   mexico: [[0.93, 1, 0.24], [0.31, 0.35, 0.45]],
@@ -1352,15 +1362,22 @@ function limiteViaduto(t, n, i, largura) {
 // Os muros de uma pista de rua só onde a pista real tem barreira (Singapura): `t.muros = [[f0, f1, lado, recuo], ...]`, frações da volta (a de chegada
 // cruza a linha); `lado`: 1 (direita de quem anda), -1, 0 (os dois), "fora" ou "dentro" da curva; `recuo`: a distância da borda do asfalto até a face da barreira,
 // em unidades (um número, ou [r0, r1] para ir de um ao outro ao longo do trecho). Onde nenhum trecho cobre, não há muro: o carro sai da pista. Os que vêm depois
-// cobrem os que vêm antes. A mesma matriz manda no desenho (kit/singapura/barreiras.js) e na colisão (sim.js e fisica.js).
+// cobrem os que vêm antes; um 5º elemento opcional é a `rampa` (pontos) que suaviza as pontas. A mesma matriz manda no desenho (kit/singapura/barreiras.js) e na colisão (sim.js e fisica.js).
 function murosPorTrechos(pts, muros) {
   const n = pts.length, mapa = { 1: new Float32Array(n), [-1]: new Float32Array(n) };
   const sinal = (i) => { const p = pts[(i + n) % n], q = pts[(i + 3 + n) % n]; return p.tx * q.ty - p.ty * q.tx > 0 ? 1 : -1; };
-  for (const [f0, f1, lado, recuo] of muros) {
+  for (const [f0, f1, lado, recuo, rampa = 0] of muros) {
     const a = Math.floor(f0 * n), b = Math.floor(f1 * n) + (f1 < f0 ? n : 0); let melhor = a;
     for (let i = a; i <= b; i++) if ((pts[i % n].k || 0) > (pts[melhor % n].k || 0)) melhor = i;
     const dentro = sinal(melhor), lados = lado === 0 || lado === undefined ? [-1, 1] : [lado === "fora" ? -dentro : lado === "dentro" ? dentro : lado];
-    for (const l of lados) for (let i = a; i <= b; i++) mapa[l][i % n] = Array.isArray(recuo) ? recuo[0] + ((recuo[1] - recuo[0]) * (i - a)) / Math.max(1, b - a) : recuo;
+    for (const l of lados) for (let i = a; i <= b; i++) {
+      const alvo = Array.isArray(recuo) ? recuo[0] + ((recuo[1] - recuo[0]) * (i - a)) / Math.max(1, b - a) : recuo;
+      if (!rampa) { mapa[l][i % n] = alvo; continue; }
+      // com `rampa` (em pontos, 5º elemento; Baku): nas pontas o recuo vai suavemente do que já havia (onde não havia muro, de alvo + 70) até o do trecho: o muro nunca tem degrau,
+      // e a pista pode estreitar (recuo negativo: a barreira entra no asfalto, a Cidade Velha) com entrada e saída em ângulo
+      const u = Math.max(0, Math.min(1, (i - a) / rampa, (b - i) / rampa)), t = u * u * (3 - 2 * u), antes = mapa[l][i % n] || alvo + 70;
+      mapa[l][i % n] = antes + (alvo - antes) * t || 0.001;
+    }
   }
   return mapa;
 }

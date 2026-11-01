@@ -200,7 +200,7 @@ function passo(c, ent, amb, tr, ev) {
   c.idx = procurar(tr, nx, ny, c.idx);
   const fr = quadro(tr, nx, ny, c.idx), lim = tr.wallLat - (tr.t.muroFolga ?? 8);
   const pneu = tr.pneus && tr.pneus[c.idx], lado = Math.sign(fr.lat) || 1;
-  const limiteL = Math.min(P.limiteViaduto(tr.t, tr.n, c.idx, tr.W), tr.murosEscape?.[lado]?.[c.idx] ? tr.W / 2 + tr.murosEscape[lado][c.idx] - 8 : pneu && lado === pneu ? tr.W / 2 + 26 : lim);
+  const limiteL = Math.min(P.limiteViaduto(tr.t, tr.n, c.idx, tr.W), tr.murosEscape?.[lado]?.[c.idx] ? tr.W / 2 + tr.murosEscape[lado][c.idx] - (tr.t.muroFolga ?? 8) : pneu && lado === pneu ? tr.W / 2 + 26 : lim);
   if (Math.abs(fr.lat) > limiteL || nx < 2 || ny < 2 || nx > tr.t.world - 2 || ny > tr.t.world - 2) {
     const q = tr.pts[c.idx], s = Math.sign(fr.lat) || 1, over = Math.abs(fr.lat) - limiteL;
     if (over > 0) { nx -= q.nx * s * over; ny -= q.ny * s * over; }
