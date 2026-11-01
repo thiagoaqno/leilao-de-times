@@ -209,3 +209,34 @@ test("depois de uma colisão os dois carros viram fantasma por 2 s, sem reativar
   Contato.depoisDoPasso(room, room.players.a, mk(0, 300), t0 + 30, [], true);
   assert.ok(!(room.players.a.fantAte > Date.now()), "o mesmo par não vira fantasma de novo logo em seguida");
 });
+
+test("bater no muro põe o carro em fantasma por 2 s: quem vem atrás o atravessa e depois ele volta a colidir", () => {
+  const D = require("../public/corrida/dinamica.js"), Parados = require("../corrida-parados.js");
+  const agora = Date.now; let relogio = 1e9 + 100000; Date.now = () => relogio;
+  try {
+    const room = sala(); room.startAt = 1000; room.order = ["a", "b"];
+    Object.assign(room.players.a, { car: "equilibrado" }); Object.assign(room.players.b, { car: "equilibrado" });
+    const a = room.players.a, mk = (x, v) => { const c = D.novoCarro(x, 0, 0); c.v = v; c.vx = v; c.z = 0; c.tick = 1; c.x0 = x - v / 120; c.y0 = 0; c.a0 = 0; return c; };
+    // 1) bate no muro (força 100): fantasma, punição e dano como sempre
+    Direcao.bater(room, a, 100, "muro", relogio, semLog);
+    assert.ok(a.fantAte - relogio >= 1900 && Contato.fantasmaDoBox(a, relogio), "fantasma depois do muro");
+    assert.equal(a.dano, 1); assert.equal(a.penal, 0);
+    assert.equal(Parados.passo(room, relogio), true, "o estado público é avisado");
+    // 2) quem vem atrás atravessa sem colisão
+    const A = mk(38, 0); Contato.gravar(room, "a", relogio - 8, A); Contato.gravar(room, "a", relogio, A);
+    const ev = []; Contato.depoisDoPasso(room, room.players.b, mk(0, 300), relogio + 8, ev, true);
+    assert.equal(ev.length, 0, "sem colisão com o fantasma");
+    // 3) depois de 2 s volta a colidir
+    relogio += 2100; Parados.passo(room, relogio);
+    assert.equal(a.fantAte, 0);
+    Contato.gravar(room, "a", relogio - 8, A); Contato.gravar(room, "a", relogio, A);
+    const ev2 = []; Contato.depoisDoPasso(room, room.players.b, mk(0, 300), relogio + 8, ev2, true);
+    assert.equal(ev2.length, 1, "volta a colidir");
+    // raspada leve não ativa, e raspar de novo logo em seguida não reativa em loop
+    const r2 = sala(); relogio += 100000;
+    Direcao.bater(r2, r2.players.a, 25, "muro", relogio, semLog); assert.ok(!(r2.players.a.fantAte > relogio), "raspada leve");
+    Direcao.bater(r2, r2.players.a, 100, "muro", relogio + 5000, semLog); const fim = r2.players.a.fantAte; relogio += 5000;
+    r2.players.a.fantAte = 0; Direcao.bater(r2, r2.players.a, 100, "muro", relogio + 4100, semLog);
+    assert.equal(r2.players.a.fantAte, 0, "no intervalo mínimo não vira fantasma de novo"); assert.ok(fim > 0);
+  } finally { Date.now = agora; }
+});
