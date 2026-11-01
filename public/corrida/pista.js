@@ -21,7 +21,6 @@ import { vidaGP } from "./kit/vida.js";
 import { boxesGP } from "./kit/corredor-boxes.js";
 import { parque } from "./kit/parque.js";
 import { fundirEstaticos } from "./kit/fundir.js";
-import { colherCaixas, montarContato } from "./contato.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 // ---------- temas das pistas: cores, chão, enfeites e o horizonte ----------
@@ -564,9 +563,7 @@ function buildWorld(tr) {
   if (id === "tokyo") { const moon = add(new THREE.Mesh(new THREE.SphereGeometry(90, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf2f0e8, fog: false }))); moon.position.set(WORLD / 2 + 2500, 1800, WORLD / 2 - 3000); }
   // juntar as malhas paradas por material e região (kit/fundir.js): de 900 chamadas de desenho em Mônaco para umas 300. O que as
   // animações movem é descoberto rodando a vida da pista por alguns segundos em 24 pontos da volta.
-  const caixasContato = colherCaixas(tr); // as caixas de quem joga sombra, medidas antes de juntar as malhas (contato.js)
   fundirEstaticos(tr, { simular: () => { for (let k = 0; k < 24; k++) { const p = pts[Math.floor((k / 24) * n)], foco = { x: p.x, y: p.y, z: p.h, a: Math.atan2(p.ty, p.tx) }; for (let s = 0; s < 6; s++) animarVida(tr, 0.08, foco); } } });
-  montarContato(tr, caixasContato, add); // a sombra de contato no pé de prédios, arquibancadas, barreiras e árvores: poucas malhas instanciadas, depois da fusão para não serem juntadas
 }
 // Los Angeles: placa "GALERA" no morro (estilo Hollywood) e placa verde da freeway em cima da pista
 function landmarksLA(tr, add, r) {
