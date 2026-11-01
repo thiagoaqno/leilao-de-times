@@ -29,7 +29,7 @@ export const CEUS = {
   singapura: { brilho: 1, luz: 0.55, arquivo: "losangeles" },
   austin: { brilho: 1, luz: 0.55, arquivo: "laguna" },
   mexico: { brilho: 1, luz: 0.55, arquivo: "interlagos" },
-  lasvegas: { brilho: 1, luz: 0.55, arquivo: "losangeles" },
+  lasvegas: { brilho: 1, luz: 0.55, arquivo: "deserto" }, // o céu limpo do deserto de Nevada (a noite usa o céu noturno compartilhado)
   catar: { brilho: 1, luz: 0.55, arquivo: "deserto" },
   abudhabi: { brilho: 1, luz: 0.55, arquivo: "losangeles" },
   losangeles: { brilho: 1, luz: 0.6 },

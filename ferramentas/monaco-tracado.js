@@ -122,7 +122,7 @@ function vertices(P, scale, raioMin, retaPerto) {
 }
 
 // a conversão inteira. M: pontos reais em metros (x leste, y sul), o primeiro é a linha de chegada. volta: o comprimento da volta no jogo.
-exports.ajustarTracado = function ({ M, volta, largura = 104, muro = 14, raioMin, passadas = 3000 }) {
+exports.ajustarTracado = function ({ M, volta, largura = 104, muro = 14, raioMin, passadas = 3000, retaPerto: retaMax = 520 }) {
   const per = M.reduce((s, p, i) => s + dist(p, M[(i + 1) % M.length]), 0), k = volta / per;
   const P = spline(M.map(([x, y]) => [x * k, y * k]), PASSO);
   alisar(P, 3, 0.4);
@@ -131,7 +131,7 @@ exports.ajustarTracado = function ({ M, volta, largura = 104, muro = 14, raioMin
   const xs = P.map((p) => p[0]), ys = P.map((p) => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const scale = Math.ceil((Math.max(x1 - x0, y1 - y0) / CABE) * 100) / 100, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
   const Q = P.map(([x, y]) => [WORLD / 2 * scale + (x - cx), WORLD / 2 * scale + (y - cy)]); // em unidades do mundo
-  const n = Q.length, retaPerto = (i) => Math.min(i, n - i) * PASSO < 520; // a linha de chegada está no ponto 0
+  const n = Q.length, retaPerto = (i) => Math.min(i, n - i) * PASSO < retaMax; // a linha de chegada está no ponto 0 (retaMax: até onde a reta dos boxes vai, em unidades; 520 por padrão)
   const verts = vertices(Q, scale, rmin, retaPerto);
   // o primeiro vértice é a linha de chegada (ponto 0 da linha); os outros seguem na ordem da volta
   verts.sort((a, b) => a.pos - b.pos);
