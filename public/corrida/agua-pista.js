@@ -10,11 +10,7 @@
 // sem faixas) e a máscara; escurece o asfalto, baixa a rugosidade (película fina e poças espelhadas), torce a normal em marolas esticadas
 // ao longo da pista, soma o reflexo do céu na beira do campo de visão e riscos verticais de luz dos carros mais perto (luz
 // traseira vermelha e faróis): o reflexo de uma luz num chão molhado aparece como um traço que desce dela até quem olha.
-// Cada carro perto também deixa um rastro um pouco mais seco por trás (`uCarros`).
-// O ASFALTO SECO TAMBÉM REFLETE (`uSeco`, 0 ou 1: o clima-visual.js liga fora da qualidade Baixa): de frente quase nada; em ângulo raso um véu
-// suave de Fresnel do céu só bem rasante, o traçado emborrachado (canal G da máscara) mais escuro e levemente acetinado (rugosidade 0,77 contra 0,86; o
-// molhado é que é espelho), com a rugosidade variando pelo canal B, e à noite os riscos dos faróis e lanternas bem fracos (`uLuzSeca`). Some conforme a água sobe (`aguaSec`),
-// então a passagem seco → molhado é contínua e só por uniformes. Sem água e sem `uSeco` (qualidade Baixa) o sombreador não faz nada.
+// Cada carro perto também deixa um rastro um pouco mais seco por trás (`uCarros`). Sem água (`uAgua` ≈ 0) o sombreador não faz nada.
 import * as THREE from "three";
 
 export const N_CARROS_AGUA = 4; // os carros mais perto: o rastro seco e as luzes (dois pontos de luz cada). Poucos e com laços de limite fixo: o sombreador é caro de compilar no Windows (ANGLE/D3D)
@@ -97,7 +93,7 @@ export function aguaUvDaFita(n, i0, i1) {
 const GLSL_COMUM = /* glsl */ `
 #define N_CAR ${N_CARROS_AGUA}
 #define N_LUZ ${N_CARROS_AGUA * 2}
-uniform float uAgua; uniform float uDif; uniform float uSeco; uniform float uLuzSeca; uniform sampler2D uMascara; uniform vec2 uEscala; uniform vec3 uCeu;
+uniform float uAgua; uniform float uDif; uniform sampler2D uMascara; uniform vec2 uEscala; uniform vec3 uCeu;
 uniform vec4 uCarros[N_CAR]; uniform vec4 uLuzA[N_LUZ]; uniform vec4 uLuzB[N_LUZ];
 varying vec2 vAguaUv; varying vec3 vAguaMundo;
 float aH(vec2 p) { p = mod(p, 289.0); return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -106,8 +102,8 @@ float aExp(float t) { return 1.0 / (1.0 + t * (1.0 + t * (0.5 + t * 0.1667))); }
 `;
 const GLSL_COR = /* glsl */ `
 #include <color_fragment>
-float aguaW = 0.0, aguaPoca = 0.0, aguaRug = 0.5, aguaSec = 0.0, aguaLinha = 0.0;
-if (uAgua > 0.004 || uSeco > 0.004) {
+float aguaW = 0.0, aguaPoca = 0.0, aguaRug = 0.5;
+if (uAgua > 0.004) {
   vec4 mk = texture2D(uMascara, vAguaUv);
   vec2 mm = vAguaMundo.xz, ql = vAguaUv * uEscala;
   float seco = mk.g;
@@ -120,17 +116,11 @@ if (uAgua > 0.004 || uSeco > 0.004) {
   aguaW = clamp(uAgua - seco * 0.62 * uDif, 0.0, 1.0) * mk.a; // (embaixo do teto, mk.a = 0, fica seco)
   aguaPoca = smoothstep(0.48, 0.68, mk.r + (rd - 0.5) * 0.5) * smoothstep(0.35, 0.92, uAgua) * uDif * (1.0 - 0.9 * seco) * mk.a;
   aguaRug = clamp(mk.b * 0.65 + aR(ql * vec2(0.5, 0.12)) * 0.35, 0.0, 1.0);
-  aguaSec = uSeco * mk.a * (1.0 - smoothstep(0.0, 0.5, aguaW)); // o brilho do seco: some com a água, e não existe embaixo de teto
-  aguaLinha = smoothstep(0.25, 0.85, mk.g); // o traçado emborrachado: mais escuro e liso
-  diffuseColor.rgb *= (1.0 - 0.42 * aguaW - 0.16 * aguaPoca - 0.17 * aguaLinha * aguaSec) * mix(vec3(1.0), vec3(0.93, 0.97, 1.05), aguaW);
+  diffuseColor.rgb *= (1.0 - 0.42 * aguaW - 0.16 * aguaPoca) * mix(vec3(1.0), vec3(0.93, 0.97, 1.05), aguaW);
 }
 `;
 const GLSL_RUG = /* glsl */ `
 #include <roughnessmap_fragment>
-if (aguaSec > 0.004) { // seco: o asfalto comum é áspero; o emborrachado é mais liso, com manchas de rugosidade (canal B)
-  float rSeco = clamp(mix(0.86, 0.77, aguaLinha) + (aguaRug - 0.5) * 0.1, 0.72, 0.9); // fosco, levemente acetinado (o molhado é que é espelho)
-  roughnessFactor = mix(roughnessFactor, min(roughnessFactor, rSeco), aguaSec);
-}
 if (uAgua > 0.004) {
   float rMolh = mix(0.36, 0.075, smoothstep(0.3, 1.0, aguaW)) + (aguaRug - 0.5) * 0.26 * aguaW; // película fina com manchas (úmida: brilho leve; encharcada: espelho)
   roughnessFactor = mix(roughnessFactor, rMolh, smoothstep(0.0, 0.3, aguaW));
@@ -147,7 +137,7 @@ if (uAgua > 0.004) { // marolas esticadas ao longo da pista (viram riscos na ver
 `;
 const GLSL_LUZ = /* glsl */ `
 #include <emissivemap_fragment>
-if (uAgua > 0.004 || uSeco > 0.004) {
+if (uAgua > 0.004) {
   vec3 vd = normalize(vViewPosition);
   float nv = clamp(dot(normal, vd), 0.0, 1.0), fm = 1.0 - nv, fres = 0.04 + 0.96 * fm * fm * fm * fm * fm;
   vec2 cp = cameraPosition.xz, cf = vAguaMundo.xz - cp;
@@ -155,15 +145,11 @@ if (uAgua > 0.004 || uSeco > 0.004) {
   float rad = aR(vec2(atan(cf.y, cf.x) * 60.0, length(cf) * 0.012));
   float quebra = mix(0.5 + 0.9 * rad, 1.0, aguaPoca);
   totalEmissiveRadiance += uCeu * (fres * 0.7 + 0.015) * aguaW * (1.0 - roughnessFactor) * quebra;
-  // seco: só o termo de Fresnel (nada de frente), em riscos suaves que saem da câmera; o traçado emborrachado reflete bem mais
-  float fr6 = fm * fm * fm * fm * fm * fm; // só bem rasante, um véu suave: sem reflexo nítido do céu no seco
-  totalEmissiveRadiance += uCeu * fr6 * aguaSec * (0.035 + 0.05 * aguaLinha) * (0.85 + 0.3 * rad);
   // a luz dos carros no chão molhado: o reflexo de um ponto de luz aparece embaixo dele, esticado até quem olha.
   // A conta que não depende do pixel (direção, onde o reflexo cai, o comprimento do traço, a cor) vem pronta do clima-visual.js:
   // A = (direção da câmera à luz, onde cai o reflexo, 1/comprimento) e B = (cor × força, 1 se a luz vale); aqui só sobra aExp.
   vec3 luz = vec3(0.0);
-  float luzSeca = uLuzSeca * aguaSec * (0.04 + 0.1 * aguaLinha); // à noite, no seco, os riscos das luzes são bem fracos
-  if (aguaW + luzSeca > 0.004) for (int i = 0; i < N_LUZ; i++) {
+  for (int i = 0; i < N_LUZ; i++) {
     vec4 B = uLuzB[i];
     if (B.a > 0.0) {
       vec4 A = uLuzA[i];
@@ -172,7 +158,7 @@ if (uAgua > 0.004 || uSeco > 0.004) {
       luz += B.rgb * (along * lat);
     }
   }
-  totalEmissiveRadiance += luz * (aguaW * smoothstep(0.05, 0.4, aguaW) * (1.0 + aguaPoca * 1.2) * (1.0 - smoothstep(0.35, 0.9, roughnessFactor)) + luzSeca);
+  totalEmissiveRadiance += luz * aguaW * smoothstep(0.05, 0.4, aguaW) * (1.0 + aguaPoca * 1.2) * (1.0 - smoothstep(0.35, 0.9, roughnessFactor));
 }
 `;
 
@@ -180,7 +166,7 @@ if (uAgua > 0.004 || uSeco > 0.004) {
 export function prepararAguaPista(tr, m) {
   if (m.userData.aguaPista) return;
   const u = {
-    uAgua: { value: 0 }, uDif: { value: 0 }, uSeco: { value: 0 }, uLuzSeca: { value: 0 }, uMascara: { value: mascaraAgua(tr) }, uEscala: { value: new THREE.Vector2(tr.W, tr.n * 6) }, uCeu: { value: new THREE.Color(0.6, 0.65, 0.7) },
+    uAgua: { value: 0 }, uDif: { value: 0 }, uMascara: { value: mascaraAgua(tr) }, uEscala: { value: new THREE.Vector2(tr.W, tr.n * 6) }, uCeu: { value: new THREE.Color(0.6, 0.65, 0.7) },
     uCarros: { value: Array.from({ length: N_CARROS_AGUA }, () => new THREE.Vector4()) }, uLuzA: { value: Array.from({ length: N_CARROS_AGUA * 2 }, () => new THREE.Vector4()) }, uLuzB: { value: Array.from({ length: N_CARROS_AGUA * 2 }, () => new THREE.Vector4()) },
   };
   m.userData.aguaPista = u;
@@ -196,5 +182,5 @@ export function prepararAguaPista(tr, m) {
       .replace("#include <normal_fragment_maps>", GLSL_NORMAL)
       .replace("#include <emissivemap_fragment>", GLSL_LUZ);
   };
-  m.customProgramCacheKey = () => "agua-pista-3";
+  m.customProgramCacheKey = () => "agua-pista-2";
 }
