@@ -285,8 +285,8 @@ function muretaDoBox(tr, idx, lat, cor) {
   return over > 0 && over < 10 ? { over, lado: cor.lado } : null;
 }
 // o ponto (x, y) do carro no corredor, no ponto u (em pontos da pista), saindo do lado lat0
-function pontoDoBox(tr, cor, u, lat0, garagem) {
-  const n = tr.n, i = cor.i0 + Math.floor(u), f = u - Math.floor(u), a = tr.pts[i % n], b = tr.pts[(i + 1) % n], lat = cor.latParada(u, garagem, lat0);
+function pontoDoBox(tr, cor, u, lat0, garagem, B) {
+  const n = tr.n, i = cor.i0 + Math.floor(u), f = u - Math.floor(u), a = tr.pts[i % n], b = tr.pts[(i + 1) % n], lat = cor.latParada(u, garagem, lat0) + (B.desvioEntrada || 0) * Math.max(0, 1 - (u - (B.uEntrada || 0)) / 12);
   return { x: a.x + (b.x - a.x) * f + (a.nx + (b.nx - a.nx) * f) * lat, y: a.y + (b.y - a.y) * f + (a.ny + (b.ny - a.ny) * f) * lat };
 }
 // um passo do carro no corredor; true enquanto o carro está nele (a física normal fica de fora)
@@ -294,18 +294,27 @@ function passoBox(c, ent, amb, tr, p, ev) {
   const B = c.box, cor = B.cor, spec = amb.spec, dt = PASSO, vlim = F1.LIMITADOR * spec.vmax;
   if (!B.fase) {
     B.pedido = ent.pedido || null;
-    if (!B.pedido || amb.finish != null || c.air || (amb.laps || 0) + 1 >= (amb.voltas || 1) || amb.quali) return false;
+    if (amb.finish != null || c.air || amb.quali) return false;
     const rel = (c.idx - cor.i0 + tr.n) % tr.n;
-    if (rel > 8) return false;
-    const q = tr.pts[c.idx], lado = (c.x - q.x) * q.nx + (c.y - q.y) * q.ny, n = (amb.paradas || 0) + 1;
+    const q = tr.pts[c.idx], lado = (c.x - q.x) * q.nx + (c.y - q.y) * q.ny;
+    // Entrar pela rampa, apontando para o corredor, equivale a pedir para escolher na garagem.
+    // A faixa fica junto à borda; exigir movimento para fora evita capturar quem só passa pela reta.
+    const paraFora = (c.vx * q.nx + c.vy * q.ny) * cor.lado;
+    const direto = !B.pedido && tr.mostrarBoxes !== false && rel < F1.RAMPA && lado * cor.lado >= tr.W / 2 - 8 && paraFora > 2 && c.v > 0;
+    if (direto) B.pedido = "decidir";
+    if (!B.pedido || (!direto && rel > 8) || (!direto && (amb.laps || 0) + 1 >= (amb.voltas || 1))) return false;
+    const n = (amb.paradas || 0) + 1;
     // com um stop-and-go pendente (`amb.stopGo`: os segundos parado) a visita começa com ele: fica parado esses segundos SEM mexer no pneu e, se o
     // composto pedido é outro (`troca`), a equipe troca o pneu em seguida, na mesma parada, com o tempo normal da troca somado
     // `B.parada`/`B.t`: a parada em si (no stop-and-go, os segundos dele); `B.troca = { parada, t }`: a troca de pneu que vem logo depois (null se não troca)
     const stopGo = amb.stopGo > 0, decidir = B.pedido === "decidir", atual = c.pneu ? c.pneu.composto : (decidir ? "medio" : B.pedido), tempoTroca = F1.tempoDeParada(amb.semente, amb.id, n);
     const voltasRest = Math.max(0, (amb.voltas || 1) - ((amb.laps || 0) + 1)), rec = decidir ? F1.recomendarParada({ atual, jogos: amb.jogos, agua: amb.agua || 0, voltasRestantes: voltasRest, fator: spec.desgaste }) : null;
-    Object.assign(B, { fase: "entra", u: rel + 0.5, lat0: lado, t: 0, composto: decidir ? null : B.pedido, escolher: decidir, rec, tt: tempoTroca, manter: false, stopGo, troca: !decidir && stopGo && B.pedido !== atual ? { parada: tempoTroca, t: 0 } : null, sg: stopGo ? amb.stopGo : 0, volta: (amb.laps || 0) + 1, n, parada: stopGo ? amb.stopGo : tempoTroca, garagem: F1.garagemDe(cor, amb.grid || 0), tick0: c.tick });
+    const uEntrada = rel + 0.5, garagem = F1.garagemDe(cor, amb.grid || 0);
+    const desvioEntrada = direto ? lado - cor.latParada(uEntrada, garagem, lado) : 0;
+    Object.assign(B, { fase: "entra", u: uEntrada, uEntrada, desvioEntrada, lat0: lado, t: 0, composto: decidir ? null : B.pedido, escolher: decidir, rec, tt: tempoTroca, manter: false, stopGo, troca: !decidir && stopGo && B.pedido !== atual ? { parada: tempoTroca, t: 0 } : null, sg: stopGo ? amb.stopGo : 0, volta: (amb.laps || 0) + 1, n, parada: stopGo ? amb.stopGo : tempoTroca, garagem, tick0: c.tick });
     if (ev) ev.push({ t: "box", fase: "entra", volta: B.volta, n, stopGo: stopGo || undefined });
   }
+  c.v = Math.min(c.v, vlim); // o limitador vale para todos desde a entrada, também para pedidos e robôs
   const frena = 180, acel = 90; // o corredor tem o seu próprio jeito de frear e de arrancar
   const vai = (alvo, a) => { c.v = c.v > alvo ? Math.max(alvo, c.v - frena * dt) : Math.min(alvo, c.v + a * dt); };
   if (B.fase === "entra") {
@@ -337,7 +346,7 @@ function passoBox(c, ent, amb, tr, p, ev) {
   } else {
     vai(vlim, acel); B.u = Math.min(cor.len, B.u + (c.v * dt) / 6);
   }
-  const fim = B.u >= cor.len, a = pontoDoBox(tr, cor, B.u, B.lat0, B.garagem), b = pontoDoBox(tr, cor, Math.min(cor.len, B.u + 0.4), B.lat0, B.garagem);
+  const fim = B.u >= cor.len, a = pontoDoBox(tr, cor, B.u, B.lat0, B.garagem, B), b = pontoDoBox(tr, cor, Math.min(cor.len, B.u + 0.4), B.lat0, B.garagem, B);
   const saida = fim ? F1.saidaDoCorredor(cor, tr.pts) : null;
   c.a = saida ? saida.a : Math.atan2(b.y - a.y, b.x - a.x);
   c.x = a.x; c.y = a.y;
@@ -508,7 +517,7 @@ function serializar(c) {
     m: c.marcha, tt: R(c.trocaT, 1000), ds: R(c.desceT || 0, 1000), ax: R(c.axL, 100), vz: R(c.vz, 10), air: c.air ? 1 : 0, gvz: R(c.gvz || 0, 10), ix: c.idx, pg: R(c.prog, 10), sc: c.sector, dr: R(c.draft, 1000), tk: c.tick, fa: c.fant ? 1 : 0,
     pn: [c.pneu.composto, R(c.pneu.desgaste, 100000), R(c.pneu.temp, 10000)], er: [R(c.ers.carga, 10000), R(c.ers.recarga, 10000), c.ers.volta] };
   if (c.inst > 0 || c.rIns) s.ni = [R(c.inst || 0, 1000), R(c.instK || 0, 1000), R(c.rIns || 0, 1000)]; // (a instabilidade da batida)
-  if (c.box) { const B = c.box; s.bx = [B.fase, R(B.u, 1000), R(B.lat0, 100), R(B.t, 1000), R(B.parada, 100), R(B.garagem, 1000), B.composto, B.volta, B.n, B.tick0 ?? 0, B.pedido, B.stopGo ? 1 : 0, B.troca ? [R(B.troca.parada, 100), R(B.troca.t, 1000)] : null, R(B.sg || 0, 100), B.escolher ? 1 : 0, B.rec || null, R(B.tt || 0, 100), B.manter ? 1 : 0]; }
+  if (c.box) { const B = c.box; s.bx = [B.fase, R(B.u, 1000), R(B.lat0, 100), R(B.t, 1000), R(B.parada, 100), R(B.garagem, 1000), B.composto, B.volta, B.n, B.tick0 ?? 0, B.pedido, B.stopGo ? 1 : 0, B.troca ? [R(B.troca.parada, 100), R(B.troca.t, 1000)] : null, R(B.sg || 0, 100), B.escolher ? 1 : 0, B.rec || null, R(B.tt || 0, 100), B.manter ? 1 : 0, R(B.uEntrada || 0, 1000), R(B.desvioEntrada || 0, 100)]; }
   return s;
 }
 function aplicar(c, s, tr) {
@@ -518,7 +527,7 @@ function aplicar(c, s, tr) {
   c.pneu.composto = s.pn[0]; c.pneu.desgaste = s.pn[1]; c.pneu.temp = s.pn[2];
   c.ers.carga = s.er[0]; c.ers.recarga = s.er[1]; c.ers.volta = s.er[2];
   if (s.ni) { c.inst = s.ni[0]; c.instK = s.ni[1]; c.rIns = s.ni[2]; } else { c.inst = 0; c.instK = 0; c.rIns = 0; }
-  if (s.bx && c.box) { const B = c.box; [B.fase, B.u, B.lat0, B.t, B.parada, B.garagem, B.composto, B.volta, B.n, B.tick0, B.pedido] = s.bx; B.stopGo = !!s.bx[11]; B.troca = s.bx[12] ? { parada: s.bx[12][0], t: s.bx[12][1] } : null; B.sg = s.bx[13] || 0; B.escolher = !!s.bx[14]; B.rec = s.bx[15] || null; B.tt = s.bx[16] || 0; B.manter = !!s.bx[17]; }
+  if (s.bx && c.box) { const B = c.box; [B.fase, B.u, B.lat0, B.t, B.parada, B.garagem, B.composto, B.volta, B.n, B.tick0, B.pedido] = s.bx; B.stopGo = !!s.bx[11]; B.troca = s.bx[12] ? { parada: s.bx[12][0], t: s.bx[12][1] } : null; B.sg = s.bx[13] || 0; B.escolher = !!s.bx[14]; B.rec = s.bx[15] || null; B.tt = s.bx[16] || 0; B.manter = !!s.bx[17]; B.uEntrada = s.bx[18] || 0; B.desvioEntrada = s.bx[19] || 0; }
   else if (c.box && !s.bx) { c.box.fase = null; }
   c.sp = { x: c.x, y: c.y };
 }

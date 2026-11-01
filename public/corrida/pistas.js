@@ -1309,6 +1309,17 @@ function superficieEscape(tr, idx, lat) {
 // Obstáculos sólidos fixos da pista, para a física (sim.js e fisica.js: o servidor e o navegador usam esta mesma conta) e para o cenário (kit/monaco/grampo.js): círculos { x, y, r, z, alt }, em que
 // z é a altura do asfalto mais baixo em volta e alt a altura do meio-fio acima dele. Hoje só o canteiro do miolo do grampo do Fairmont (`t.canteiro: { frac }`, a fração da volta do grampo): o centro é o centro de
 // curvatura do ponto mais fechado da curva, e o raio o que cabe entre as duas pernas do U sem tocar o asfalto.
+// Altura do asfalto mais próximo, interpolada no segmento: usada para que a borda do canteiro acompanhe as duas pernas inclinadas do grampo.
+function alturaPistaMaisProxima(pts, x, y) {
+  let melhor = Infinity, h = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length], dx = b.x - a.x, dy = b.y - a.y;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+    const d = (x - a.x - dx * t) ** 2 + (y - a.y - dy * t) ** 2;
+    if (d < melhor) { melhor = d; h = a.h + (b.h - a.h) * t; }
+  }
+  return h;
+}
 function obstaculosDaPista(t, pts) {
   if (!t.canteiro) return [];
   const n = pts.length; let bi = Math.floor(t.canteiro.frac * n), bk = 0;
@@ -1375,7 +1386,7 @@ function muroCampeoes(pts) {
   return melhor && melhor.i1 - melhor.i0 >= 8 ? melhor : null;
 }
 
-const api = { obstaculosDaPista, limiteViaduto, SUPERFICIES_ESCAPE, mapaSuperficies, superficieEscape, muroCampeoes, RECUO_MURO_ESCAPE, murosDoEscape, WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, cruzouSetor, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
+const api = { alturaPistaMaisProxima, obstaculosDaPista, limiteViaduto, SUPERFICIES_ESCAPE, mapaSuperficies, superficieEscape, muroCampeoes, RECUO_MURO_ESCAPE, murosDoEscape, WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, cruzouSetor, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);
