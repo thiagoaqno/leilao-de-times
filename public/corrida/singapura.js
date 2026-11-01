@@ -7,7 +7,8 @@ import { barreiras } from "./kit/singapura/barreiras.js";
 import { iluminacao } from "./kit/singapura/luz.js";
 import { agua, paredoes } from "./kit/singapura/agua.js";
 import { lerPredios, indiceDePredios, predios } from "./kit/singapura/predios.js";
-import { naAgua } from "./kit/singapura/mundo.js";
+import { naAgua, distanciaDaAgua, K } from "./kit/singapura/mundo.js";
+import { reflexos } from "./kit/singapura/agua.js";
 import { marcos, pontes } from "./kit/singapura/marcos.js";
 import { pitBuilding } from "./kit/singapura/boxes.js";
 import { vegetacao } from "./kit/singapura/vegetacao.js";
@@ -16,7 +17,6 @@ import { ligarNoite } from "./kit/bahrein/base.js";
 // ---------- monta tudo (chamado por pista.js, dentro do grupo da pista) ----------
 export function cenarioSingapura(tr, ctx) {
   const { add, hAt } = ctx, reservado = (tr.reservado ||= []);
-  tr.arquibancadas = [];
   const L = tr.W / 2;
   pitBuilding(tr, add); // o Pit Building primeiro: reserva o terreno dele antes dos prédios e das árvores
   const lista = lerPredios(tr), predioEm = indiceDePredios(lista);
@@ -31,9 +31,17 @@ export function cenarioSingapura(tr, ctx) {
   const COR = { 5: 5, 8: 4, 9: 3, 10: 5, 14: 3, 4: 7 };
   for (const b of lista) if (COR[b.esp] != null) b.cor = COR[b.esp];
   predios(tr, add, lista, { ignorar: (b) => !(b.esp in COR) });
+  const prediosDados = tr.prediosSG; 
   marcos(tr, add);
   pontes(tr, add);
   barreiras(tr, add, window.Pistas.PISTAS[tr.id].barreiras || {});
+  // os reflexos de noite na baía: o Marina Bay Sands, o Flyer, as cúpulas do Esplanade e os arranha-céus mais altos da margem
+  const fontes = [];
+  if (tr.mbsSG) for (const t of tr.mbsSG.lista) fontes.push({ x: t.x, z: t.z, w: 150, comp: 420, cor: "#ffd9a0" });
+  if (tr.flyerSG) fontes.push({ x: tr.flyerSG.x, z: tr.flyerSG.z, w: 230, comp: 380, cor: "#ff6fa8" });
+  for (const c of tr.esplanadeSG?.lista || []) fontes.push({ x: c.x, z: c.z, w: 220, comp: 260, cor: "#ffb86a" });
+  for (const b of lista.filter((q) => !q.esp && q.metros > 120).sort((a, c) => c.metros - a.metros).slice(0, 36)) fontes.push({ x: b.cx, z: b.cz, w: Math.min(190, Math.sqrt(b.caixa[2] - b.caixa[0]) * 9), comp: Math.min(340, b.metros * K * 0.4), cor: b.cor % 2 ? "#cfe3ff" : "#ffe3b0" });
+  tr.reflexosSG = reflexos(tr, add, fontes);
   void hAt;
 }
 

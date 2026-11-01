@@ -81,7 +81,7 @@ export function alturaDoTerreno(tr, x, z, h) {
 export function corDoChao(tr) {
   const verde = (D.verde || []).map(([tipo, ...v]) => { const P = []; for (let i = 0; i + 1 < v.length; i += 2) P.push([v[i], v[i + 1]]); const c = [1e9, 1e9, -1e9, -1e9]; for (const [x, z] of P) { c[0] = Math.min(c[0], x); c[1] = Math.min(c[1], z); c[2] = Math.max(c[2], x); c[3] = Math.max(c[3], z); } return { tipo, P, c }; });
   const campos = (D.campos || []).map(([, ...v]) => { const P = []; for (let i = 0; i + 1 < v.length - 1; i += 2) P.push([v[i], v[i + 1]]); return P; });
-  const CONCRETO = [0.62, 0.61, 0.6], CALCADA = [0.72, 0.7, 0.66], RELVA = [0.26, 0.42, 0.2], RELVA2 = [0.2, 0.34, 0.17], MATA = [0.13, 0.27, 0.12], AGUA = [0.1, 0.16, 0.2];
+  const CONCRETO = [0.4, 0.4, 0.39], CALCADA = [0.5, 0.49, 0.46], RELVA = [0.22, 0.38, 0.17], RELVA2 = [0.17, 0.3, 0.14], MATA = [0.1, 0.22, 0.09], AGUA = [0.1, 0.16, 0.2];
   return (x, z, h, ny) => {
     const s = distanciaDaAgua(x, z);
     if (s > -6) return AGUA;

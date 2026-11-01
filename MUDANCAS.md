@@ -1,33 +1,30 @@
-# Corrida: Mônaco refeito em cima de dados reais (traçado, relevo e construções)
+# Corrida: Singapura refeita, à noite, em cima de dados reais (traçado, barreiras só onde a pista tem, Marina Bay Sands, Flyer, Esplanade e a cidade iluminada)
 
 ## O que estava errado
-Mônaco parecia arcade: o traçado era desenhado à mão em cima da imagem do mapa oficial (que é girado e esticado), o relevo era um perfil
-com 20 pontos num morro de cone, a cidade eram caixas sorteadas pelo `pista.js` e a pista recebia as peças genéricas do kit (olhos de gato no
-guard-rail, placas de seta de autódromo, mastros de bandeira coloridos, roda-gigante, dirigível e morros de longe) que Mônaco não tem.
+Singapura era o GP simples do kit: o traçado de `bacinger/f1-circuits` convertido **no sentido contrário ao da corrida** (o arquivo vem no horário e o GP corre no anti-horário: a reta dos boxes sobe para o norte, passa sob a ponte Benjamin Sheares e a curva 1 é à esquerda), com guard-rail genérico em volta da volta inteira, prédios sorteados, céu de pôr do sol e nada do que faz Marina Bay ser Marina Bay.
 
 ## O que mudou
-- **Traçado real:** a linha central do circuito (bacinger/f1-circuits, MIT, conferida contra as ruas e a pista dos boxes do OpenStreetMap), girada para a linha de
-  chegada na Boulevard Albert 1er (230 m antes da Sainte Dévote), norte em cima e na proporção de verdade (a de antes era 3,9 × 1; a real é 0,76 × 1). Convertida
-  por `ferramentas/circuitos-f1.js` (afasta os trechos que se tocariam na pista larga do jogo) em 87 vértices; raio mínimo 74 (o guard-rail de dentro pede 66). Volta de 12 504 (era 12 918).
-- **Relevo real:** a altitude de EU-DEM 25 m e SRTM 30 m (média, via opentopodata.org) ao longo da volta (2 a 53 m, 2,4 unidades por metro) em `hills`, e o chão em volta
-  agora é o morro de verdade (`tr.relevoGP` em `pista.js`): o porto no nível do mar, o Rochedo em falésia, a cidade em degraus e a encosta subindo até 290 m ao noroeste. A cor
-  do terreno vem dos vértices (jardins, mata, pedra, paredão, mato do morro).
-- **Construções reais:** ~1 600 plantas de prédios do OpenStreetMap com a altura de `height`/`building:levels` (palpite pelo tipo onde não há), fachada de Mônaco
-  (creme, ocre, rosa, salmão, com janelas, venezianas e sacadas), terraços com casa de máquinas e telhado de telha nos prédios baixos. As paredes de cada região são uma malha só.
-  Marcos em código: Casino de Monte-Carlo (torres e cúpulas de cobre), Hôtel de Paris, Café de Paris, Hermitage, Fairmont sobre o túnel, capela de Sainte Dévote, Museu
-  Oceanográfico, Palácio do Príncipe e catedral no Rochedo, Port Hercule com os píeres reais e ~215 iates, Piscina Rainier III onde há piscina grande, arquibancadas só onde há calçada livre.
-- **Túnel** de 276 m sob o Fairmont, coberto (`tr.coberto`: não chove dentro), com o morro por cima.
-- **Detalhes de pista:** guard-rail duplo de aço (`guardrail.estilo: "duplo"`, novo no kit, padrão igual ao de antes), cerca de proteção, zebras vermelhas e brancas, palmeiras, plátanos e pinheiros-de-alepo nas posições do OSM.
-- **Removido de Mônaco (só nele, pela chave nova `sem` e `horizonte: false`):** olhos de gato, placas de seta, 14 mastros coloridos, roda-gigante, dirigível, bandeirolas coloridas e os morros genéricos.
-  O kit compartilhado só ganhou opções novas com o padrão de antes.
-- **Dados:** `node ferramentas/monaco-dados.js` gera `kit/monaco/dados.js` (146 KB) e o bloco de `pistas.js`, com as frações da volta de cada curva, do túnel, das faixas e do DRS.
-- **Consequências:** `migracoes/020-monaco-real.sql` zera voltas, traçados e recordes de Mônaco (o traçado mudou); `f1-pneus-tabela.js` medida de novo para Mônaco (volta média 73,8 s → 54,3 s: o traçado real é mais corrido);
-  `tests/ajuda-cena` consertado (`toast`, `$`, `getContext` que o `qualidade.js` passou a pedir) e o teste de desempenho não exige mais roda-gigante em Mônaco (usa a do Rio).
-
-## Como foi conferido
-Sem testes nem navegador (o dono joga): só scripts de Node. A cena de Mônaco monta sem erro (312 malhas, 160 chamadas por quadro na vista do jogo, 272 mil triângulos, 123 materiais, dentro dos tetos
-de `corrida-pistas-desempenho`); nada sólido invade a pista (a conferência de `invasao.mjs` dá 0); o robô difícil dá 3 voltas sem bater nem sair da pista; as conferências de
-estilo de carro de `corrida-f1-equipes` (Mônaco de curva, Monza de reta) continuam valendo; o corredor dos boxes e a grade cabem na reta (600 de reta atrás da linha).
+- **Traçado real, anti-horário, 19 curvas** (layout de 2023, 4,94 km, sem a seção sob a arquibancada Float das curvas 16 a 19 antigas): `ferramentas/singapura-dados.js` (em cima de `monaco-tracado.js`) inverte o GeoJSON, mede o giro de cada curva (T1 E 85°, T2 D 51°, T3 E 134°, T4 E 31°, T5 D 105°, T6 D 27°, T7 Memorial E 89°, T8 D 108°, T9 E 104°, T10 E 96°, T11 D 88°, T12 E 69°, T13 o grampo E 141°, T14 D 112°, T15 E 38°, T16 D 83°, T17 E 79°, T18 E 58°, T19 E 41°) e grava as frações da volta de cada uma (`kit/singapura/dados.js`, GERADO). Passa pela reta Raffles Boulevard, pela ponte Anderson, pela Esplanade Drive, em volta do Padang e pela Raffles Avenue até o Singapore Flyer. Pista quase plana (2 a 7 m). A volta tem 18 618 unidades (1 unidade ≈ 26 cm), `scale` 4,17, largura 84.
+- **Sem muro em volta:** `muros` em `pistas.js` (`murosPorTrechos`, lido por `murosDoEscape`) diz onde a pista real tem barreira: a rua toda a ~2 m do asfalto, escapes curtos com **Tecpro** em T1, T7, T13, T14 e T16-T17, o escape largo pintado de azul e dourado do lado da baía em T18-T19 e o **gramado do Flyer aberto** por dentro (sem muro: o carro sai da pista). A mesma matriz `tr.murosEscape` manda no desenho e na colisão (`sim.js` e `fisica.js`), então o muro físico coincide com a barreira desenhada.
+- **Barreiras de rua** (`kit/singapura/barreiras.js`): muro baixo de concreto branco com os painéis de patrocínio (Singapore Airlines, Pirelli, Rolex, Heineken, Aramco, DHL, AWS, Lenovo, MSC, F1...), **tela de detritos contínua** presa em postes que se curvam para dentro (nunca treliça solta no ar), blocos Tecpro laranja e brancos, o asfalto de rua entre a borda e o muro, zebras vermelhas e brancas, faixa de grid e SC.
+- **Cenário com identidade** (`kit/singapura/`, feito em código a partir de fotos e das plantas do OpenStreetMap): Marina Bay Sands (três torres de duas pernas inclinadas, o SkyPark em forma de barco por cima), Singapore Flyer de 165 m (a roda gira, 28 cabines, no lugar real ao lado da pista), as duas cúpulas de durião do Esplanade com escamas, o Fullerton, a City Hall e a Old Supreme Court, o Merlion, o Padang com os balões de luz, a baía de Marina Bay e o rio Singapura (água que anda, paredão da margem, reflexos), as pontes Anderson (com os arcos brancos) e Esplanade (paredões, fundo fechado e pilares), o Pit Building de concha verde, três arquibancadas de cadeiras azuis, amarelas e vermelhas, ~1200 prédios com a altura e a planta reais (fachada de vidro) e as chuvas-de-ouro e os coqueiros. Foi desligado do kit o que Singapura não tem (`sem`): a roda-gigante genérica (a Flyer é a de verdade), olhos de gato, placas de seta, mastros coloridos, dirigível e bandeirolas.
+- **GP noturno:** a hora padrão da sala de Singapura é a noite (`horaPadrao`, `corrida.js` e `menus.js`; dá para trocar para o dia). Refletores do GP em todo o traçado (postes, braços, cabeças de lâmpadas e halos em InstancedMesh, luz no chão e 5 SpotLights que seguem o carro, no estilo de Bahrein), janelas acesas nos prédios, Marina Bay Sands, Flyer (rosa), cúpulas e ponte acesos, e reflexos na água. De dia, o céu tropical claro e úmido (`LOOK.singapura`).
+- **Dados do jogo:** boxes (corredor do lado esquerdo, o Pit Building está a oeste), 4 zonas de DRS (reta dos boxes, Raffles Boulevard, Esplanade Drive e Raffles Avenue), `minLap` 45, `hills`, curvas de `gp-info.js` (T1 Sheares, T7 Memorial...), tabela de pneus refeita (`ferramentas/pneus-tabela.js singapura`) e **migração 021** que zera as voltas e os recordes de Singapura.
+- **Kit (só aditivo):** `pista.js` ganhou `terreno.altura` e `terreno.cor` e `murosProprios` (padrão: nada muda); `pistas.js` ganhou `muros`; `corrida.js` (`cleanConfig`) e `menus.js` leem `horaPadrao`.
 
 ## Fontes
-bacinger/f1-circuits (MIT); © colaboradores do OpenStreetMap (ODbL), Overpass API; EU-DEM 25 m e SRTM 30 m via opentopodata.org.
+- Traçado: [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits) `sg-2008.geojson` (MIT), no sentido invertido. Confere com o layout atual de 19 curvas (Wikipédia, "Marina Bay Street Circuit"; F1 Circuit Guide) e com o desenho de OpenStreetMap (ruas e pontes).
+- Prédios (planta e altura), água, parques, pontes e árvores: © colaboradores do OpenStreetMap (ODbL), pela Overpass API.
+- Fotos de referência (Wikimedia Commons): "Marina Bay Street Circuit Home straight" (Kam2y, CC BY 3.0), "Penultimate turn Marina Bay Circuit" e "F1 Singapore last corner" (colina†ion, CC BY 2.0), "Singapore Grand Prix course along Marina Bay waterfront" (Daniel Case, CC BY-SA 4.0), "Singapore Race Course viewed from Singapore Flyer" (Zairon, CC BY-SA 4.0), "Singapore F1 Grand Prix from the Singapore Flyer" e "Pit Lane" (Andy Mitchell, CC BY-SA 2.0), "Esplanade Drive with Singapore Skyline", "Singapore GP Pit Building" e "Marina Bay Sands" (Ong Chi Hang, CC BY-SA 3.0), "Marina Bay Street Circuit Grand Stand" (Calistemon, CC BY-SA 3.0), "Singapore Street Circuit before race" (Ajtnk, domínio público), "Singapore grand prix fullerton test" e "Singapore GP Circuit Park-padang". As imagens ficaram só no scratch para comparar; nada foi copiado para o jogo (tudo é desenhado em código).
+
+## Conferido
+- Robôs: dão a volta sem sair da pista (difícil 86 a 99 s, médio 90 a 101 s, fácil 111 a 113 s) e `tests/corrida-escapes.test.js` ganhou o teste dos muros por trecho de Singapura.
+- `node --test tests/corrida*.test.js` (só os da Corrida; o `npm test` completo não foi rodado) e `git diff --check`.
+- Desempenho (`node tests/ajuda-cena/medir.mjs singapura`): 376 malhas (teto 520), 145 chamadas de desenho e ~320 mil triângulos na vista do jogo, 100 materiais. Invasão (`tests/ajuda-cena/invasao.mjs`): 0 peças dentro da pista, com o carro nas duas bordas.
+- Prints de cockpit e aéreos de noite e de dia em dez pontos da volta (no PR).
+
+## Ficou de fora
+- A treliça contínua de luzes sobre a pista (hoje são postes com cabeças de lâmpadas), a pintura verde junto das zebras e as placas de curva de Singapura.
+- O Merlion e a Fullerton são fiéis em proporção e posição, mas simples; as janelas dos prédios são sorteadas (o OpenStreetMap não diz quais luzes ficam acesas).
+- O perfil de altura é plausível (2 a 7 m), não medido: o relevo digital de uma cidade tem os prédios dentro.
+- O céu da noite é o de Tóquio (`ceus/tokyo.jpg`), compartilhado.

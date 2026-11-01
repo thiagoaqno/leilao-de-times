@@ -25,10 +25,16 @@ export const GP_SINGAPURA = {
     sc: [[BOXES.sai, "SC 2"], [BOXES.entra, "SC 1"]],
     grid: true, remendos: 30, bueiros: 26,
   },
+  // as arquibancadas de verdade (blocos de cadeiras azuis, amarelas e vermelhas, como nas fotos): a do outro lado da reta dos boxes, a do Padang e a Bay Grandstand na Raffles Avenue
+  arquibancadas: { trechos: [
+    { de: 0.955, ate: 0.052, lado: 1, degraus: 8, cor: "#2b57bd", encosto: "#f2c21a", cobertura: false },
+    { de: 0.435, ate: 0.5, lado: -1, degraus: 8, cor: "#d63a32", encosto: "#2b57bd", cobertura: false },
+    { de: 0.775, ate: 0.84, lado: 1, degraus: 8, cor: "#f2c21a", encosto: "#2fa05a", cobertura: false },
+  ] },
   murosProprios: true, // o desenho das barreiras é de ../kit/singapura/barreiras.js, em cima de tr.murosEscape (os mesmos trechos da colisão)
   cenario: (tr, ctx) => cenarioSingapura(tr, ctx), // a água, os prédios, os marcos, as barreiras, as arquibancadas e o pit building
   depois: (tr, ctx) => depoisSingapura(tr, ctx), // a luz da noite, as árvores e a vida
-  terreno: { S: 300, pedacos: 6, altura: alturaDoTerreno, cor: corDoChao }, // a baía e o rio afundam o chão; a cor sai dos parques e das ruas
+  terreno: { S: 240, pedacos: 6, altura: alturaDoTerreno, cor: corDoChao }, // a baía e o rio afundam o chão; a cor sai dos parques e das ruas
   boxes: { garagens: false, mureta: true }, // só o corredor e a mureta: as garagens, o Pit Building e os terraços são de ../kit/singapura/boxes.js
   ambiente: { paineis: false, mastros: false, cerca: false, marcas: PATROCINIO_SG, posto: "sia", placas: [100, 50], outdoors: PATROCINIO_SG, bandeira: [0xef3340, 0xffffff] }, // a barreira, a tela e os painéis são nossos
   horizonte: false, // sem os morros genéricos: o horizonte é a cidade

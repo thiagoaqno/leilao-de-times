@@ -17,7 +17,7 @@ export function vegetacao(tr, add) {
     const passo = tipo === 2 ? 46 : 78;
     for (let x = x0; x <= x1; x += passo) for (let z = z0; z <= z1; z += passo) {
       const px = x + (r() - 0.5) * passo * 0.8, pz = z + (r() - 0.5) * passo * 0.8;
-      if (r() < (tipo === 2 ? 0.75 : 0.32) && poligonoDentro(P, px, pz) && ok(px, pz, 30)) lista.push({ x: px, z: pz, tipo: r() < 0.25 ? "palma" : "chuva" });
+      if (r() < (tipo === 2 ? 0.5 : 0.2) && poligonoDentro(P, px, pz) && ok(px, pz, 30)) lista.push({ x: px, z: pz, tipo: r() < 0.25 ? "palma" : "chuva" });
     }
   }
   // a calçada da orla (junto da água): coqueiros de tempos em tempos ao longo da pista que tem água por perto
@@ -30,7 +30,7 @@ export function vegetacao(tr, add) {
   const mat = (c, o2 = {}) => M(c, { roughness: 0.95, ...o2 });
   if (chuvas.length) {
     const tronco = new THREE.CylinderGeometry(1.6 * K * 0.5, 2.6 * K * 0.5, 1, 6); tronco.translate(0, 0.5, 0);
-    const copa = new THREE.SphereGeometry(1, 14, 9, 0, Math.PI * 2, 0, Math.PI * 0.62); copa.translate(0, 0.2, 0);
+    const copa = new THREE.SphereGeometry(1, 9, 4, 0, Math.PI * 2, 0, Math.PI * 0.62); copa.translate(0, 0.2, 0);
     const it = new THREE.InstancedMesh(tronco, mat(0x4a3f33), chuvas.length), ic = new THREE.InstancedMesh(copa, mat(0xffffff), chuvas.length);
     chuvas.forEach((q, k) => {
       const s = 0.8 + r() * 0.5, h = 15 * K * s, y = tr.chao(q.x, q.z) - 1;

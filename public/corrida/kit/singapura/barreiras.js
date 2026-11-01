@@ -34,7 +34,7 @@ function trechos(tr, lado) {
 }
 
 export function barreiras(tr, add, cfg = {}) {
-  const { pts, n, W } = tr, sponsors = cfg.marcas || PATROCINIO_SG, tec = cfg.tecpro || [];
+  const { pts, n, W } = tr, sponsors = cfg.marcas || PATROCINIO_SG, tec = cfg.tecpro || [], pint = cfg.pintura || [];
   if (!tr.murosEscape) return;
   const pintada = (i, lado) => { const f = (((i % n) + n) % n) / n; return pint.some(([a, b, l]) => f >= a && f <= b && (l === 0 || l === lado)); };
   const emTecpro = (i, lado) => { const f = (((i % n) + n) % n) / n; return tec.some(([a, b, l]) => f >= a && f <= b && (l === 0 || l === lado || l === undefined)); };

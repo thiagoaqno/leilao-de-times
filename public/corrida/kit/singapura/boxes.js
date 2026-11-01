@@ -18,21 +18,21 @@ export function pitBuilding(tr, add) {
   for (let u = u0; u < u1; u += passo) {
     const v = Math.min(u + passo, u1);
     const fb = (uu) => em(uu, lf, 0), ft = (uu) => em(uu, lf, alto), bb = (uu) => em(uu, lb, 0), bt = (uu) => em(uu, lb, alto + 6);
-    quad(parede, fb(u), fb(v), ft(v), ft(u), "#cdcdc6"); // a frente de concreto
+    quad(parede, fb(u), fb(v), ft(v), ft(u), "#e3e3dc"); // a frente de concreto
     quad(vidro, em(u, lf - lado * 0.4, alto * 0.42), em(v, lf - lado * 0.4, alto * 0.42), em(v, lf - lado * 0.4, alto * 0.86), em(u, lf - lado * 0.4, alto * 0.86), "#ffffff"); // a faixa de vidro, acesa à noite
-    quad(parede, bb(v), bb(u), bt(u), bt(v), "#bdbdb6"); // o fundo
+    quad(parede, bb(v), bb(u), bt(u), bt(v), "#cfcfc8"); // o fundo
     // a concha verde: a borda da frente avança sobre as garagens e fica mais alta; desce até o fundo
     const topo = (uu, l, y) => em(uu, l, y);
     const ondulacao = 1 + 0.12 * Math.sin((u / (u1 - u0)) * Math.PI * 3);
     const yF = alto + 14 * ondulacao, yB = alto + 4;
-    quad(telhado, topo(u, lf - lado * beiral, yF), topo(v, lf - lado * beiral, yF), topo(v, lb, yB), topo(u, lb, yB), "#2f4a32"); // a face de cima
-    quad(telhado, topo(u, lf - lado * beiral, yF - 6), topo(u, lf - lado * beiral, yF), topo(v, lf - lado * beiral, yF), topo(v, lf - lado * beiral, yF - 6), "#1f3322"); // a espessura da borda
-    quad(telhado, topo(u, lf, alto), topo(v, lf, alto), topo(v, lf - lado * beiral, yF - 6), topo(u, lf - lado * beiral, yF - 6), "#15221a"); // por baixo da concha
+    quad(telhado, topo(u, lf - lado * beiral, yF), topo(v, lf - lado * beiral, yF), topo(v, lb, yB), topo(u, lb, yB), "#5d8a5f"); // a face de cima
+    quad(telhado, topo(u, lf - lado * beiral, yF - 6), topo(u, lf - lado * beiral, yF), topo(v, lf - lado * beiral, yF), topo(v, lf - lado * beiral, yF - 6), "#3f6141"); // a espessura da borda
+    quad(telhado, topo(u, lf, alto), topo(v, lf, alto), topo(v, lf - lado * beiral, yF - 6), topo(u, lf - lado * beiral, yF - 6), "#3a4d3d"); // por baixo da concha
   }
   // as pontas do prédio: o paredão inclinado de verde (o "talude" do fim do prédio na foto)
   for (const [uu, s] of [[u0, -1], [u1, 1]]) {
     quad(parede, em(uu, lf, 0), em(uu, lb, 0), em(uu, lb, alto + 4), em(uu, lf, alto), "#bfbfb8");
-    quad(telhado, em(uu, lf - lado * beiral, alto + 8), em(uu, lb, alto + 4), em(uu, lb, 0), em(uu - s * 26, lf, 0), "#27402b");
+    quad(telhado, em(uu, lf - lado * beiral, alto + 8), em(uu, lb, alto + 4), em(uu, lb, 0), em(uu - s * 26, lf, 0), "#4a7050");
   }
   for (const [mat, L] of G) {
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(L.vs, 3)); geo.setAttribute("color", new THREE.Float32BufferAttribute(L.cs, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(L.uv, 2)); geo.setIndex(L.idx); geo.computeVertexNormals();

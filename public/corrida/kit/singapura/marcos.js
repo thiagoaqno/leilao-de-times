@@ -4,6 +4,7 @@
 // o Padang com os balões de luz, e as pontes sobre a água (os paredões, os pilares e o vão fechado por baixo). Tudo só de noite acende (tr.noite).
 import * as THREE from "three";
 import { Montador, solido } from "../montagem.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { materialDaNoite, soDeNoite, emissivoDaNoite } from "../bahrein/base.js";
 import { predios, materialFachada, JANELA, ANDAR } from "./predios.js";
 import { D, K, NIVEL_AGUA, distanciaDaAgua, marco } from "./mundo.js";
@@ -69,15 +70,15 @@ function marinaBaySands(tr, add, mont, mats) {
   // o casco: do meio para a popa reto, depois afinando para a proa no norte (a direção de fila com z menor)
   const proa = Math.sign(-fz) || 1; // (+s para o norte)
   const sN = proa * comp * 0.5, sS = -proa * comp * 0.5;
-  prisma(mont, mats.casco, [c(sS, -larg / 2, y), c(sS * 0.2, -larg / 2, y), c(sS * 0.2, larg / 2, y), c(sS, larg / 2, y)], [c(sS, -larg / 2, y + 7 * K), c(sS * 0.2, -larg / 2, y + 7 * K), c(sS * 0.2, larg / 2, y + 7 * K), c(sS, larg / 2, y + 7 * K)], "#f2f2ee");
-  prisma(mont, mats.casco, [c(sS * 0.2, -larg / 2, y), c(sN * 0.7, -larg / 2, y), c(sN * 0.7, larg / 2, y), c(sS * 0.2, larg / 2, y)], [c(sS * 0.2, -larg / 2, y + 7 * K), c(sN * 0.7, -larg / 2, y + 7 * K), c(sN * 0.7, larg / 2, y + 7 * K), c(sS * 0.2, larg / 2, y + 7 * K)], "#f2f2ee");
-  prisma(mont, mats.casco, [c(sN * 0.7, -larg / 2, y), c(sN, -larg * 0.16, y + 2 * K), c(sN, larg * 0.16, y + 2 * K), c(sN * 0.7, larg / 2, y)], [c(sN * 0.7, -larg / 2, y + 7 * K), c(sN, -larg * 0.16, y + 8 * K), c(sN, larg * 0.16, y + 8 * K), c(sN * 0.7, larg / 2, y + 7 * K)], "#f2f2ee"); // a proa
+  prisma(mont, mats.casco, [c(sS, -larg / 2, y), c(sS * 0.2, -larg / 2, y), c(sS * 0.2, larg / 2, y), c(sS, larg / 2, y)], [c(sS, -larg / 2, y + 9 * K), c(sS * 0.2, -larg / 2, y + 9 * K), c(sS * 0.2, larg / 2, y + 9 * K), c(sS, larg / 2, y + 9 * K)], "#f2f2ee");
+  prisma(mont, mats.casco, [c(sS * 0.2, -larg / 2, y), c(sN * 0.7, -larg / 2, y), c(sN * 0.7, larg / 2, y), c(sS * 0.2, larg / 2, y)], [c(sS * 0.2, -larg / 2, y + 9 * K), c(sN * 0.7, -larg / 2, y + 9 * K), c(sN * 0.7, larg / 2, y + 9 * K), c(sS * 0.2, larg / 2, y + 9 * K)], "#f2f2ee");
+  prisma(mont, mats.casco, [c(sN * 0.7, -larg / 2, y), c(sN, -larg * 0.16, y + 2 * K), c(sN, larg * 0.16, y + 2 * K), c(sN * 0.7, larg / 2, y)], [c(sN * 0.7, -larg / 2, y + 9 * K), c(sN, -larg * 0.16, y + 10 * K), c(sN, larg * 0.16, y + 10 * K), c(sN * 0.7, larg / 2, y + 9 * K)], "#f2f2ee"); // a proa
   // o deque verde e a piscina azul
-  const yd = y + 7.2 * K;
+  const yd = y + 9.2 * K;
   mont.caixa(mats.verde, [cx + ux * proa * comp * 0.05, yd + 0.8, cz + uz * proa * comp * 0.05], [comp * 0.78, 1.6, larg * 0.72], { ry: Math.atan2(-uz, ux), cor: "#3f7d3a" });
   mont.caixa(mats.piscina, [cx + ux * sS * 0.45, yd + 1.8, cz + uz * sS * 0.45], [comp * 0.3, 1.2, larg * 0.22], { ry: Math.atan2(-uz, ux), cor: "#46d0f0" });
   mont.caixa(mats.luz, [cx, y + 3.2, cz], [comp * 0.96, 2.4, larg * 1.02], { ry: Math.atan2(-uz, ux), cor: "#ffffff" }); // a faixa de luz do casco
-  tr.mbsSG = { torres: torres.length, skypark: Math.round(comp) };
+  tr.mbsSG = { torres: torres.length, lista: torres, skypark: Math.round(comp) };
   tr.reservado.push(...torres.map((t) => [t.x, t.z, Math.max(t.L, t.Wd) * 0.6]));
   return { y, cx, cz, comp };
 }
@@ -126,15 +127,15 @@ function esplanade(tr, add, mont, mats) {
   for (const c of cupulas) {
     const a = c.L * 0.5 * 0.98, b = c.Wd * 0.5 * 0.98, h = 36 * K, y0 = tr.chao(c.x, c.z) - 1.5;
     const sh = new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
-    mont.geo(mats.cupula, sh, { x: c.x, y: y0 + 4 * K, z: c.z, ry: -c.a, sx: a, sy: h, sz: b, cor: "#3b3f46" });
+    mont.geo(mats.cupula, sh, { x: c.x, y: y0 + 4 * K, z: c.z, ry: -c.a, sx: a, sy: h, sz: b, cor: "#6a5638" });
     // as escamas: aletas de alumínio triangulares em espiral sobre a casca (cada uma aponta para fora da superfície)
-    const N = 520;
+    const N = 900;
     for (let i = 0; i < N; i++) {
       const t = (i + 0.5) / N, phi = Math.acos(1 - t), th = i * 2.399963; // espiral de ouro no hemisfério
       const sx = Math.sin(phi) * Math.cos(th), sz = Math.sin(phi) * Math.sin(th), sy = Math.cos(phi);
       const lx = sx * a, ly = sy * h, lz = sz * b, cs = Math.cos(-c.a), sn = Math.sin(-c.a);
       const ex = c.x + lx * cs + lz * sn, ez = c.z - lx * sn + lz * cs; if (tr.distAt(ex, ez) < tr.W / 2 + 40) continue; // nenhuma escama perto da pista
-      escamas.push({ x: c.x + lx * cs + lz * sn, y: y0 + 4 * K + ly, z: c.z - lx * sn + lz * cs, nx: sx / a, ny: sy / h, nz: sz / b, ca: cs, sa: sn, tam: 2.6 * K });
+      escamas.push({ x: c.x + lx * cs + lz * sn, y: y0 + 4 * K + ly, z: c.z - lx * sn + lz * cs, nx: sx / a, ny: sy / h, nz: sz / b, ca: cs, sa: sn, tam: 1.7 * K });
     }
     tr.reservado.push([c.x, c.z, Math.max(a, b) + 40]);
   }
@@ -145,7 +146,7 @@ function esplanade(tr, add, mont, mats) {
     im.castShadow = false; im.name = "singapura-esplanade-escamas"; im.userData.semContato = true; add(im);
   }
   void base;
-  tr.esplanadeSG = { cupulas: cupulas.length, escamas: escamas.length };
+  tr.esplanadeSG = { cupulas: cupulas.length, lista: cupulas, escamas: escamas.length };
 }
 
 // ---------- o Merlion ----------
@@ -174,7 +175,7 @@ function padang(tr, add, mats) {
 
 // ---------- as pontes: os paredões, o fundo do tabuleiro e os pilares ----------
 export function pontes(tr, add) {
-  const { pts, n, W } = tr, mat = new THREE.MeshStandardMaterial({ color: 0xe9e8e2, roughness: 0.8, side: THREE.DoubleSide }), vs = [], idx = [], pil = [];
+  const { pts, n, W } = tr, mat = new THREE.MeshStandardMaterial({ color: 0xe9e8e2, roughness: 0.8, side: THREE.DoubleSide }), vs = [], idx = [], pil = [], arcos = [];
   let corridas = 0;
   const sobre = (i) => distanciaDaAgua(pts[i % n].x, pts[i % n].y) > 6;
   let i = 0; while (i < n && sobre(i)) i++;
@@ -184,6 +185,12 @@ export function pontes(tr, add) {
     if (b - a >= 10) { // uma ponte (mais de 60 unidades)
       corridas++;
       const i0 = a - 4, i1 = b + 4, lat = W / 2 + 22;
+      // a ponte Anderson (por volta de 0,57 da volta): três vãos com os arcos de aço brancos de cada lado, como a de 1910
+      if (((a + b) / 2 / n) > 0.54 && ((a + b) / 2 / n) < 0.6) for (let vao = 0; vao < 3; vao++) for (const s2 of [-1, 1]) {
+        const j0 = i0 + Math.floor(((i1 - i0) * vao) / 3), j1 = i0 + Math.floor(((i1 - i0) * (vao + 1)) / 3), P = [];
+        for (let j = j0; j <= j1; j += 2) { const p = pts[((j % n) + n) % n], t = (j - j0) / Math.max(1, j1 - j0); P.push(new THREE.Vector3(p.x + p.nx * s2 * lat, p.h + 4 + Math.sin(t * Math.PI) * 3.6 * K, p.y + p.ny * s2 * lat)); }
+        if (P.length > 3) arcos.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), 14, 1.0 * K * 0.5, 5, false));
+      }
       for (let j = i0; j < i1; j++) {
         const p = pts[((j % n) + n) % n], q = pts[(((j + 1) % n) + n) % n], k0 = vs.length / 3;
         for (const s of [-1, 1]) { vs.push(p.x + p.nx * s * lat, p.h + 4, p.y + p.ny * s * lat, p.x + p.nx * s * lat, p.h - 7, p.y + p.ny * s * lat); }
@@ -204,7 +211,12 @@ export function pontes(tr, add) {
     pil.forEach((p, k) => { o.position.set(p.x, p.y - p.h / 2, p.z); o.rotation.set(0, p.rot, 0); o.scale.set(2 * p.w, p.h, 12); o.updateMatrix(); pi.setMatrixAt(k, o.matrix); });
     pi.name = "singapura-pilares"; pi.userData.semContato = true; add(pi);
   }
-  tr.pontesSG = { pontes: corridas, pilares: pil.length };
+  if (arcos.length) {
+    const gm = arcos.length === 1 ? arcos[0] : mergeGeometries(arcos, false), mArco = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.55, metalness: 0.3, emissive: 0xffe9b8, emissiveIntensity: 0 });
+    emissivoDaNoite(tr, mArco, 0, 0.35);
+    const m = add(new THREE.Mesh(gm, mArco)); m.name = "singapura-ponte-anderson"; m.userData.semContato = true; m.castShadow = true;
+  }
+  tr.pontesSG = { pontes: corridas, pilares: pil.length, arcos: arcos.length };
 }
 
 // ---------- tudo junto ----------
@@ -219,7 +231,7 @@ export function marcos(tr, add) {
     balao: new THREE.MeshBasicMaterial({ color: 0xfff1d0 }),
   };
   mats.balao.userData.bloom = 2.2;
-  emissivoDaNoite(tr, mats.escama, 0, 0.4); emissivoDaNoite(tr, mats.merlion, 0, 0.55);
+  emissivoDaNoite(tr, mats.escama, 0, 0.22); emissivoDaNoite(tr, mats.merlion, 0, 0.55);
   mats.torre = materialFachada(tr);
   marinaBaySands(tr, add, mont, mats);
   flyer(tr, add, mont, mats);
