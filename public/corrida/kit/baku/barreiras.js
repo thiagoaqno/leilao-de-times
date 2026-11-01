@@ -53,7 +53,8 @@ export function barreirasBaku(tr, add, cfg = {}) {
         const pos = [], uv = [], idx = []; let u = (a * 6) / 100;
         for (let i = a; i <= b; i++) {
           const l = lat(i), [x0, y0, z0] = P(i, l, -8), [x1, y1, z1] = P(i, l, ALTO);
-          pos.push(x0, y0, z0, x1, y1, z1); uv.push(u, 0, u, 1); if (i < b) { const q = (i - a) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); } u += 6 / 100;
+          pos.push(x0, y0, z0, x1, y1, z1); uv.push(s > 0 ? -u : u, 0, s > 0 ? -u : u, 1); // (a fita da direita corre ao contrário: o nome lê da esquerda para a direita de quem olha a barreira da pista)
+          if (i < b) { const q = (i - a) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); } u += 6 / 100;
         }
         const g = geoBuf(pos, uv, idx), mesh = add(new THREE.Mesh(g, matDe(m, s))); mesh.castShadow = true; mesh.receiveShadow = true; mesh.name = "baku-muro"; a = b;
       }

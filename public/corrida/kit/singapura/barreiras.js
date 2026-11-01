@@ -85,7 +85,7 @@ export function barreiras(tr, add, cfg = {}) {
       const q = ((i % n) + n) % n, p = pts[q], rec = tr.murosEscape[lado][q] || 0, lat = lado * (W / 2 + rec), h = p.h;
       const x = p.x + p.nx * lat, z = p.y + p.ny * lat, xb = p.x + p.nx * lado * (W / 2 + 7), zb = p.y + p.ny * lado * (W / 2 + 7);
       if (ant) acc += Math.hypot(x - ant.x, z - ant.z);
-      const tecpro = emTecpro(q, lado), mat = tecpro ? mTecpro : mConcreto[lado > 0 ? 0 : 1], u = acc / (tecpro ? 56 : 56 * sponsors.length), uT = acc / 48;
+      const tecpro = emTecpro(q, lado), mat = tecpro ? mTecpro : mConcreto[lado > 0 ? 0 : 1], u = (lado > 0 ? -1 : 1) * acc / (tecpro ? 56 : 56 * sponsors.length), uT = acc / 48; // (o painel lê da esquerda para a direita de quem anda: na barreira da direita o sentido da volta é para a esquerda de quem olha, então a fita corre ao contrário)
       const frente = { p0: [x, h + 0.2, z], p1: [x, h + ALTO, z], u, v0: 0, v1: 1 };
       // a face de frente do concreto (de baixo para cima) e a tampa até o lado de trás
       if (ant) {

@@ -196,6 +196,7 @@ async function entorno(geoParaMundo, K) {
     const cx = P.reduce((s, p) => s + p[0], 0) / P.length, cz = P.reduce((s, p) => s + p[1], 0) / P.length;
     const h = hash(e.id), alt = alturaDe(t, A, t.building, h);
     let esp = 0; for (const [id, , mx, mz] of marcosMundo) if (dentro(P, mx, mz)) { esp = id; break; }
+    const porId = { 152809510: 5, 901738189: 7, 1067699501: 8, 418164347: 4 }; if (porId[e.id]) esp = porId[e.id]; // as plantas de OpenStreetMap dos marcos (Hökumət Evi, Crescent Hotel, Crescent City Tower, a torre da Donzela): o ponto de cada um cai no pátio da planta em H ou em volta
     lista.push({ id: e.id, P, alt, esp, cor: Math.floor(hash(e.id + "c") * 8) % 8, A, cx, cz, nome: t.name || "" });
   }
   return { cadeias, marPoligono, verde, muralha, arvores, piers, lista, marcosMundo };

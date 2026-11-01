@@ -46,6 +46,7 @@ export const GP_BAKU = {
     muralha: [[F.curvas.t7 + 0.004, F.curvas.t18 + 0.005, -1]], // a muralha da Cidade Velha: dentro da volta, à esquerda de quem anda, das curvas 7 à 18
   }),
   depois: (tr) => depoisBaku(tr), // por último: a luz da noite e as chamas das Flame Towers
+  murosProprios: true, // as barreiras são as de kit/baku/barreiras.js (o desenho padrão de pista.js não entra)
   boxes: {}, // o corredor dos boxes do kit (garagens, mureta e os quadrados pintados); o prédio é de ../kit/baku/reta.js
   ambiente: { paineis: false, mastros: false, marcas: ["pirelli", "rolex", "aramco", "dhl", "heineken", "f1", "aws", "lenovo"], posto: "f1", placas: [100, 50] }, // os postos de fiscais e as placas de frenagem
   horizonte: false, // sem os morros genéricos de longe: o morro de verdade é o relevo SRTM do chão
