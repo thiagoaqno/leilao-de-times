@@ -168,7 +168,7 @@ function padang(tr, add, mats) {
   const P = []; for (let i = 1; i + 1 < campo.length - 1; i += 2) P.push([campo[i], campo[i + 1]]);
   const o = obb(P);
   const n = 11, im = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), mats.balao, n), t = new THREE.Object3D();
-  for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2, px = o.x + Math.cos(a) * o.L * 0.46, pz = o.z + Math.sin(a) * o.Wd * 0.5; t.position.set(px, tr.chao(px, pz) + 22 * K * 0.5, pz); t.scale.setScalar(5.2 * K * 0.8); t.updateMatrix(); im.setMatrixAt(k, t.matrix); }
+  for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2, px = o.x + Math.cos(a) * o.L * 0.46, pz = o.z + Math.sin(a) * o.Wd * 0.5; t.position.set(px, tr.chao(px, pz) + 22 * K * 0.5, pz); t.scale.setScalar(2.2 * K); t.updateMatrix(); im.setMatrixAt(k, t.matrix); }
   im.frustumCulled = false; im.userData.semContato = true; im.name = "singapura-padang-baloes"; add(im);
   tr.padangSG = { x: o.x, z: o.z, L: o.L, Wd: o.Wd };
 }

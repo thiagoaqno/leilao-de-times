@@ -31,7 +31,6 @@ export function cenarioSingapura(tr, ctx) {
   const COR = { 5: 5, 8: 4, 9: 3, 10: 5, 14: 3, 4: 7 };
   for (const b of lista) if (COR[b.esp] != null) b.cor = COR[b.esp];
   predios(tr, add, lista, { ignorar: (b) => !(b.esp in COR) });
-  const prediosDados = tr.prediosSG; 
   marcos(tr, add);
   pontes(tr, add);
   barreiras(tr, add, window.Pistas.PISTAS[tr.id].barreiras || {});
