@@ -217,6 +217,23 @@ function buildWorld(tr) {
   }
   if (lisos.length) { const m = add(new THREE.Mesh(mergeGeometries(lisos, false), chaoM)); m.position.set(WORLD / 2, 0, WORLD / 2); m.receiveShadow = true; m.name = `${id}-terreno`; lisos.forEach((g) => g.dispose()); } // os pedaços lisos, uma chamada só
   geo.dispose();
+  if (id === "monaco") {
+    // Fecha a lateral do asfalto suspenso até abaixo do terreno, sem mudar a colisão.
+    // Deixa livres os pontos em que outra parte da pista passa por perto, como no grampo.
+    const vs = [], indices = [], lat = W / 2 + 7;
+    for (const lado of [-1, 1]) for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % n];
+      const ax = a.x + a.nx * lat * lado, az = a.y + a.ny * lat * lado;
+      const bx = b.x + b.nx * lat * lado, bz = b.y + b.ny * lat * lado;
+      if (tr.distAt(ax, az) < W / 2 - 1 || tr.distAt(bx, bz) < W / 2 - 1) continue;
+      const q = vs.length / 3;
+      vs.push(ax, a.h + 0.2, az, ax, a.h - 45, az, bx, b.h + 0.2, bz, bx, b.h - 45, bz);
+      indices.push(q, q + 1, q + 2, q + 1, q + 3, q + 2);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setIndex(indices); g.computeVertexNormals();
+    const m = add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x8c8980, roughness: 1, side: THREE.DoubleSide })));
+    m.name = "monaco-fundacao-pista"; m.receiveShadow = true;
+  }
   // ---- fitas ao longo da pista (asfalto, zebras, calçada): cada ponto com a sua altura ----
   function ribbon(l0, l1, y0, mat, vLen, y1 = y0, uSpan = 1, i0 = 0, i1 = n) { // de i0 a i1: só um trecho da volta
     const vs = [], uv = [], idx = [];
