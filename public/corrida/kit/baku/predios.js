@@ -12,7 +12,7 @@ import { emissivoDaNoite } from "../bahrein/base.js";
 const K = D.projecao.k, M_ALTURA = K * 1.35; // unidades de altura por metro de parede (um pouco exagerada: o jogo é mais largo que a rua)
 const JANELA = 3.4 * K, ANDAR = 3.3 * K * 1.2; // o módulo da fachada em unidades do mundo
 const CELULA = 1600;
-const PEDRAS = [[0.84, 0.72, 0.52], [0.8, 0.69, 0.5], [0.88, 0.78, 0.6], [0.74, 0.67, 0.55], [0.9, 0.82, 0.68], [0.7, 0.6, 0.45], [0.8, 0.76, 0.68], [0.85, 0.7, 0.48]]; // arenito de Absheron: ocre, amarelado e cinza-bege, mais escuro que o creme
+const PEDRAS = [[0.9, 0.7, 0.42], [0.86, 0.66, 0.4], [0.93, 0.77, 0.52], [0.78, 0.67, 0.5], [0.94, 0.82, 0.6], [0.76, 0.6, 0.38], [0.84, 0.74, 0.58], [0.9, 0.68, 0.4]]; // arenito de Absheron: ocre, amarelado e cinza-bege, mais escuro que o creme
 const TERRACOS = [[0.62, 0.6, 0.57], [0.72, 0.69, 0.64], [0.55, 0.54, 0.52], [0.68, 0.45, 0.36]];
 const VIDROS = [[0.22, 0.34, 0.45], [0.28, 0.4, 0.5], [0.18, 0.26, 0.34], [0.34, 0.45, 0.52]];
 

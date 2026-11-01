@@ -134,13 +134,14 @@ export function muralha(tr, add, hAt, predioEm, trechos = [[0.405, 0.765, -1]]) 
 export function palacioDoGoverno(tr, add, hAt, lista) {
   const b = lista.find((q) => q.esp === 5); if (!b) return;
   const alt = 38 * K * ALT, P = b.P;
-  blocoDePedra(add, P, b.baixo - 3, b.alto + alt, [0.93, 0.84, 0.64]);
+  blocoDePedra(add, P, b.baixo - 3, b.alto + alt, [0.96, 0.8, 0.52]);
   // as torres: duas nas pontas do maior eixo e uma central, com arcadas e as torrinhas ameiadas nos cantos (como na foto)
   let cx = 0, cz = 0; for (const [x, z] of P) { cx += x; cz += z; } cx /= P.length; cz /= P.length;
   let mx = 0, ax = 1, az = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length], l = Math.hypot(q[0] - p[0], q[1] - p[1]); if (l > mx) { mx = l; ax = (q[0] - p[0]) / l; az = (q[1] - p[1]) / l; } }
   let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9; for (const [x, z] of P) { const u = (x - cx) * ax + (z - cz) * az, v = -(x - cx) * az + (z - cz) * ax; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
   const ponto = (u, v) => [cx + u * ax - v * az, cz + u * az + v * ax];
-  const torre = (u, v, w, h) => { const Q = [ponto(u - w, v - w), ponto(u + w, v - w), ponto(u + w, v + w), ponto(u - w, v + w)]; if (!Q.every(([x, z]) => poligonoDentro(P, x, z))) return; blocoDePedra(add, Q, b.alto + alt - 6, b.alto + alt + h, [0.95, 0.86, 0.66]); };
+  // a planta é em H (o pátio no meio): a torre procura, ao longo do eixo curto, o lugar onde os quatro cantos cabem na planta
+  const torre = (u, v0_, w, h) => { for (const dv of [0, 0.2, -0.2, 0.32, -0.32, 0.42, -0.42]) { const v = v0_ + dv * (v1 - v0), Q = [ponto(u - w, v - w), ponto(u + w, v - w), ponto(u + w, v + w), ponto(u - w, v + w)]; if (!Q.every(([x, z]) => poligonoDentro(P, x, z))) continue; blocoDePedra(add, Q, b.alto + alt - 6, b.alto + alt + h, [0.97, 0.8, 0.5]); return; } };
   const w = Math.min((v1 - v0) * 0.2, 28);
   torre(u0 + w * 1.4, 0, w, 20 * K * ALT); torre(u1 - w * 1.4, 0, w, 20 * K * ALT); torre(0, 0, w * 1.1, 28 * K * ALT);
   for (const [u, v] of [[u0 + 3, v0 + 3], [u0 + 3, v1 - 3], [u1 - 3, v0 + 3], [u1 - 3, v1 - 3]]) { const Q = [ponto(u - 2.5, v - 2.5), ponto(u + 2.5, v - 2.5), ponto(u + 2.5, v + 2.5), ponto(u - 2.5, v + 2.5)]; blocoDePedra(add, Q, b.alto + alt - 4, b.alto + alt + 16 * K, [0.95, 0.86, 0.66]); }
