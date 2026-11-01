@@ -86,6 +86,7 @@ function bater(room, p, forca, tipo, agora, log, chave = tipo) {
     if (derrapando(i0, outro0) && !(i0.culpado && i0.culpado !== p.id)) { derrapou = true; b = b || F1.batida(F1.BATIDA_MIN); }
   }
   if (!b) return null;
+  if (tipo === 'muro') Contato.fantasmaDoMuro(room, p, forca); // bateu no muro: fantasma por 2 s para os outros carros não o acertarem (a punição e o dano seguem abaixo)
   cd[chave] = agora + F1.BATIDA_INTERVALO;
   for (const k of Object.keys(cd)) if (cd[k] < agora) delete cd[k]; // (só guarda os que ainda valem)
   p.batidaAte = cd[chave];

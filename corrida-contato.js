@@ -137,4 +137,17 @@ function depoisDoPasso(room, p, c, tFim, ev, ativo) {
   gravar(room, p.id, tFim, c);
 }
 
-module.exports = { BOX_FANTASMA_MS, FANTASMA_BATIDA_MS, FANTASMA_PAR_MS, fantasmaDoBox, impactoDe, estado, limpar, gravar, em, outrosNaHora, depoisDoPasso, geometria, PAR_MS, N };
+// Bater no MURO (guard-rail, barreira) também põe o carro em fantasma por FANTASMA_BATIDA_MS: sem colisão com os outros carros e semitransparente,
+// para quem vem atrás não acertar o carro que bateu e ricocheteou. O muro segue sólido para ele (só deixa de colidir com carros). Só vale a partir de
+// FANTASMA_MURO_MIN (u/s de aproximação; raspada leve não conta) e não repete antes de FANTASMA_MURO_INTERVALO_MS (raspar o muro não prende em fantasma).
+const FANTASMA_MURO_MIN = 40, FANTASMA_MURO_INTERVALO_MS = 6000;
+function fantasmaDoMuro(room, p, forca) {
+  const agora = Date.now();
+  if (!(forca >= FANTASMA_MURO_MIN) || agora < (p.fantMuroLivre || 0)) return false;
+  p.fantMuroLivre = agora + FANTASMA_MURO_INTERVALO_MS;
+  p.fantAte = Math.max(p.fantAte || 0, agora + FANTASMA_BATIDA_MS);
+  room.fantMudou = true; // (o estado público muda: corrida-parados.js manda o aviso)
+  return true;
+}
+
+module.exports = { BOX_FANTASMA_MS, FANTASMA_BATIDA_MS, FANTASMA_PAR_MS, FANTASMA_MURO_MIN, FANTASMA_MURO_INTERVALO_MS, fantasmaDoMuro, fantasmaDoBox, impactoDe, estado, limpar, gravar, em, outrosNaHora, depoisDoPasso, geometria, PAR_MS, N };
