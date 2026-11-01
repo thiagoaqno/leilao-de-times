@@ -19,7 +19,7 @@ Singapura era o GP simples do kit: o traçado de `bacinger/f1-circuits` converti
 
 ## Conferido
 - Robôs: dão a volta sem sair da pista (difícil 86 a 99 s, médio 90 a 101 s, fácil 111 a 113 s) e `tests/corrida-escapes.test.js` ganhou o teste dos muros por trecho de Singapura.
-- `node --test tests/corrida*.test.js` (só os da Corrida; o `npm test` completo não foi rodado) e `git diff --check`.
+- `node --test tests/corrida*.test.js` (só os da Corrida; o `npm test` completo não foi rodado): 428 de 438 passam. As 10 que falham (freio e understeer de `corrida-fisica`, tabela de pneus de Interlagos, ritmo dos robôs em Interlagos e Mônaco, carro parado, ordem dos níveis dos robôs e as montagens de reta e de curva) falham do mesmo jeito na `origin/main` limpa (conferi `corrida-fisica` e `corrida-f1-estrategia` lá) e não têm a ver com Singapura; os de pista (`corrida-pistas-desempenho`, `-volta`, `-invasao`) e `corrida-escapes` passam e `git diff --check` não acusa nada.
 - Desempenho (`node tests/ajuda-cena/medir.mjs singapura`): 376 malhas (teto 520), 145 chamadas de desenho e ~320 mil triângulos na vista do jogo, 100 materiais. Invasão (`tests/ajuda-cena/invasao.mjs`): 0 peças dentro da pista, com o carro nas duas bordas.
 - Prints de cockpit e aéreos de noite e de dia em dez pontos da volta (no PR).
 
