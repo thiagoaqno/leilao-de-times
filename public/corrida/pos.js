@@ -242,7 +242,9 @@ export function compilarPos() {
 //   (o "teto"): tela de 50 Hz, ou navegador economizando bateria (que prende em 30 qps), não é lentidão;
 // - depois de descer, confere: se os quadros não melhoraram, era um limite da tela e não da placa, então volta o nível
 //   e para de mexer.
-let quadros = 0, desde = performance.now(), ruins = 0, teto = 0, inicio = 0, conferir = null, parou = false;
+// No meio da corrida nada muda: trocar o nível recompila sombreadores (a sombra liga e desliga, os materiais refazem) e o jogo trava.
+// Se ficou lento, guarda em `pendente` e desce na largada da PRÓXIMA corrida (`comecarMedida`, durante a contagem).
+let quadros = 0, desde = performance.now(), ruins = 0, teto = 0, inicio = 0, conferir = null, parou = false, pendente = null, desfazerNaLargada = null;
 function reiniciarMedida() { quadros = 0; desde = performance.now(); ruins = 0; conferir = null; parou = false; }
 function aplicar(n) {
   const antes = nivel; nivel = n;
@@ -254,7 +256,11 @@ function aplicar(n) {
   if (n >= 3 !== antes >= 3) { renderer.shadowMap.enabled = n < 3; scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); GANHO_LUZ.value = n >= 3 || qualidade() === "baixa" ? 0 : 1; } // o último recurso: aí sim recompila
 }
 // chamada a cada corrida nova: o relógio dos 6 s recomeça
-export function comecarMedida() { inicio = performance.now(); quadros = 0; desde = inicio; ruins = 0; ultCor = inicio; N = ehNoite() ? 1 : 0; R = lim(clima.chuva); W = lim(clima.agua); ultVarredura = 0; }
+export function comecarMedida() {
+  if (desfazerNaLargada) { desfazerNaLargada(); desfazerNaLargada = null; }
+  if (pendente && !parou) { const passo = baixar(); conferir = { fps: pendente.fps, n: 0, desfazer: passo.desfazer, aviso: pendente.alta }; console.info("Corrida: qualidade reduzida na largada (" + passo.nome + "; a corrida anterior ficou em " + pendente.fps.toFixed(0) + " qps)"); }
+  pendente = null;
+  inicio = performance.now(); quadros = 0; desde = inicio; ruins = 0; ultCor = inicio; N = ehNoite() ? 1 : 0; R = lim(clima.chuva); W = lim(clima.agua); ultVarredura = 0; }
 // o passo de baixar: devolve como desfazer
 function baixar() {
   if (qualidade() === "alta") { rebaixar("media"); return { desfazer: () => restaurar("alta"), nome: "Alta → Média" }; }
@@ -268,7 +274,7 @@ export function medirQuadro() {
   teto = Math.max(teto, fps);
   if (conferir) { // acabou de descer: melhorou pelo menos 10%?
     if (++conferir.n < 2) return;
-    if (fps < conferir.fps * 1.1) { conferir.desfazer(); parou = true; console.info("Corrida: baixar a qualidade não ajudou (" + fps.toFixed(0) + " qps); voltou ao que era"); }
+    if (fps < conferir.fps * 1.1) { desfazerNaLargada = conferir.desfazer; parou = true; console.info("Corrida: baixar a qualidade não ajudou (" + fps.toFixed(0) + " qps); volta ao que era na próxima largada"); }
     else if (conferir.aviso) toast("⚠️ Os gráficos Alta deixaram o jogo lento: passei para Média. Dá para trocar no botão Gráficos (ou na tecla G).", 4200);
     conferir = null; return;
   }
@@ -278,6 +284,5 @@ export function medirQuadro() {
   if (!ruim) { ruins = 0; return; }
   if (++ruins < 2) return;
   ruins = 0;
-  const passo = baixar(); conferir = { fps, n: 0, desfazer: passo.desfazer, aviso: alta };
-  console.info("Corrida: qualidade reduzida para manter a fluidez (" + passo.nome + ", " + fps.toFixed(0) + " qps, a tela já fez " + teto.toFixed(0) + ")");
+  if (!pendente) { pendente = { fps, alta }; console.info("Corrida: o jogo ficou lento (" + fps.toFixed(0) + " qps, a tela já fez " + teto.toFixed(0) + "); a qualidade desce na próxima largada"); }
 }
