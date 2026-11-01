@@ -31,6 +31,15 @@ export function grampoMonaco(tr, add, hAt, predioEm) {
       const ea = plano(raio + 1.5, a, 0.2), eb = plano(raio + 1.5, b, 0.2);
       face([za, zb, ea, zb, eb, ea], k % 2 ? "#f4f4f0" : "#d62828");
     }
+    // Preenche o vão entre a zebra e o asfalto das duas pernas, cujo terreno foi rebaixado sob a pista.
+    // A faixa acompanha a altura da rua e fica abaixo do asfalto desenhado, sem cobrí-lo.
+    for (let k = 0; k < SEC; k++) {
+      const a = k * Math.PI * 2 / SEC, b = (k + 1) * Math.PI * 2 / SEC;
+      for (let r = raio + 1.5; r < raio + 31.5; r += 5) {
+        const ia = plano(r, a, 0.15), ib = plano(r, b, 0.15), oa = plano(r + 5, a, 0.15), oz = plano(r + 5, b, 0.15);
+        face([ia, ib, oa, ib, oz, oa], "#b9b3a6");
+      }
+    }
     for (const [px, pz, h] of [[-2.5, 1, 50], [3, -2.5, 46]]) { // as duas palmeiras, plantadas no chão do canteiro
       const t = new THREE.CylinderGeometry(1, 1.5, h, 6); t.translate(px, base(px, pz) + 2.4 + h / 2 - 0.5, pz); gs.push(cor(t, "#7a5e3f"));
       const c1 = new THREE.ConeGeometry(14, 7, 8, 1, true); c1.translate(px, base(px, pz) + 2.4 + h + 1, pz); gs.push(cor(c1, "#2f7d38")); const c2 = new THREE.ConeGeometry(7.5, 5, 7, 1, true); c2.translate(px, base(px, pz) + 2.4 + h + 4.5, pz); gs.push(cor(c2, "#3f9a46"));
