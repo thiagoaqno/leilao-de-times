@@ -44,7 +44,7 @@ export const THEMES = {
   zandvoort: { preview: "#b6ad74", sky: ["#8ea3b3", "#dde3e4"], fog: "#cdd6d6", oob: 0xffb6ad74, roadCol: "#4d4e53" },
   madri: { preview: "#a9a35a", sky: ["#3f93dc", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4d4e53" },
   baku: { preview: "#bdb6a6", sky: ["#4fa9f5", "#d9f0ff"], fog: "#cfe6f2", oob: 0xffbdb6a6, roadCol: "#4d4e53" },
-  singapura: { preview: "#a99c84", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xffa99c84, roadCol: "#4d4e53" },
+  singapura: { preview: "#3d6b5f", sky: ["#5c9fd6", "#dbe8ee"], fog: "#c6d6de", oob: 0xff8a8f86, roadCol: "#4d4e53" },
   austin: { preview: "#a9a35a", sky: ["#3f93dc", "#f2ead6"], fog: "#e8e4d2", oob: 0xffa9a35a, roadCol: "#4d4e53" },
   mexico: { preview: "#4f8b3d", sky: ["#6f9fd0", "#e2e8e6"], fog: "#d2dbd6", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
   lasvegas: { preview: "#a99c84", sky: ["#3b2a6b", "#ff9a5a"], fog: "#e8a07a", oob: 0xffa99c84, roadCol: "#4d4e53" },
@@ -196,12 +196,14 @@ function buildWorld(tr) {
     let h = t.espaco ? -700 : (longe ? 0 : id === "monaco" ? tr.relevoGP(x, y, trackFrame(tr, x, y, bi), bi, true) : groundH(tr, x, y, bi)) - (id === "monaco" ? 1.5 + 7.5 * (1 - Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (lat - tr.wallLat) / 30)))) * (perto ? 1 : 0) : perto ? 9 : 1.5); // no espaço não tem chão: o "chão" fica bem lá embaixo
     if (id === "monaco") { const s = fundoMonaco(tr, x, y); if (s > -90) h = s > 0 ? Math.max(-34, NIVEL_DO_MAR - 7 - s * 0.35) : Math.min(h, NIVEL_DO_MAR + 1 + 3.2 * -s); } // a bacia do porto e o mar, o cais em paredão e a falésia do Rochedo (3 de altura por unidade)
     if (id === "rio" && rioSea(x, y)) h = Math.min(h, -14); // o mar de Copacabana
+    if (gp?.terreno?.altura) h = gp.terreno.altura(tr, x, y, h, lat); // o GP com água ou relevo próprio (Singapura: a baía e o rio afundam o chão)
     if (tr.sobPonte) h = Math.min(h, tr.sobPonte(x, y) - 4); // embaixo da ponte (Suzuka)
     pos.setY(i, h);
   }
   geo.computeVertexNormals();
-  if (id === "monaco") { // a cor do terreno por vértice: rua e calçada de pedra, jardins, mata, paredão de pedra e o mato do morro (monaco.js)
-    const cor = corDoChaoMonaco(), cores = new Float32Array(pos.count * 3), nor = geo.attributes.normal;
+  const corDoGP = id === "monaco" ? corDoChaoMonaco() : gp?.terreno?.cor?.(tr); // a cor do terreno por vértice (Mônaco e quem pedir em `terreno.cor`)
+  if (corDoGP) { // rua e calçada de pedra, jardins, mata, paredão de pedra e o mato do morro (monaco.js)
+    const cor = corDoGP, cores = new Float32Array(pos.count * 3), nor = geo.attributes.normal;
     for (let k = 0; k < pos.count; k++) { const c = cor(pos.getX(k) + WORLD / 2, pos.getZ(k) + WORLD / 2, pos.getY(k), nor.getY(k)); cores[k * 3] = c[0]; cores[k * 3 + 1] = c[1]; cores[k * 3 + 2] = c[2]; }
     geo.setAttribute("color", new THREE.BufferAttribute(cores, 3));
   }
@@ -306,7 +308,7 @@ function buildWorld(tr) {
       else { trecho(cb.i0 + cb.len + 1, cb.i0 + n - 1); (tr.guardaBox = tr.guardaBox || []).push(trecho(cb.i0 - 1, cb.i0 + cb.len + 1)); }
     }
   }
-  if (tr.murosEscape) { // os mesmos recuos e recortes usados na colisão
+  if (tr.murosEscape && !gp?.murosProprios) { // os mesmos recuos e recortes usados na colisão (`murosProprios`: o GP desenha o dele em cima de tr.murosEscape)
     const mat = M(0x9aa0a3, { roughness: 0.85, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) {
       const mapa = tr.murosEscape[lado], vs = [], uv = [], indices = [];

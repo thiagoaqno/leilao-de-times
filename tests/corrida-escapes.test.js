@@ -14,7 +14,7 @@ test("autódromos têm barreira afastada, recortada sem invadir outros trechos; 
       assert.ok(tr.pts.every(q => (q.x-x)**2 + (q.y-y)**2 >= (L-12)**2 - 1e-5));
     }
   }
-  for (const id of ["monaco", "baku", "jeddah", "singapura", "lasvegas"]) {
+  for (const id of ["monaco", "baku", "jeddah", "lasvegas"]) { // (Singapura saiu da lista: seus muros são por trecho, `muros` em pistas.js)
     const tr = Sim.criarPista(P.PISTAS[id], id); assert.equal(tr.murosEscape, undefined); assert.ok(Number.isFinite(tr.wallLat));
   }
 });
@@ -110,4 +110,20 @@ test("Hungaroring conserva brita na saída da curva 5 e barreira à esquerda na 
 test("Red Bull Ring tem brita nas saídas das duas últimas curvas", () => {
   const tr = Sim.criarPista(P.PISTAS.redbullring, "redbullring");
   for (const f of [0.868, 0.92]) assert.equal(tr.superficiesEscape[-1][Math.floor(f * tr.n)], 1);
+});
+
+test("Singapura: barreira só onde a pista real tem (muros por trecho), aberta no gramado do Flyer e sem muro em volta da volta toda", () => {
+  const tr = Sim.criarPista(P.PISTAS.singapura, "singapura"), n = tr.n, m = tr.murosEscape;
+  assert.ok(m, "murosEscape existe");
+  const f = (x) => Math.floor(x * n);
+  // por dentro de T18 e T19 (esquerda de quem anda) não há muro; por fora (a baía) há, e é o escape largo
+  for (let i = f(0.91); i < f(0.95); i++) assert.equal(m[-1][i], 0, "o gramado do Flyer fica aberto (fração " + (i / n).toFixed(3) + ")");
+  assert.ok(m[1][f(0.93)] >= 30, "o escape pintado vai até a cerca da orla");
+  // a rua é murada dos dois lados na Raffles Boulevard
+  assert.ok(m[1][f(0.22)] > 0 && m[-1][f(0.22)] > 0, "a Raffles Boulevard tem barreira dos dois lados");
+  // nenhum ponto de outro trecho a menos de L - 12 da barreira (a mesma folga do autódromo)
+  for (const lado of [-1, 1]) for (let i = 0; i < n; i += 11) if (m[lado][i]) {
+    const L = tr.W / 2 + m[lado][i], p = tr.pts[i], x = p.x - p.ty * lado * L, y = p.y + p.tx * lado * L;
+    assert.ok(tr.pts.every((q) => (q.x - x) ** 2 + (q.y - y) ** 2 >= (L - 12) ** 2 - 1e-5));
+  }
 });

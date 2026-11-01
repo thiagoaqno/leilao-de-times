@@ -48,7 +48,7 @@ module.exports = function attachCorrida(io) {
     const f1 = c.regras === "f1";
     return {
       pista: T.PISTAS[c.pista] ? c.pista : "interlagos",
-      hora: c.hora === "noite" ? "noite" : "dia",
+      hora: c.hora === "noite" || (c.hora == null && T.PISTAS[c.pista]?.horaPadrao === "noite") ? "noite" : "dia", // (sem horário na config: a pista que só corre à noite, Singapura, nasce de noite)
       voltas: [1, 2, 3, 5, 10, 21].includes(int(c.voltas, 3)) ? int(c.voltas, 3) : 3,
       regras: f1 ? "f1" : "galera",
       caixas: !f1 && c.caixas === true,

@@ -576,26 +576,26 @@ const PISTAS = {
     ],
   },
   singapura: {
-    name: "Singapura", sub: "Marina Bay: a pista de rua entre os prédios de Singapura, a ponte Anderson, a curva por baixo da arquibancada e a volta da marina", f1: true,
-    // Marina Bay Street Circuit: 4943 m. Traçado de bacinger/f1-circuits (sg-2008, licença MIT: ver o cabeçalho dos traçados convertidos)
-    // convertido por ferramentas/circuitos-f1.js: a linha central real em 111 vértices, a linha de chegada no primeiro
-    scale: 3.03, width: 104, minLap: 32, walls: true, muro: true, wall: 14, flat: 20, fall: 120, largada: 0.509,
-    hills: [[0,14], [0.04,10], [0.08,22], [0.12,13], [0.16,28], [0.2,28], [0.24,28], [0.28,19], [0.32,18], [0.36,14], [0.4,17], [0.44,17], [0.48,21], [0.52,45], [0.56,22], [0.6,19], [0.64,11], [0.68,12], [0.72,19], [0.76,16], [0.8,12], [0.84,17], [0.88,18], [0.92,11], [0.96,7], [1,14]],
+    name: "Singapura", sub: "Marina Bay à noite: a reta Raffles Boulevard, o Padang, a ponte Anderson, a Esplanade Drive e o Singapore Flyer, em 19 curvas, no sentido anti-horário de verdade", f1: true,
+    // Marina Bay Street Circuit (layout de 2023: 19 curvas): 4943 m. Linha central de bacinger/f1-circuits (sg-2008, licença MIT: ver o cabeçalho dos traçados convertidos), no SENTIDO DA CORRIDA
+    // (anti-horário: a reta dos boxes sobe para o norte e a curva 1 é à esquerda; o arquivo vem no horário), convertida por ferramentas/singapura-dados.js (a mesma conversão de Mônaco),
+    // norte em cima e na proporção de verdade. Os muros vêm de `muros` (só onde a pista real tem barreira) e a pista não tem muro em volta.
+    scale: 4.17, width: 84, minLap: 45, walls: false, wall: 14, flat: 400, fall: 260, largada: 0.4904153354632588, hillsSuave: true,
+    // relevo: quase plano (2 a 7 m), 3 unidades por metro
+    hills: [[0,9], [0.0558,12], [0.0883,9.6], [0.166,10.2], [0.2,12.6], [0.26,16.2], [0.3374,21], [0.38,18.6], [0.4173,18], [0.47,15.6], [0.5172,12.6], [0.54,11.4], [0.575,16.2], [0.591,10.8], [0.645,15], [0.7042,15], [0.758,13.8], [0.8537,10.8], [0.9,9], [0.9475,7.2], [1,9]],
     points: [
-      [1421, 699, 0], [1445, 880, 0], [1449, 924, 76], [1444, 940, 156], [1408, 994, 177], [1399, 1003, 25], [1388, 1006, 193], [1269, 999, 0],
-      [1189, 991, 851], [1155, 985, 93], [1142, 980, 42], [1133, 970, 40], [1126, 956, 87], [1121, 930, 39], [1114, 922, 26], [1105, 919, 554],
-      [760, 901, 0], [716, 897, 339], [692, 893, 146], [669, 884, 109], [649, 872, 614], [530, 767, 266], [523, 764, 31], [515, 764, 41],
-      [505, 765, 43], [497, 769, 59], [486, 775, 43], [479, 783, 67], [467, 821, 552], [455, 878, 0], [395, 1191, 0], [391, 1203, 49],
-      [387, 1211, 26], [381, 1217, 23], [374, 1219, 23], [364, 1219, 22], [355, 1214, 45], [340, 1195, 217], [325, 1169, 132], [278, 1130, 686],
-      [248, 1101, 120], [240, 1089, 64], [234, 1072, 65], [233, 1059, 75], [236, 1039, 39], [233, 1028, 28], [226, 1022, 63], [202, 1011, 182],
-      [169, 987, 138], [158, 976, 40], [153, 962, 66], [151, 943, 44], [154, 930, 131], [182, 883, 0], [317, 640, 0], [323, 631, 60],
-      [333, 622, 76], [341, 615, 36], [350, 613, 27], [357, 612, 24], [364, 615, 71], [392, 633, 175], [411, 651, 790], [463, 707, 254],
-      [470, 713, 35], [477, 715, 28], [484, 715, 26], [491, 713, 39], [504, 700, 150], [537, 638, 0], [574, 576, 191], [583, 567, 25],
-      [594, 564, 24], [601, 566, 32], [609, 569, 1079], [750, 653, 0], [827, 697, 1024], [860, 713, 258], [888, 722, 182], [915, 727, 538],
-      [975, 732, 0], [1188, 745, 0], [1242, 746, 159], [1255, 743, 65], [1268, 738, 96], [1281, 730, 49], [1289, 720, 42], [1295, 707, 53],
-      [1296, 691, 150], [1293, 651, 367], [1285, 611, 368], [1268, 562, 891], [1245, 504, 232], [1240, 482, 144], [1241, 440, 307], [1245, 409, 97],
-      [1249, 398, 57], [1255, 389, 36], [1262, 383, 24], [1268, 381, 23], [1277, 381, 23], [1285, 384, 49], [1306, 409, 97], [1322, 419, 95],
-      [1346, 428, 66], [1369, 427, 86], [1376, 429, 23], [1384, 433, 22], [1389, 440, 40], [1394, 463, 532], [1403, 575, 0],
+      [1421, 700, 0], [1407, 607, 0], [1402, 572, 0], [1400, 543, 0], [1394, 459, 297], [1389, 434, 26], [1376, 428, 23], [1355, 427, 167],
+      [1319, 420, 101], [1296, 398, 0], [1279, 379, 21], [1262, 380, 23], [1248, 398, 59], [1242, 418, 148], [1239, 469, 316], [1240, 494, 89],
+      [1252, 522, 0], [1266, 556, 0], [1279, 593, 0], [1288, 623, 306], [1294, 660, 0], [1297, 697, 99], [1290, 729, 53], [1253, 745, 57],
+      [1237, 747, 237], [1195, 746, 0], [936, 730, 0], [899, 726, 214], [870, 718, 224], [841, 705, 0], [808, 687, 0], [619, 576, 0],
+      [594, 561, 24], [585, 562, 13], [572, 581, 143], [553, 612, 0], [534, 646, 0], [521, 670, 0], [503, 706, 111], [493, 723, 13],
+      [485, 727, 13], [466, 710, 124], [413, 653, 0], [395, 635, 173], [365, 617, 38], [344, 613, 30], [323, 631, 81], [311, 652, 0],
+      [171, 904, 0], [151, 937, 43], [152, 968, 60], [165, 985, 95], [205, 1013, 177], [225, 1023, 44], [240, 1033, 12], [237, 1052, 101],
+      [237, 1089, 66], [256, 1110, 0], [284, 1135, 0], [317, 1162, 106], [339, 1189, 0], [360, 1221, 29], [378, 1220, 24], [390, 1211, 28],
+      [395, 1193, 0], [457, 868, 0], [465, 832, 0], [477, 789, 0], [485, 768, 37], [503, 756, 30], [519, 757, 21], [570, 801, 0],
+      [623, 849, 0], [651, 874, 224], [674, 888, 110], [705, 897, 213], [742, 900, 0], [1077, 918, 0], [1103, 920, 51], [1122, 924, 13],
+      [1126, 946, 164], [1136, 982, 42], [1169, 989, 0], [1209, 994, 0], [1288, 1001, 0], [1316, 1003, 0], [1355, 1005, 0], [1398, 1007, 33],
+      [1414, 985, 0], [1449, 931, 37], [1447, 900, 0],
     ],
   },
   austin: {
@@ -1040,7 +1040,7 @@ const BOXES = {
   zandvoort: { entra: 0.9805, para: 0, sai: 0.0195, lado: -1 }, // (idem)
   madri: { entra: 0.9819, para: 0, sai: 0.0181, lado: 1 },
   baku: { entra: 0.9825, para: 0, sai: 0.0175, lado: -1 },
-  singapura: { entra: 0.9812, para: 0, sai: 0.0188, lado: 1 },
+  singapura: { entra: 0.9806, para: 0, sai: 0.0194, lado: -1 }, // (a reta dos boxes sobe para o norte e o Pit Building fica a oeste, à esquerda de quem anda)
   austin: { entra: 0.9845, para: 0, sai: 0.0155, lado: -1 },
   mexico: { entra: 0.9804, para: 0, sai: 0.0196, lado: 1 },
   lasvegas: { entra: 0.9830, para: 0, sai: 0.0170, lado: 1 }, // (do lado de lá, a ponta das garagens chegava a 12 de outro trecho)
@@ -1061,6 +1061,16 @@ for (const t of Object.values(PISTAS)) {
   // e Mônaco com o guard-rail colado na pista (muro)
   if (!t.espaco && !t.muro) { t.walls = false; t.wall = 20; }
 }
+
+// Singapura: os muros só onde a pista real tem barreira (ver `murosPorTrechos`). Frações da volta e o que há em cada trecho (conferido nas fotos do circuito):
+const MUROS_SINGAPURA = [
+  [0, 1, 0, 18], // a rua inteira: muro baixo de concreto com a tela alta, dos dois lados, a ~2 m da borda do asfalto (a mureta dos boxes, do lado do corredor, é do kit)
+  [0.05, 0.068, 1, 30], [0.33, 0.348, 1, 34], [0.575, 0.605, 1, 30], [0.695, 0.715, -1, 30], [0.848, 0.858, -1, 28], [0.862, 0.872, 1, 28], // os escapes curtos com Tecpro: T1, T7 (Memorial), o grampo da T13, a T14 e a chicane T16-T17
+  [0.9, 0.962, 1, 40], // T18 e T19: o escape largo e pintado do lado da baía, até a cerca da orla
+  [0.905, 0.955, -1, 0], // e por dentro, o gramado do Flyer, aberto: nada de muro
+];
+PISTAS.singapura && (PISTAS.singapura.barreiras = { tecpro: [[0.05, 0.068, 1], [0.33, 0.348, 1], [0.575, 0.605, 1], [0.695, 0.715, -1], [0.848, 0.858, -1], [0.862, 0.872, 1]], pintura: [[0.9, 0.962, 1]] });
+if (PISTAS.singapura) { PISTAS.singapura.muros = MUROS_SINGAPURA; PISTAS.singapura.horaPadrao = "noite"; } // o GP de Singapura é à noite: a sala nasce de noite (corrida.js e menus.js)
 
 // Faixas de escape usadas pela cena e pela física (frações da volta).
 const SUPERFICIES_ESCAPE = {
@@ -1259,7 +1269,7 @@ const DRS = {
   zandvoort: [[0.91, 0.94, 0], [1, 0.04, 0.08]],
   madri: [[0.9, 0.94, 0.02], [0.05, 0.09, 0.15]],
   baku: [[0.81, 0.86, 0.01], [0.07, 0.11, 0.22]],
-  singapura: [[0.92, 0.96, 0.04], [0.12, 0.16, 0.23]],
+  singapura: [[0.935, 0.965, 0.05], [0.172, 0.19, 0.325], [0.607, 0.627, 0.695], [0.77, 0.79, 0.845]], // a reta dos boxes, a Raffles Boulevard (curva 5 a 7), a Esplanade Drive (13 a 14) e a Raffles Avenue (15 a 16)
   austin: [[0.89, 0.93, 0.03], [0.49, 0.53, 0.62]],
   mexico: [[0.93, 1, 0.24], [0.31, 0.35, 0.45]],
   lasvegas: [[0.93, 0.97, 0.01], [0.65, 0.68, 0.72]],
@@ -1339,6 +1349,21 @@ function limiteViaduto(t, n, i, largura) {
   return Infinity;
 }
 
+// Os muros de uma pista de rua só onde a pista real tem barreira (Singapura): `t.muros = [[f0, f1, lado, recuo], ...]`, frações da volta (a de chegada
+// cruza a linha); `lado`: 1 (direita de quem anda), -1, 0 (os dois), "fora" ou "dentro" da curva; `recuo`: a distância da borda do asfalto até a face da barreira,
+// em unidades (um número, ou [r0, r1] para ir de um ao outro ao longo do trecho). Onde nenhum trecho cobre, não há muro: o carro sai da pista. Os que vêm depois
+// cobrem os que vêm antes. A mesma matriz manda no desenho (kit/singapura/barreiras.js) e na colisão (sim.js e fisica.js).
+function murosPorTrechos(pts, muros) {
+  const n = pts.length, mapa = { 1: new Float32Array(n), [-1]: new Float32Array(n) };
+  const sinal = (i) => { const p = pts[(i + n) % n], q = pts[(i + 3 + n) % n]; return p.tx * q.ty - p.ty * q.tx > 0 ? 1 : -1; };
+  for (const [f0, f1, lado, recuo] of muros) {
+    const a = Math.floor(f0 * n), b = Math.floor(f1 * n) + (f1 < f0 ? n : 0); let melhor = a;
+    for (let i = a; i <= b; i++) if ((pts[i % n].k || 0) > (pts[melhor % n].k || 0)) melhor = i;
+    const dentro = sinal(melhor), lados = lado === 0 || lado === undefined ? [-1, 1] : [lado === "fora" ? -dentro : lado === "dentro" ? dentro : lado];
+    for (const l of lados) for (let i = a; i <= b; i++) mapa[l][i % n] = Array.isArray(recuo) ? recuo[0] + ((recuo[1] - recuo[0]) * (i - a)) / Math.max(1, b - a) : recuo;
+  }
+  return mapa;
+}
 // Muro no fundo do escape: só existe onde não atravessa outro trecho da pista.
 // O mesmo mapa alimenta o desenho e a colisão, inclusive em pistas com grampos.
 const RECUO_MURO_ESCAPE = 100;
@@ -1352,7 +1377,7 @@ function murosDoEscape(pts, largura, superficies, pista) {
       for (const q of grade.get(chave(a, b)) || []) if ((q.x - x) ** 2 + (q.y - y) ** 2 < minimo) return false;
     return true;
   };
-  const lados = { 1: new Float32Array(n), [-1]: new Float32Array(n) };
+  const lados = { 1: new Float32Array(n), [-1]: new Float32Array(n) }, porTrechos = pista?.muros ? murosPorTrechos(pts, pista.muros) : null;
   // Brita e asfalto de escape precisam de mais espaço; interpola a transição ao longo da pista.
   const distancia = tipo => tipo === 1 ? 110 : tipo === 2 ? 95 : 70;
   for (let i = 0; i < n; i++) for (const lado of [-1, 1]) {
@@ -1363,9 +1388,11 @@ function murosDoEscape(pts, largura, superficies, pista) {
       const inicio = (box.entra - 0.006 + 1) % 1, fim = (box.sai + 0.006) % 1;
       if (inicio <= fim ? f >= inicio && f <= fim : f >= inicio || f <= fim) continue;
     }
-    let recuo = 0; for (let j = -12; j <= 12; j++) recuo += distancia(superficies?.[lado]?.[(i + j + n) % n] || 0);
-    recuo /= 25; const L = largura / 2 + recuo, p = pts[i], nx = -p.ty, ny = p.tx;
-    lados[lado][i] = livre(p.x + nx * lado * L, p.y + ny * lado * L, L) ? recuo : 0;
+    let recuo = 0;
+    if (porTrechos) { recuo = porTrechos[lado][i]; if (!recuo) { lados[lado][i] = 0; continue; } } // `muros` da pista: só onde há barreira, na distância dela
+    else { for (let j = -12; j <= 12; j++) recuo += distancia(superficies?.[lado]?.[(i + j + n) % n] || 0); recuo /= 25; }
+    const L = largura / 2 + recuo, p = pts[i], nx = -p.ty, ny = p.tx;
+    lados[lado][i] = livre(p.x + nx * lado * L, p.y + ny * lado * L, porTrechos ? L + 8 : L) ? recuo : 0; // (com `muros`, mais folga: nenhum ponto de outro trecho a menos de L - 4 da barreira)
   }
   // Pontos isolados não formam uma parede desenhável nem uma barreira física.
   for (const lado of [-1, 1]) { const mapa = lados[lado], original = mapa.slice(); for (let i = 0; i < n; i++) if (!(i > 0 && original[i - 1]) && !(i + 1 < n && original[i + 1])) mapa[i] = 0; }
@@ -1386,7 +1413,7 @@ function muroCampeoes(pts) {
   return melhor && melhor.i1 - melhor.i0 >= 8 ? melhor : null;
 }
 
-const api = { alturaPistaMaisProxima, obstaculosDaPista, limiteViaduto, SUPERFICIES_ESCAPE, mapaSuperficies, superficieEscape, muroCampeoes, RECUO_MURO_ESCAPE, murosDoEscape, WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, cruzouSetor, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
+const api = { murosPorTrechos, alturaPistaMaisProxima, obstaculosDaPista, limiteViaduto, SUPERFICIES_ESCAPE, mapaSuperficies, superficieEscape, muroCampeoes, RECUO_MURO_ESCAPE, murosDoEscape, WORLD, PISTAS, CARROS, MODS, MODS_PADRAO, sample, elevate, pontos, checkpoint, cruzouSetor, boxesFor, SECTORS, TURBO_MS, TURBO_SOLTA };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pistas = api;
 })(typeof window !== "undefined" ? window : globalThis);
