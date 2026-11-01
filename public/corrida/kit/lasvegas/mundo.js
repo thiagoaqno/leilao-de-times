@@ -39,7 +39,9 @@ export const aguaLV = () => false;
 // ---------- o relevo do chão para pista.js (groundH): a pista no nível dela e o terreno de verdade em volta ----------
 // f = { h, lat } do ponto mais perto da pista, idx = o índice dele. Até a calçada vale a altura da pista; depois, a diferença do terreno real em
 // relação ao ponto da pista entra aos poucos, e bem longe vale a altitude do mapa. O chão da malha fica sempre abaixo de qualquer trecho da pista.
+export let pistaAtual = null; // (a pista que está montando: a cor do chão pinta a calçada em volta dela)
 export function relevoLV(tr) {
+  pistaAtual = tr;
   const { pts, n } = tr, L = tr.W / 2 + 26, demPista = new Float32Array(n);
   for (let i = 0; i < n; i++) demPista[i] = altitude(pts[i].x, pts[i].y);
   const desvioPista = new Float32Array(n);

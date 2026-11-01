@@ -91,10 +91,10 @@ export function fontesDoBellagio(tr, add, hAt) {
   let lago = null; for (const l of tr.lagosLV) { const d = Math.hypot(l.cx - m.cx, l.cz - m.cz), A = Math.abs(l.P.reduce((s, p, i) => { const q = l.P[(i + 1) % l.P.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0) / 2); if (d < 900 && A > 3000 && (!lago || A > lago.A)) lago = { ...l, A }; }
   if (!lago) return;
   const e = eixoDoLago(lago.P), ux = e.ux, uz = e.uz, vx = -uz, vz = ux, linhas = 3, jatos = [];
-  const comp = e.u1 - e.u0, larg = e.v1 - e.v0, passo = Math.max(6, comp / 52);
+  const comp = e.u1 - e.u0, larg = e.v1 - e.v0, passo = Math.max(7, comp / 40);
   for (let r = 0; r < linhas; r++) { const v = e.v0 + larg * (0.28 + r * 0.22); for (let u = e.u0 + comp * 0.07; u < e.u1 - comp * 0.07; u += passo) { const x = u * ux + v * vx, z = u * uz + v * vz; if (!lago.P.length || !require_dentro(lago.P, x, z)) continue; jatos.push({ x, z, r, k: jatos.length, fase: u / passo }); } }
   if (!jatos.length) return;
-  const geo = new THREE.CylinderGeometry(2.6, 0.5, 1, 10, 1, true); geo.translate(0, 0.5, 0); // (a coluna de água abre em cima e some na ponta)
+  const geo = new THREE.CylinderGeometry(1.5, 0.6, 1, 8, 1, true); geo.translate(0, 0.5, 0); // (a coluna de água abre em cima e some na ponta)
   const jato = canvasTex(4, 64, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.5, "rgba(255,255,255,0.22)"); g.addColorStop(1, "rgba(255,255,255,0.7)"); x.fillStyle = g; x.fillRect(0, 0, w, h); }, false);
   const mat = new THREE.MeshBasicMaterial({ map: jato, color: 0xcfe2f4, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: true, blending: THREE.AdditiveBlending }); mat.userData.bloom = 0.9;
   const im = new THREE.InstancedMesh(geo, mat, jatos.length); im.frustumCulled = false; im.name = "lasvegas-fontes"; im.userData.semContato = true; add(im);
@@ -110,7 +110,7 @@ export function fontesDoBellagio(tr, add, hAt) {
     jatos.forEach((j, i) => {
       const onda = 0.5 + 0.5 * Math.sin(t * 1.6 + j.fase * 0.55 + j.r * 1.7), h = (5 + 6 * onda + show * (14 + 14 * Math.sin(t * 2.4 + j.fase * 0.9))) * K * 0.9;
       d.position.set(j.x, lago.y, j.z); d.rotation.set(0, 0, 0); d.scale.set(1, Math.max(1, h), 1); d.updateMatrix(); im.setMatrixAt(i, d.matrix);
-      d.position.y = lago.y + h * 0.97; d.scale.set(4.5, 1.4, 4.5); d.updateMatrix(); spray.setMatrixAt(i, d.matrix);
+      d.position.y = lago.y + h * 0.97; d.scale.set(0.01, 0.01, 0.01); d.updateMatrix(); spray.setMatrixAt(i, d.matrix); // (sem cabeça nos jatos: só a coluna de água)
     });
     im.instanceMatrix.needsUpdate = true; spray.instanceMatrix.needsUpdate = true;
   };
