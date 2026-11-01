@@ -71,7 +71,7 @@ export function gridSpot(pts, g, W, f1 = false) {
 const TRACKS = {};
 // os GPs com relevo, mar e cor do terreno de verdade (dados do OpenStreetMap e do SRTM): Mônaco (monaco.js) e os que trazem `mundo` na configuração (Baku: kit/baku/mundo.js).
 // relevo(tr) -> (x, z, f, idx, malha) · fundo(tr, x, z) (positivo na água) · agua(tr, x, z) · cor() -> (x, z, h, ny) · nivelMar · banda(tr): até onde a pista, a calçada e a barreira mandam no chão
-const mundoDe = (id) => (id === "monaco" ? { relevo: relevoMonaco, fundo: fundoMonaco, agua: aguaMonaco, cor: corDoChaoMonaco, nivelMar: NIVEL_DO_MAR, banda: (tr) => tr.wallLat } : GPS[id]?.mundo || null);
+const mundoDe = (id) => (id === "monaco" ? { relevo: relevoMonaco, fundo: fundoMonaco, agua: (tr, x, y) => fundoMonaco(tr, x, y) > 0, cor: corDoChaoMonaco, nivelMar: NIVEL_DO_MAR, banda: (tr) => tr.wallLat } : GPS[id]?.mundo || null);
 export function buildTrack(id) {
   if (TRACKS[id]) return TRACKS[id];
   const t = PISTAS[id], pts = window.Pistas.pontos(t, 6), n = pts.length, W = t.width;

@@ -9,11 +9,18 @@ import { flameTowers, torreDaDonzela, muralha, palacioDoGoverno, torreTV } from 
 import { barreirasBaku } from "./kit/baku/barreiras.js";
 import { mar, arvores, postesDeLuz } from "./kit/baku/terra.js";
 import { porticos, retaDosBoxes } from "./kit/baku/reta.js";
+import { ligarNoite } from "./kit/bahrein/base.js";
 
 // o ponto está entre a pista e a face da barreira (mais uma folga): a área de escape e a rua, onde não entra gente nem enfeite
 function dentroDaBarreira(tr, x, y) {
   const i = tr.indiceAt(x, y), p = tr.pts[i], l = (x - p.x) * p.nx + (y - p.y) * p.ny, r = tr.murosEscape?.[l >= 0 ? 1 : -1]?.[i] || 0;
   return r > 0 && Math.abs(l) < tr.W / 2 + r + 16;
+}
+
+// por último (gps/baku.js `depois`, depois de vidaGP, que define tr.animarPista): as chamas das Flame Towers sobem e a luz da noite acende as janelas, os globos e o LED
+export function depoisBaku(tr) {
+  const antes = tr.animarPista; tr.animarPista = (dt, foco, t) => { antes?.(dt, foco, t); tr.animarFlame?.(dt); };
+  ligarNoite(tr);
 }
 
 export function cenarioBaku(tr, ctx, cfg) {

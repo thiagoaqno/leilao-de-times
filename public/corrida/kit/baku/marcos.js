@@ -30,8 +30,9 @@ export function flameTowers(tr, add, hAt) {
     for (let y = 0; y < hh; y += 4) { x.globalAlpha = 0.55 + rr() * 0.45; x.fillRect(0, y, w, 2); } x.globalAlpha = 1; // as fileiras de LED
     for (let i = 0; i < 30; i++) { x.fillStyle = "#fff6d0"; x.globalAlpha = 0.5; x.fillRect(rr() * w, rr() * hh, 3, 4); } x.globalAlpha = 1;
   }); led.wrapS = led.wrapT = THREE.RepeatWrapping;
-  const mat = new THREE.MeshStandardMaterial({ color: 0x586c80, roughness: 0.22, metalness: 0.55, emissive: 0xffffff, emissiveMap: led });
-  emissivoDaNoite(tr, mat, 0.38, 1.35); // ao entardecer (o dia do jogo) já acesas, de noite no máximo
+  const mat = new THREE.MeshStandardMaterial({ color: 0x586c80, roughness: 0.22, metalness: 0.55, emissive: 0xffffff, emissiveMap: led, toneMapped: false });
+  mat.userData.bloom = true; // o LED brilha (pos.js)
+  emissivoDaNoite(tr, mat, 0.45, 2.4); // ao entardecer (o dia do jogo) já acesas, de noite no máximo
   const M0 = D.marcos, lista = [
     [M0.flame1, 190, 27, 15, 20, 0.5], [M0.flame2, 165, 26, 14, 16, 2.3], [M0.flame3, 140, 24, 14, 15, 4.2],
   ];
@@ -42,7 +43,7 @@ export function flameTowers(tr, add, hAt) {
     m.position.set(pos[0], hAt(pos[0], pos[1]) - 4, pos[1]); m.rotation.y = rot; m.castShadow = false; m.name = "baku-flame"; grupo.add(m);
   }
   tr.flameBaku = { led, mat };
-  const antes = tr.animarPista; tr.animarPista = (dt, foco, t) => { antes?.(dt, foco, t); led.offset.y -= dt * 0.018; }; // as chamas sobem devagar
+  tr.animarFlame = (dt) => { led.offset.y -= dt * 0.018; }; // as chamas sobem devagar (baku.js `depoisBaku` liga isto ao laço da pista, depois de vidaGP, que define tr.animarPista)
 }
 
 // ---------- a Torre da Donzela ----------
@@ -79,12 +80,17 @@ export function muralha(tr, add, hAt, predioEm, trechos = [[0.405, 0.765, -1]]) 
   // dentro, à esquerda de quem anda, das curvas 7 a 18), então a muralha é uma fita acompanhando a pista nesse lado, atrás da barreira e da cerca (`foraDoCaminho`).
   const linhas = [];
   for (const [de, ate, lado] of trechos) {
-    const L = [], n = tr.n;
+    let L = [];
+    const n = tr.n, fecha = () => { if (L.length > 3) linhas.push(L); L = []; };
     for (let i = Math.floor(de * n); i <= Math.floor(ate * n); i += 3) {
-      const p = pts[i % n], r = tr.murosEscape?.[lado]?.[i % n] || 0, d = tr.W / 2 + (r !== 0 ? r + 9 : 20) + esp / 2 + 3;
-      L.push([p.x + p.nx * lado * d, p.y + p.ny * lado * d]);
+      const p = pts[i % n], r = tr.murosEscape?.[lado]?.[i % n] || 0, d = tr.W / 2 + (r !== 0 ? r + 9 : 20) + esp / 2 + 3, x = p.x + p.nx * lado * d, z = p.y + p.ny * lado * d;
+      // por dentro de uma curva fechada a fita deslocada passa do centro da curva e cai em cima da pista (de outro trecho): ali a muralha para
+      let dentro = false;
+      for (let j = i - 120; j <= i + 120 && !dentro; j++) { const q = pts[((j % n) + n) % n], l = (x - q.x) * q.nx + (z - q.y) * q.ny >= 0 ? 1 : -1, v = tr.murosEscape?.[l]?.[((j % n) + n) % n] || 0; if (Math.hypot(x - q.x, z - q.y) < (v < 0 ? tr.W / 2 + v : tr.W / 2 + 10) + esp / 2 + 1.5) dentro = true; }
+      if (dentro) { fecha(); continue; }
+      L.push([x, z]);
     }
-    if (L.length > 3) linhas.push(L);
+    fecha();
   }
   for (const L of linhas) {
     let u = 0, desde = 0;
@@ -99,7 +105,7 @@ export function muralha(tr, add, hAt, predioEm, trechos = [[0.405, 0.765, -1]]) 
       { const base = pos.length / 3; pos.push(a[0] + nx * esp / 2, ya + alt, a[1] + nz * esp / 2, b[0] + nx * esp / 2, yb + alt, b[1] + nz * esp / 2, b[0] - nx * esp / 2, yb + alt, b[1] - nz * esp / 2, a[0] - nx * esp / 2, ya + alt, a[1] - nz * esp / 2); uv.push(u, 0, u1, 0, u1, 0.1, u, 0.1); idx.push(base, base + 1, base + 2, base, base + 2, base + 3); } // o chão do parapeito
       u = u1; metros += l; void k0;
       // as ameias: um merlão a cada ~4,2 unidades, no lado de fora (o lado oposto da pista), com a ponta arredondada (um cilindro achatado em cima)
-      for (let s = 0; s < l; s += 4.2) { const t = (s + 2) / l, px = a[0] + dx * t, pz = a[1] + dz * t, c = pts[tr.indiceAt(px, pz)], fora = (px - c.x) * nx + (pz - c.y) * nz > 0 ? 1 : -1; ameias.push({ x: px + nx * fora * (esp / 2 - 0.9), y: ya + (yb - ya) * t + alt, z: pz + nz * fora * (esp / 2 - 0.9), r: Math.atan2(dx, dz) }); }
+      for (let s = 0; s < l; s += 5.4) { const t = (s + 2) / l, px = a[0] + dx * t, pz = a[1] + dz * t, c = pts[tr.indiceAt(px, pz)], fora = (px - c.x) * nx + (pz - c.y) * nz > 0 ? 1 : -1; ameias.push({ x: px + nx * fora * (esp / 2 - 0.9), y: ya + (yb - ya) * t + alt, z: pz + nz * fora * (esp / 2 - 0.9), r: Math.atan2(dx, dz) }); }
       desde += l; if (desde > 62 || (i > 0 && Math.abs(Math.atan2(dz, dx) - Math.atan2(L[i][1] - L[i - 1][1], L[i][0] - L[i - 1][0])) > 0.5)) { desde = 0; torres.push({ x: a[0], y: ya, z: a[1] }); }
     }
   }
@@ -108,7 +114,7 @@ export function muralha(tr, add, hAt, predioEm, trechos = [[0.405, 0.765, -1]]) 
   const m = add(new THREE.Mesh(g, mat)); m.castShadow = m.receiveShadow = true; m.name = "baku-muralha";
   const o = new THREE.Object3D();
   if (ameias.length) { // o merlão: bloco com a ponta em arco
-    const blocoGeo = new THREE.BoxGeometry(2.8, 3.8, 1.5), arco = new THREE.CylinderGeometry(1.4, 1.4, 1.5, 8, 1, false, 0, Math.PI); arco.rotateX(Math.PI / 2); arco.translate(0, 1.9, 0);
+    const blocoGeo = new THREE.BoxGeometry(2.8, 3.8, 1.5), arco = new THREE.CylinderGeometry(1.4, 1.4, 1.5, 4, 1, false, 0, Math.PI); arco.rotateX(Math.PI / 2); arco.translate(0, 1.9, 0);
     const im = add(new THREE.InstancedMesh(blocoGeo, mat, ameias.length)), ia = add(new THREE.InstancedMesh(arco, mat, ameias.length));
     ameias.forEach((a, i) => { o.position.set(a.x, a.y + 1.9, a.z); o.rotation.set(0, a.r, 0); o.scale.set(1, 1, 1); o.updateMatrix(); im.setMatrixAt(i, o.matrix); ia.setMatrixAt(i, o.matrix); });
     im.castShadow = ia.castShadow = true; im.name = ia.name = "baku-ameias";

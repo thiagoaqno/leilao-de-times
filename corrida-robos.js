@@ -47,10 +47,17 @@ const CACHE = new Map();
 // meio dos vizinhos (o caminho mais reto possível), sem passar da beira. O resultado abre antes da curva, encosta
 // por dentro no ápice e volta a abrir na saída. Devolve o deslocamento lateral de cada ponto (lat) e a curvatura dele.
 const LINHAS = new Map();
+// o maior deslocamento do centro do carro que cabe entre as barreiras explícitas de uma pista (`muros` em pistas.js, Baku: a Cidade Velha é estreita); Infinity onde a pista é a de sempre
+function tetoDoMuro(t, pts) {
+  const n = pts.length, teto = new Float64Array(n).fill(Infinity); if (!t.muros) return teto;
+  const m = T.murosDoEscape(pts, t.width, null, t), folga = t.muroFolga ?? 8;
+  for (let i = 0; i < n; i++) for (const lado of [-1, 1]) if (m[lado][i]) teto[i] = Math.min(teto[i], t.width / 2 + m[lado][i] - folga - 6);
+  return teto;
+}
 function tracado(pista, f1 = false) {
   const cache = f1 ? pista + ":f1" : pista;
   if (LINHAS.has(cache)) return LINHAS.get(cache);
-  const t = T.PISTAS[pista], pts = T.pontos(t, STEP), n = pts.length, max = t.width / 2 - 16;
+  const t = T.PISTAS[pista], pts = T.pontos(t, STEP), n = pts.length, max = t.width / 2 - 16, teto = tetoDoMuro(t, pts);
   const lat = new Float64Array(n), X = new Float64Array(n), Y = new Float64Array(n);
   const pos = () => { for (let i = 0; i < n; i++) { X[i] = pts[i].x - pts[i].ty * lat[i]; Y[i] = pts[i].y + pts[i].tx * lat[i]; } };
   if (!f1) for (const k of [12, 8, 5, 3]) for (let it = 0; it < 60; it++) {
@@ -58,14 +65,14 @@ function tracado(pista, f1 = false) {
     for (let i = 0; i < n; i++) {
       const a = (i - k + n) % n, b = (i + k) % n, mx = (X[a] + X[b]) / 2, my = (Y[a] + Y[b]) / 2;
       const alvo = (mx - pts[i].x) * -pts[i].ty + (my - pts[i].y) * pts[i].tx;
-      lat[i] = Math.max(-max, Math.min(max, lat[i] + (alvo - lat[i]) * 0.5));
+      lat[i] = Math.max(-Math.min(max, teto[i]), Math.min(Math.min(max, teto[i]), lat[i] + (alvo - lat[i]) * 0.5));
     }
   }
   // Linha de F1: a LINHA DE CORRIDA de verdade, por otimização (corrida-linha.js): curvatura mínima entre as beiras, com a folga do carro.
   // Abre por fora antes da curva, encosta por dentro no ápice e sai abrindo; as curvas em sequência saem resolvidas juntas.
   // (O relaxamento de antes, 12 mil passos de uma média local, não convergia: a linha ficava perto do eixo da pista.)
   // Em Mônaco a linha otimizada precisa caber no mesmo limite que o volante usa, evitando cortar o S em cima do muro.
-  if (f1) lat.set(Linha.otimizar(pts, pista === "monaco" ? Math.min(max + 16 - FOLGA_LINHA, t.width / 2 - 18) : max + 16 - FOLGA_LINHA));
+  if (f1) { const base = pista === "monaco" ? Math.min(max + 16 - FOLGA_LINHA, t.width / 2 - 18) : max + 16 - FOLGA_LINHA; lat.set(Linha.otimizar(pts, t.muros ? Float64Array.from(teto, (v) => Math.min(base, v)) : base)); }
   pos();
   const k = new Float64Array(n), sinal = new Float64Array(n); // sinal: +1 se a curva vai para o lado de lat positivo, -1 para o outro
   for (let i = 0; i < n; i++) { // curvatura do traçado: quanto a direção vira por unidade andada
@@ -73,7 +80,7 @@ function tracado(pista, f1 = false) {
     k[i] = Math.abs(Math.atan2(Math.sin(d2 - d1), Math.cos(d2 - d1))) / Math.max(1, Math.hypot(X[b] - X[a], Y[b] - Y[a]) / 2);
     sinal[i] = Math.sin(d2 - d1) >= 0 ? 1 : -1;
   }
-  const out = { pts, n, lat, k, sinal, X, Y }; LINHAS.set(cache, out); return out;
+  const out = { pts, n, lat, k, sinal, X, Y, teto }; LINHAS.set(cache, out); return out;
 }
 // A curvatura do caminho que o robô de F1 faz (a pista mais `lat` de lado em cada ponto): o círculo por três pontos, a `m` pontos de cada
 // lado, depois a média de uma janelinha, e nunca mais que 1/RAIO_MIN. Sem as quinas que o ruído do traçado cru deixava.
@@ -143,6 +150,7 @@ function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinc
   const t = T.PISTAS[pista], c = carro.chave ? carro : T.CARROS[carro], f1 = !!carro.chave && !PISTAS_FANTASIA.has(pista), linha = tracado(pista, f1), pts = linha.pts, n = pts.length, perfis = aprendido(pista), ap = perfis[tracadoId % perfis.length];
   let lim, lat;
   const curva = Array.from(linha.k, (k) => (k > 1e-4 ? Math.min(c.turn / k * 1.1, Math.sqrt(c.grip / k) * 1.2, c.vmax) : c.vmax));
+  if (linha.teto) for (let i = 0; i < n; i++) if (linha.teto[i] < 30) curva[i] = Math.min(curva[i], c.vmax * (0.3 + 0.7 * Math.max(0, linha.teto[i]) / 30)); // entre as barreiras da Cidade Velha (Baku) a pista estreita: mais devagar, sem bater
   for (let volta = 0; volta < 2; volta++) for (let i = n - 1; i >= 0; i--) curva[i] = Math.min(curva[i], Math.sqrt(curva[(i + 1) % n] ** 2 + 2 * c.brake * 0.72 * STEP));
   if (ap) { lim = Array.from(ap.vel, (v, i) => Math.min(curva[i], Math.max(40, v * c.vmax))); lat = ap.lat; }
   else {
@@ -150,7 +158,7 @@ function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinc
     lat = linha.lat;
   }
   const fator = f1 ? 1 : FATOR_LINHA, latF1 = Float64Array.from({ length: n }, (_, i) => lat[(i + 2) % n] * fator); // o caminho do robô de F1 (passoF1 usa a mesma conta)
-  const out = { pista, pts, n, lim, lat, t, c, linha, aprendeu: !!ap, corredor: F1.corredor(t, n, t.width), fator, kf: curvaturaDoCaminho(pts, latF1, f1 ? 12 : 4, f1 ? 6 : 2) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
+  const out = { pista, pts, n, lim, lat, t, c, linha, teto: linha.teto, aprendeu: !!ap, corredor: F1.corredor(t, n, t.width), fator, kf: curvaturaDoCaminho(pts, latF1, f1 ? 12 : 4, f1 ? 6 : 2) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
 }
 // O tempo de uma volta lançada andando no limite do perfil vezes `escala`, com a arrancada do carro (a mesma conta do
 // passo, sem tráfego). Serve para achar a escala que fecha a volta no tempo que o robô mira.
@@ -185,6 +193,11 @@ function perfilF1(pf, f) {
   let v = mapa.get(q);
   if (!v) {
     v = D.perfilIdeal(pf.pts.map((p, i) => ({ k: pf.kf[i], h: p.h })), pf.c, STEP, margemDaPista(pf.pista).margem * q, null, margemDaPista(pf.pista).freio);
+    if (pf.teto) { // entre as barreiras da Cidade Velha (Baku) a pista estreita: o perfil ideal passa a ser mais lento ali (e a freada vem antes), sem bater
+      const n = pf.n, vmax = pf.c.vmax; v = Array.from(v);
+      for (let i = 0; i < n; i++) if (pf.teto[i] < 30) v[i] = Math.min(v[i], vmax * (0.14 + 0.5 * Math.max(0, pf.teto[i]) / 30));
+      for (let volta = 0; volta < 2; volta++) for (let i = n - 1; i >= 0; i--) v[i] = Math.min(v[i], Math.sqrt(v[(i + 1) % n] ** 2 + 2 * pf.c.brake * 0.72 * STEP));
+    }
     if (mapa.size >= 30) mapa.delete(mapa.keys().next().value);
     mapa.set(q, v);
   }
@@ -672,7 +685,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     + est.dentro * pf.linha.sinal[k % n] * Math.min(1, pf.kf[k % n] * 400) * 7;
   const linha = linhaEm(i, car.prog);
   const baseLat = ia.lat0 * (1 - saidaGrid) + linha * saidaGrid;
-  const maxLat = tr.W / 2 - (ia.ult && ia.ult.parado ? 8 : 18);
+  const maxLat = Math.min(tr.W / 2 - (ia.ult && ia.ult.parado ? 8 : 18), pf.teto ? pf.teto[i] : Infinity);
   const cl = F1.climaEm(room.clima, now); // a água na pista agora (clima: f1-regras.js)
   const pneu = F1.aderencia(car.pneu, cl.agua), dano = F1.efeitoDoDano(p.dano), curva = pf.kf[i] > 1 / 600;
   const fis = perfilF1(pf, ia.nivel), topo = topoDe(pf);
@@ -792,7 +805,7 @@ function passo(room, dt, setor, emit) {
       const aderencia = ia.pneu && F1.aderencia(ia.pneu), est = f1 ? ia.estilo : null, dano = f1 ? F1.efeitoDoDano(p.dano) : null;
       // o traçado de cada robô: a linha mais o seu jeito (regras de F1: mais por dentro ou por fora das curvas, mais para um lado)
       const baseLat = pf.lat[(i + 2) % pf.n] + ia.jeito + Math.sin(ia.s / 105 + ia.tracadoId * 1.7) * 4 + (est ? est.dentro * pf.linha.sinal[i] * Math.min(1, pf.linha.k[i] * 400) * 12 : 0);
-      const maxLat = t.width / 2 - 10, ponto = pf.pts[i];
+      const maxLat = Math.min(t.width / 2 - 10, pf.teto ? pf.teto[i] : Infinity), ponto = pf.pts[i];
       let desvio = 0, freioTrafego = Infinity, encontrou = false, tf = null;
       if (f1) { tf = transito(room, p, ia, pf, i, baseLat, maxLat); desvio = tf.desvio; freioTrafego = tf.freio; encontrou = tf.encontrou; }
       // regras de F1: cada robô começa a frear numa distância (est.look pontos antes da curva); com o pneu gasto ou o carro

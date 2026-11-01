@@ -3,7 +3,7 @@
 // barreiras vêm de ../baku.js e ../kit/baku/ (kit/baku/dados.js é gerado por ferramentas/baku-dados.js). As frações (0 a 1) são da volta, a partir da
 // linha de chegada, e vêm do gerador (D.frac). O que Baku NÃO tem desliga em `sem`: olhos de gato, setas de autódromo, mastros coloridos, roda-gigante...
 // Barreira: NÃO há muro genérico em volta da pista: `muros` (pistas.js) diz onde a pista real tem barreira e a distância dela; o resto é aberto (calçada, escape).
-import { cenarioBaku } from "../baku.js";
+import { cenarioBaku, depoisBaku } from "../baku.js";
 import { D, relevoBaku, fundoBaku, aguaBaku, distanciaDoMar, NIVEL_DO_MAR } from "../kit/baku/mundo.js";
 import { corDoChao } from "../kit/baku/terra.js";
 import { pertoDe } from "../kit/som.js";
@@ -45,10 +45,11 @@ export const GP_BAKU = {
     porticos: [[0.9, "QATAR AIRWAYS", "#4a1738", "#eadcea"], [0.972, "FORMULA 1 AZERBAIJAN GRAND PRIX", "#1c1f26", "#f2f2f2"], [0.19, "MSC CRUISES", "#0d2757", "#ffffff"], [0.78, "AWS", "#222d3b", "#ffffff"]],
     muralha: [[F.curvas.t7 + 0.004, F.curvas.t18 + 0.005, -1]], // a muralha da Cidade Velha: dentro da volta, à esquerda de quem anda, das curvas 7 à 18
   }),
+  depois: (tr) => depoisBaku(tr), // por último: a luz da noite e as chamas das Flame Towers
   boxes: {}, // o corredor dos boxes do kit (garagens, mureta e os quadrados pintados); o prédio é de ../kit/baku/reta.js
   ambiente: { paineis: false, mastros: false, marcas: ["pirelli", "rolex", "aramco", "dhl", "heineken", "f1", "aws", "lenovo"], posto: "f1", placas: [100, 50] }, // os postos de fiscais e as placas de frenagem
   horizonte: false, // sem os morros genéricos de longe: o morro de verdade é o relevo SRTM do chão
-  terreno: { S: 300, pedacos: 6 },
+  terreno: { S: 210, pedacos: 5 }, // (a grade de 42 unidades basta: o morro do SRTM é suave, e poupa triângulos)
   sem: { outdoors: true, olhos: true, setas: true, mastros: true, rodas: true, dirigivel: true, bandeirolas: true },
   vida: {
     gaivotas: gaivotasDaBaia,

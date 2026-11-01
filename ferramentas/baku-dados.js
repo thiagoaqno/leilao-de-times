@@ -25,7 +25,7 @@ const CACHE = arg("cache", path.join(os.tmpdir(), "baku-dados")), SAIDA = arg("s
 fs.mkdirSync(CACHE, { recursive: true }); fs.mkdirSync(SAIDA, { recursive: true });
 const URL_LINHA = "https://raw.githubusercontent.com/bacinger/f1-circuits/master/circuits/az-2016.geojson";
 const VK = 2.0; // unidades de altura por metro de altitude (a pista e o morro em volta; Baku é comprimida 2,4 unidades por metro)
-const LARGURA = +arg("largura", "96"), MURO = 14;
+const LARGURA = +arg("largura", "96"), MURO = 22; // (MURO: a folga que o afastamento dos trechos que se tocariam usa; pistas.js o teste exige largura + 2 × 20)
 const AREA = { sul: 40.352, oeste: 49.818, norte: 40.384, leste: 49.868 }; // a caixa dos prédios e do mar
 const PASSO_RELEVO = 60, RAIO_RELEVO = 2600; // metros entre as amostras do relevo do entorno, e até onde (o morro do Flame Towers fica a 1,5 km)
 

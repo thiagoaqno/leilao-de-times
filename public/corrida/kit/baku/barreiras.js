@@ -55,19 +55,19 @@ export function barreirasBaku(tr, add, cfg = {}) {
           const l = lat(i), [x0, y0, z0] = P(i, l, -8), [x1, y1, z1] = P(i, l, ALTO);
           pos.push(x0, y0, z0, x1, y1, z1); uv.push(u, 0, u, 1); if (i < b) { const q = (i - a) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); } u += 6 / 100;
         }
-        const g = geoBuf(pos, uv, idx), mesh = add(new THREE.Mesh(g, matDe(m, s))); mesh.castShadow = true; mesh.receiveShadow = true; mesh.name = "baku-barreira"; a = b;
+        const g = geoBuf(pos, uv, idx), mesh = add(new THREE.Mesh(g, matDe(m, s))); mesh.castShadow = true; mesh.receiveShadow = true; mesh.name = "baku-muro"; a = b;
       }
       // o topo do bloco (uma fita de 2,4 de largura) e o friso da cerca em cima
       { const pos = [], uv = [], idx = [];
         for (let i = i0; i <= i1; i++) { const l = lat(i); const A = P(i, l - s * 1.2, ALTO), B = P(i, l + s * 1.2, ALTO); pos.push(...A, ...B); uv.push(0, 0, 1, 0); if (i < i1) { const q = (i - i0) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); } }
-        const mesh = add(new THREE.Mesh(geoBuf(pos, uv, idx), concreto)); mesh.name = "baku-barreira-topo"; mesh.receiveShadow = true; }
+        const mesh = add(new THREE.Mesh(geoBuf(pos, uv, idx), concreto)); mesh.name = "baku-muro"; mesh.receiveShadow = true; }
       // a tela: uma fita contínua do topo do bloco até o alto da cerca (o arame em quadrados de 4,5), presa nos postes; o friso de aço corre em cima
       { const pos = [], uv = [], idx = []; let u = 0;
         for (let i = i0; i <= i1; i++) { const l = lat(i) + s * 0.8, A = P(i, l, ALTO), B = P(i, l, ALTO + CERCA); pos.push(...A, ...B); uv.push(u, 0, u, CERCA / 4.5 / 2); if (i < i1) { const q = (i - i0) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); } u += 6 / 9; }
-        const mesh = add(new THREE.Mesh(geoBuf(pos, uv, idx), telaMat)); mesh.name = "baku-tela"; mesh.renderOrder = 2;
+        const mesh = add(new THREE.Mesh(geoBuf(pos, uv, idx), telaMat)); mesh.name = "baku-muro"; mesh.renderOrder = 2;
         const pf = [], uf = [], xf = [];
         for (let i = i0; i <= i1; i++) { const l = lat(i) + s * 0.8; pf.push(...P(i, l, ALTO + CERCA - 0.6), ...P(i, l, ALTO + CERCA + 0.6)); uf.push(0, 0, 1, 0); if (i < i1) { const q = (i - i0) * 2; xf.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); } }
-        const friso = add(new THREE.Mesh(geoBuf(pf, uf, xf), aco)); friso.name = "baku-tela-friso"; }
+        const friso = add(new THREE.Mesh(geoBuf(pf, uf, xf), aco)); friso.name = "baku-muro"; }
       // os postes: nas duas pontas e a cada PASSO_POSTE pontos, do pé do bloco ao friso (a tela só existe entre dois postes, então nada fica solto)
       for (let i = i0; i <= i1; i++) if (i === i0 || i === i1 || (i - i0) % PASSO_POSTE === 0) { const p = pts[((i % n) + n) % n], l = lat(i) + s * 0.8; postes.push({ x: p.x + p.nx * l, y: p.h + ALTO + CERCA / 2, z: p.y + p.ny * l, sy: CERCA + 1.2, r: Math.atan2(p.ty, p.tx) }); }
       // onde a barreira entra na pista, o asfalto que sobrou por fora dela vira calçadão de pedra: da face da barreira até a sarjeta
@@ -76,12 +76,12 @@ export function barreirasBaku(tr, add, cfg = {}) {
         const pos = [], uv = [], idx = [], A = [];
         for (let i = i0; i <= i1; i++) { const r = v[i % n]; if (r >= 0) { A.push(null); continue; } const l0 = lat(i), l1 = s * (W / 2 + 9); pos.push(...P(i, l0, 0.9), ...P(i, l1, 0.9)); uv.push(i * 6 / 40, 0, i * 6 / 40, 1); A.push(pos.length / 3 - 2); }
         for (let k = 0; k + 1 < A.length; k++) if (A[k] != null && A[k + 1] != null) idx.push(A[k], A[k + 1], A[k] + 1, A[k] + 1, A[k + 1], A[k + 1] + 1);
-        if (idx.length) { const mesh = add(new THREE.Mesh(geoBuf(pos, uv, idx), pedraCalcada)); mesh.receiveShadow = true; mesh.name = "baku-calcadao"; stats.estreito += idx.length / 6; }
+        if (idx.length) { const mesh = add(new THREE.Mesh(geoBuf(pos, uv, idx), pedraCalcada)); mesh.receiveShadow = true; mesh.name = "baku-chao"; stats.estreito += idx.length / 6; }
       }
     }
   }
   if (postes.length) {
-    const geo = new THREE.BoxGeometry(1, 1, 1), im = instancias(add, geo, aco, postes.map((p) => ({ x: p.x, y: p.y, z: p.z, sx: 1.1, sy: p.sy, sz: 1.1, r: p.r })), { nome: "baku-postes" }); void im; stats.postes = postes.length;
+    const geo = new THREE.BoxGeometry(1, 1, 1), im = instancias(add, geo, aco, postes.map((p) => ({ x: p.x, y: p.y, z: p.z, sx: 1.1, sy: p.sy, sz: 1.1, r: p.r })), { nome: "baku-muro" }); void im; stats.postes = postes.length;
   }
   // as áreas de escape de asfalto pintado: vermelho junto da pista e verde por fora (a curva 1 e as outras), do asfalto da pista até a face da barreira
   const escapes = cfg.escapes || [];

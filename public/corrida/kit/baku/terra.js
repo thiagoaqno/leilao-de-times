@@ -47,8 +47,8 @@ function geoCor(partes) {
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3)); return g;
 }
 const pecas = {
-  platano: () => { const t = new THREE.CylinderGeometry(1.2, 2, 14, 6); t.translate(0, 7, 0); const a = new THREE.IcosahedronGeometry(11, 1); a.scale(1.5, 1, 1.5); a.translate(0, 21, 0); const b = new THREE.IcosahedronGeometry(7, 0); b.scale(1.3, 0.9, 1.3); b.translate(6, 26, 2); return geoCor([[t, [0.4, 0.33, 0.26]], [a, [0.24, 0.46, 0.2]], [b, [0.3, 0.52, 0.24]]]); },
-  pinheiro: () => { const t = new THREE.CylinderGeometry(1, 1.8, 18, 5); t.translate(0, 9, 0); const a = new THREE.IcosahedronGeometry(10, 0); a.scale(1.6, 0.7, 1.6); a.translate(0, 24, 0); const b = new THREE.IcosahedronGeometry(6, 0); b.scale(1.4, 0.7, 1.4); b.translate(-4, 29, 3); return geoCor([[t, [0.45, 0.32, 0.22]], [a, [0.16, 0.38, 0.22]], [b, [0.2, 0.42, 0.24]]]); },
+  platano: () => { const t = new THREE.CylinderGeometry(1.2, 2, 14, 4); t.translate(0, 7, 0); const a = new THREE.IcosahedronGeometry(11, 0); a.scale(1.5, 1, 1.5); a.translate(0, 21, 0); const b = new THREE.IcosahedronGeometry(7, 0); b.scale(1.3, 0.9, 1.3); b.translate(6, 26, 2); return geoCor([[t, [0.4, 0.33, 0.26]], [a, [0.24, 0.46, 0.2]], [b, [0.3, 0.52, 0.24]]]); },
+  pinheiro: () => { const t = new THREE.CylinderGeometry(1, 1.8, 18, 4); t.translate(0, 9, 0); const a = new THREE.IcosahedronGeometry(10, 0); a.scale(1.6, 0.7, 1.6); a.translate(0, 24, 0); const b = new THREE.IcosahedronGeometry(6, 0); b.scale(1.4, 0.7, 1.4); b.translate(-4, 29, 3); return geoCor([[t, [0.45, 0.32, 0.22]], [a, [0.16, 0.38, 0.22]], [b, [0.2, 0.42, 0.24]]]); },
   palmeira: () => { const t = new THREE.CylinderGeometry(1, 1.8, 26, 6); t.translate(0, 13, 0); const c = new THREE.ConeGeometry(13, 7, 8, 1, true); c.translate(0, 28, 0); return geoCor([[t, [0.5, 0.4, 0.28]], [c, [0.22, 0.46, 0.22]]]); },
   cipreste: () => { const a = new THREE.ConeGeometry(4.6, 34, 7); a.translate(0, 17, 0); return geoCor([[a, [0.1, 0.3, 0.16]]]); },
 };
@@ -61,11 +61,11 @@ export function arvores(tr, add, { hAt, predioEm }) {
   for (const v of D.verde) { // manchas dentro dos parques (o Bulevar) e da mata
     const P = []; for (let k = 1; k < v.length; k += 2) P.push([v[k], v[k + 1]]);
     let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const [x, z] of P) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
-    const passo = v[0] === 2 ? 46 : 62;
+    const passo = v[0] === 2 ? 56 : 74;
     for (let z = z0; z < z1; z += passo) for (let x = x0; x < x1; x += passo) {
       const px = x + (r() - 0.5) * passo * 0.8, pz = z + (r() - 0.5) * passo * 0.8; if (!poligonoDentro(P, px, pz)) continue;
       poe(v[0] === 2 ? "pinheiro" : r() < 0.45 ? "pinheiro" : r() < 0.2 ? "palmeira" : "platano", px, pz, 0.9 + r() * 0.5);
-      if (listas.platano.length + listas.pinheiro.length + listas.palmeira.length + listas.cipreste.length > 1800) break;
+      if (listas.platano.length + listas.pinheiro.length + listas.palmeira.length + listas.cipreste.length > 1100) break;
     }
   }
   // as árvores da calçada junto da pista, onde não há barreira nem prédio (o Bulevar: pinheiros e plátanos em fileira)

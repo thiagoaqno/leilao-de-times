@@ -6,12 +6,13 @@
 // até a distância da barreira (a Cidade Velha chega a 9 unidades da barreira, como nas fotos).
 import * as THREE from "three";
 import { canvasTex } from "../../cena.js";
-import { D, poligonoDentro } from "./mundo.js";
+import { D, poligonoDentro, distanciaDoMar } from "./mundo.js";
+import { emissivoDaNoite } from "../bahrein/base.js";
 
 const K = D.projecao.k, M_ALTURA = K * 1.35; // unidades de altura por metro de parede (um pouco exagerada: o jogo é mais largo que a rua)
 const JANELA = 3.4 * K, ANDAR = 3.3 * K * 1.2; // o módulo da fachada em unidades do mundo
 const CELULA = 1600;
-const PEDRAS = [[0.93, 0.85, 0.68], [0.88, 0.8, 0.63], [0.96, 0.9, 0.77], [0.84, 0.78, 0.66], [0.97, 0.93, 0.84], [0.8, 0.72, 0.58], [0.89, 0.86, 0.8], [0.92, 0.82, 0.62]];
+const PEDRAS = [[0.84, 0.72, 0.52], [0.8, 0.69, 0.5], [0.88, 0.78, 0.6], [0.74, 0.67, 0.55], [0.9, 0.82, 0.68], [0.7, 0.6, 0.45], [0.8, 0.76, 0.68], [0.85, 0.7, 0.48]]; // arenito de Absheron: ocre, amarelado e cinza-bege, mais escuro que o creme
 const TERRACOS = [[0.62, 0.6, 0.57], [0.72, 0.69, 0.64], [0.55, 0.54, 0.52], [0.68, 0.45, 0.36]];
 const VIDROS = [[0.22, 0.34, 0.45], [0.28, 0.4, 0.5], [0.18, 0.26, 0.34], [0.34, 0.45, 0.52]];
 
@@ -35,6 +36,19 @@ function texturaPedra() {
     }
     x.fillStyle = "#00000020"; x.fillRect(0, hh - 5, w, 5); x.fillStyle = "#fbf8f0"; x.fillRect(0, 0, w, 4); // a cornija a cada quatro andares
   });
+}
+// a luz das janelas de noite: as mesmas janelas da fachada, só algumas acesas (amarelo quente), no mapa emissivo
+function texturaLuz() {
+  return canvasTex(256, 256, (x, w, hh, rr) => {
+    x.fillStyle = "#000000"; x.fillRect(0, 0, w, hh);
+    for (let a = 0; a < 4; a++) for (let c = 0; c < 4; c++) {
+      if (rr() > 0.45) continue; const x0 = c * 64, y0 = a * 64, arco = (a + c) % 3 !== 1;
+      x.fillStyle = rr() < 0.3 ? "#ffe9b0" : "#ffbf5e"; x.beginPath(); x.moveTo(x0 + 19, y0 + 50); x.lineTo(x0 + 19, y0 + 22); if (arco) x.arc(x0 + 32, y0 + 22, 13, Math.PI, 0); else { x.lineTo(x0 + 19, y0 + 12); x.lineTo(x0 + 45, y0 + 12); } x.lineTo(x0 + 45, y0 + 50); x.closePath(); x.fill();
+    }
+  });
+}
+function texturaLuzVidro() {
+  return canvasTex(128, 128, (x, w, hh, rr) => { x.fillStyle = "#000000"; x.fillRect(0, 0, w, hh); for (let a = 0; a < 8; a++) for (let c = 0; c < 4; c++) if (rr() < 0.5) { x.fillStyle = rr() < 0.25 ? "#d8f0ff" : "#ffd58a"; x.fillRect(c * 32 + 2, a * 16 + 2, 28, 12); } });
 }
 function texturaVidro() { // as torres modernas: faixas de vidro escuro e montantes
   return canvasTex(128, 128, (x, w, hh, rr) => {
@@ -86,6 +100,7 @@ export function lerPredios(tr) {
     if (ainda) { descartados++; continue; }
     let cx = 0, cz = 0, x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const [x, z] of P) { cx += x; cz += z; x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
     cx /= P.length; cz /= P.length;
+    if (distanciaDoMar(cx, cz) > -6) { descartados++; continue; } // em cima da água (píer, plataforma): fora
     let baixo = Infinity, alto = -Infinity; for (const [x, z] of [...P, [cx, cz]]) { const g = tr.chao(x, z) - 1.5; baixo = Math.min(baixo, g); alto = Math.max(alto, g); }
     const alturaReal = metros * M_ALTURA, perto = tr.distAt(cx, cz) < 260, h = esp ? alturaReal : Math.max(perto ? 34 : 18, alturaReal);
     lista.push({ P, esp, cor: e[1] & 7, metros, h, cx, cz, caixa: [x0, z0, x1, z1], baixo, alto, topo: alto + h, id: lista.length });
@@ -148,7 +163,7 @@ export function predios(tr, add, lista) {
     // a platibanda: uma faixa de pedra em volta do terraço (os prédios do Oil Boom têm cornija saliente)
     for (let i = 0; i < n && !moderno; i++) { const a = P[i], c = P[(i + 1) % n], dx = c[0] - a[0], dz = c[1] - a[1], l = Math.hypot(dx, dz); if (l < 0.5) continue; const nx = dz / l, nz = -dx / l, e = 1.6, q = tel.v(a[0] + nx * e, y1 - 3, a[1] + nz * e, nx, 0, nz, 0, 0, cor), r = tel.v(c[0] + nx * e, y1 - 3, c[1] + nz * e, nx, 0, nz, 0, 0, cor), s = tel.v(c[0] + nx * e, y1 + 3.2, c[1] + nz * e, nx, 0, nz, 0, 0, cor), t = tel.v(a[0] + nx * e, y1 + 3.2, a[1] + nz * e, nx, 0, nz, 0, 0, cor); tel.i.push(q, s, r, q, t, s); }
   }
-  const matPedra = new THREE.MeshStandardMaterial({ map: texturaPedra(), vertexColors: true, roughness: 0.92 }), matVidro = new THREE.MeshStandardMaterial({ map: texturaVidro(), vertexColors: true, roughness: 0.28, metalness: 0.2 }), matTelhado = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
+  const matPedra = emissivoDaNoite(tr, new THREE.MeshStandardMaterial({ map: texturaPedra(), vertexColors: true, roughness: 0.92, emissive: 0xffffff, emissiveMap: texturaLuz() }), 0, 0.85), matVidro = emissivoDaNoite(tr, new THREE.MeshStandardMaterial({ map: texturaVidro(), vertexColors: true, roughness: 0.28, metalness: 0.2, emissive: 0xffffff, emissiveMap: texturaLuzVidro() }), 0, 0.9), matTelhado = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
   let malhas = 0;
   for (const { par, vid, tel } of cel.values()) {
     for (const [g, mat, nome] of [[par.geometria(), matPedra, "predios"], [vid.geometria(), matVidro, "torres"], [tel.geometria(), matTelhado, "telhados"]]) {
