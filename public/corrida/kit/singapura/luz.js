@@ -1,12 +1,12 @@
 // Singapura — a iluminação do GP: a corrida é à noite sob cerca de 1600 refletores presos em treliças nos postes dos dois lados da pista, que deixam o
 // asfalto claro e uniforme (nada de poças escuras entre um poste e outro). Aqui: os postes (InstancedMesh), a treliça contínua de uma ponta a outra de
-// cada trecho com as lâmpadas penduradas (InstancedMesh, com brilho no pós), as luzes de verdade (SpotLight) que seguem o carro e acendem os carros e a borda. Tudo só acende de noite (tr.noite): o
+// cada trecho com as lâmpadas penduradas (InstancedMesh, com brilho no pós) e iluminação uniforme durante a noite. O
 // laço da noite é o de kit/bahrein/base.js (`luzDaNoite`, `ligarNoite`, `soDeNoite`).
 import * as THREE from "three";
 import { canvasTex, M, hemi } from "../../cena.js";
 import { luzDaNoite, soDeNoite } from "../bahrein/base.js";
 
-const ALTO = 96, PASSO = 54, LUZES = 5, FORCA = 380, FAIXA = 140, ALCANCE = 520, HEMI_NOITE = 0.5;
+const ALTO = 96, PASSO = 54, HEMI_NOITE = 1.4;
 
 export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   const { pts, n, W } = tr, o = new THREE.Object3D(), postes = [];
@@ -55,18 +55,10 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   const halos = new THREE.InstancedMesh(haloGeo, haloMat, postes.length);
   postes.forEach((t, k) => { const rot = Math.atan2(-t.nx * t.lado, -t.ny * t.lado); o.position.set(t.x - t.nx * t.lado * 17, t.y + alto - 3, t.z - t.ny * t.lado * 17); o.rotation.set(0, rot, 0); o.updateMatrix(); halos.setMatrixAt(k, o.matrix); });
   halos.frustumCulled = false; halos.renderOrder = 4; halos.name = "singapura-halos"; soDeNoite(tr, add(halos)); halos.userData.semContato = true;
-  // ---- as luzes de verdade: ficam sempre na cena (de dia, apagadas), indo para os postes mais perto do carro ----
-  const luzes = [];
-  for (let j = 0; j < LUZES; j++) { const l = new THREE.SpotLight(0xfff0d0, 0, ALCANCE, 0.8, 0.85, 1); l.name = "singapura-luz-refletor"; add(l); add(l.target); luzes.push(l); }
-  tr.luzesRefletores = luzes.flatMap((l) => [l, l.target]);
-  const alvos = postes.map((t) => ({ t, cabeca: [t.x - t.nx * t.lado * 17, t.y + alto - 3, t.z - t.ny * t.lado * 17], alvo: [t.x - t.nx * t.lado * (W / 2 + 40), t.ph, t.z - t.ny * t.lado * (W / 2 + 40)], d: 0 }));
-  luzDaNoite(tr).quadro.push((noite, foco) => {
-    if (!noite || !foco) { for (const l of luzes) l.intensity = 0; return; }
-    hemi.intensity = HEMI_NOITE;
-    for (const p of alvos) p.d = Math.hypot(p.alvo[0] - foco.x, p.alvo[2] - foco.y);
-    alvos.sort((a, b) => a.d - b.d);
-    const limite = alvos[LUZES]?.d ?? Infinity;
-    luzes.forEach((l, j) => { const p = alvos[j]; if (!p) { l.intensity = 0; return; } l.position.set(...p.cabeca); l.target.position.set(...p.alvo); l.intensity = FORCA * Math.min(1, (limite - p.d) / FAIXA); });
+  // Todos os refletores ficam acesos visualmente; uma luz ambiente constante ilumina a pista e os carros.
+  // Evita trocar refletores conforme o carro se move, o que fazia a iluminação piscar entre postes.
+  luzDaNoite(tr).quadro.push((noite) => {
+    if (noite) hemi.intensity = HEMI_NOITE;
   });
   tr.refletoresSG = { postes: postes.length };
   return postes.length;
