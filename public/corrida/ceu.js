@@ -19,7 +19,7 @@ export const CEUS = {
   suzuka: { brilho: 1, luz: 0.55, arquivo: "interlagos" },
   bahrein: { brilho: 1, luz: 0.55, arquivo: "deserto" },
   jeddah: { brilho: 1, luz: 0.55, arquivo: "deserto" },
-  miami: { brilho: 1, luz: 0.55, arquivo: "rio" },
+  miami: { brilho: 1, luz: 0.55, arquivo: "losangeles" }, // o fim de tarde da Flórida: céu azul com o sol laranja baixo no horizonte
   montreal: { brilho: 1, luz: 0.55, arquivo: "monza" },
   redbullring: { brilho: 1, luz: 0.55, arquivo: "serra" },
   spa: { brilho: 1, luz: 0.55, arquivo: "nurburgring" },
