@@ -8,6 +8,7 @@ import { atualizarClima } from "./clima.js";
 import { passoClima, limparClima, exercitarChuva } from "./clima-visual.js";
 import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
+import { inclinacao as inclinacaoDoCarro } from "./inclinacao.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
 import { CARS3, KS, makeKart, poseKart, fantasmaVisual, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
 import { camMode, pollPad, pad } from "./controles.js";
@@ -21,7 +22,7 @@ import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
 import { animarVida } from "./vida.js";
 import { ceuPronto, luzPendente } from "./ceu.js";
-import { desenhar, ajustarTela, medirQuadro, comecarMedida, compilarPos } from "./pos.js";
+import { desenhar, ajustarTela, medirQuadro, comecarMedida, compilarPos, prepararBrilhos } from "./pos.js";
 import { quadroTV, pularTV } from "./transmissao.js";
 const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -83,6 +84,7 @@ function aquecerPista(tr, ceu) {
   const aquecer = () => { fila = fila.then(() => {
     if (!race || race.tr !== tr || sNow() >= race.startAt - 300) return;
     const amostras = new THREE.Group(); amostras.add(amostrasDeEfeitos(), amostraDeFumaca()); scene.add(amostras);
+    prepararBrilhos(); // o pós não deve trocar os shaders depois de aquecidos
     subirTexturas(scene);
     const alvo = new THREE.WebGLRenderTarget(2, 2);
     const aindaDa = () => race && race.tr === tr && sNow() < race.startAt - 300;
@@ -216,13 +218,7 @@ function loop(t) {
 // O kart sente o relevo: mede o chão embaixo do bico, da traseira e dos dois lados e inclina junto (sobe o bico na
 // subida, desce na descida). No ar, o bico segue a velocidade de subida/queda.
 function inclinacao(tr, x, y, a, idx, L, W, vz, noAr, v) {
-  if (noAr) return { pitch: Math.max(-0.5, Math.min(0.4, Math.atan2(vz || 0, Math.max(60, Math.abs(v))))), roll: 0 };
-  // Em Mônaco o relevo do cenário é rebaixado perto de outros trechos da pista.
-  // Sobre o asfalto de F1, use a mesma altura que sustenta o carro na física.
-  const naPista = E.S?.config.regras === "f1" && tr.id === "monaco" && Math.abs(window.Sim.quadro(tr, x, y, idx).lat) <= tr.W / 2;
-  const fx = Math.cos(a), fy = Math.sin(a), h = (dx, dy) => naPista ? window.Sim.alturaDoChao(tr, x + dx, y + dy, idx) : groundH(tr, x + dx, y + dy, idx);
-  const frente = h(fx * L / 2, fy * L / 2), tras = h(-fx * L / 2, -fy * L / 2), dir = h(-fy * W / 2, fx * W / 2), esq = h(fy * W / 2, -fx * W / 2);
-  return { pitch: Math.atan2(frente - tras, L), roll: Math.atan2(dir - esq, W) };
+  return inclinacaoDoCarro(tr, x, y, a, idx, L, W, vz, noAr, v, E.S?.config.regras === "f1", window.Sim, groundH);
 }
 const fxDe = (p, now, extra = {}) => { const bala = !!(p && p.balaUntil > now) || !!extra.bala;
   return { f1: race.tr.id === "interlagos" || race.tr.id === "monaco" || race.tr.id === "barcelona" || race.tr.id === "silverstone" || race.tr.id === "monza" || !!race.tr.t.f1, zebra: !!extra.zebra, turbo: !!(p && p.boostUntil > now) || !!extra.turbo, estrela: !!(p && p.starUntil > now), rodando: !bala && (!!(p && (p.spinUntil > now || race.atingidos?.[p.id] > now)) || !!extra.rodando), derrapa: extra.derrapa || 0, drs: extra.drs !== undefined ? extra.drs : !!(p && p.drsZona >= 0), pneu: extra.pneu !== undefined ? extra.pneu : race.pneu && p ? p.pneuAtual || p.pneu || null : null,

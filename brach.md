@@ -1,8 +1,12 @@
-# Temporada: calendário com todas as pistas refeitas
+# Corrida: iluminação noturna e carros nas bordas
 
-A Temporada solo e em grupo ganha a opção de 15 GPs com todas as pistas de F1 que já têm cenário próprio. Baku, Singapura e Las Vegas também entram no sorteio dos calendários curtos de 4 e 8 GPs. O calendário completo segue a ordem da temporada e continua completo no ano seguinte.
+Las Vegas deixa de desenhar faixas de luz e reflexos acima do asfalto, que manchavam a pista e cobriam os pneus. Os refletores passam a usar iluminação ambiente contínua e as lâmpadas permanecem visíveis à distância também nos gráficos baixos; o mesmo vale para os refletores do Bahrein e as lâmpadas de Singapura.
+
+Em F1, a inclinação visual acompanha o asfalto enquanto o carro ainda o toca, evitando que o relevo abaixo da beirada incline o carro em direção ao chão. Fora da pista, continua acompanhando o terreno.
+
+O brilho do pós-processamento é preparado antes da compilação dos sombreadores, para evitar uma recompilação tardia. Isso aborda uma possível origem da pausa inicial de Las Vegas, mas a causa dos dois segundos relatados ainda precisa ser confirmada em jogo no aparelho afetado.
 
 ## Verificação
 
-- 22 testes da Temporada, incluindo calendário completo solo e em grupo e transição para o ano seguinte.
-- Temporada solo de 15 GPs criada no navegador, com todas as etapas exibidas.
+- 18 testes aprovados: inclinação na borda e fora dela, iluminação de Las Vegas, Singapura e Bahrein e escapes.
+- Las Vegas à noite conferida no navegador com gráficos baixos: asfalto sem faixas e lâmpadas visíveis ao longo da reta.

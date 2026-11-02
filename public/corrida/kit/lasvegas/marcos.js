@@ -62,20 +62,15 @@ export function sphere(tr, add, hAt) {
   const geo = new THREE.SphereGeometry(R, 64, 40, 0, tau, 0, thetaMax);
   const y0 = hAt(m.cx, m.cz) - 1;
   const mesh = add(new THREE.Mesh(geo, mat)); mesh.position.set(m.cx, y0 + yc, m.cz); mesh.name = "lasvegas-sphere"; mesh.userData.semContato = true;
-  // a sombra de luz no chão em volta (o brilho colorido da esfera sobre o asfalto e os prédios), só de noite
-  const glowTex = canvasTex(128, 128, (x, w, hh) => { const g = x.createRadialGradient(64, 64, 4, 64, 64, 64); g.addColorStop(0, "rgba(255,255,255,0.55)"); g.addColorStop(0.5, "rgba(255,255,255,0.16)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, w, hh); }, false);
-  const glowMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0x6fa8ff, fog: true, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(R * 3.6, R * 3.6), glowMat); glow.rotation.x = -Math.PI / 2; glow.position.set(m.cx, y0 + 1.2, m.cz); glow.renderOrder = 2; glow.name = "lasvegas-sphere-glow"; glow.userData.semContato = true; soDeNoite(tr, add(glow));
-  const COR_CENA = [0xffd9a0, 0x4f90ff, 0xff8a3a, 0xff3a3a, 0xffd23a, 0xc07aff];
-  let acc = 1, ultimo = performance.now() / 1000, cena = -1;
+  let acc = 1, ultimo = performance.now() / 1000;
   luzDaNoite(tr).quadro.push((noite, foco) => {
     const agora = performance.now() / 1000; acc += agora - ultimo; ultimo = agora;
     if (!noite || !foco || acc < 0.11) return; if (Math.hypot(foco.x - m.cx, foco.y - m.cz) > 3200) return; acc = 0;
     const i = Math.floor(agora / 9) % CENAS.length; ctx.save(); CENAS[i](ctx, 256, 128, agora); ctx.restore();
     ctx.strokeStyle = "rgba(0,0,0,0.22)"; ctx.lineWidth = 1; for (let k = 0; k <= 256; k += 4) { ctx.beginPath(); ctx.moveTo(k, 0); ctx.lineTo(k, 128); ctx.stroke(); } // os módulos de LED
-    tex.needsUpdate = true; if (i !== cena) { cena = i; glowMat.color.setHex(COR_CENA[i]); }
+    tex.needsUpdate = true;
   });
-  vivo(tr, mesh, glow); tr.sphereLV = { x: m.cx, z: m.cz, R, escala: esc };
+  vivo(tr, mesh); tr.sphereLV = { x: m.cx, z: m.cz, R, escala: esc };
   tr.reservado.push([m.cx, m.cz, R * 1.05]);
 }
 

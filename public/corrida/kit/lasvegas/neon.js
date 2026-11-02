@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { canvasTex, M } from "../../cena.js";
 import { D, marco } from "./mundo.js";
 import { livre, ocupado, instancias } from "../comum.js";
-import { luzDaNoite, soDeNoite } from "../bahrein/base.js";
+import { luzDaNoite } from "../bahrein/base.js";
 
 // uma placa de neon: fundo escuro, moldura brilhante e o texto (várias linhas separadas por "|") com o brilho das letras
 function placaNeon(texto, cor, cor2, w = 256, h = 512, fonte = "900") {
@@ -58,8 +58,7 @@ export function letreiros(tr, add, { hAt, predioEm }) {
   const matNeon = (tex) => { const m = new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide, toneMapped: false, color: tr.noite ? 0xffffff : 0x2a2a30 }); m.userData.bloom = 1.4; L.materiais.push({ mat: m, dia: 0x2a2a30, noite: 0xffffff }); return m; };
   const geoPlaca = new THREE.PlaneGeometry(1, 1);
   let total = 0; tr.letreirosLV = [];
-  const refl = []; // os reflexos das placas no asfalto (uma faixa de luz da cor da placa, de lado a lado da pista, só de noite)
-  const poe = (cx, cz, lado, larg, alto, y0, mats, nome, cor = 0xffffff) => {
+  const poe = (cx, cz, lado, larg, alto, y0, mats, nome) => {
     // o ponto da pista mais perto do resort: o letreiro fica no lado dele, a uma distância da barreira que caiba
     const i = achaPonto(cx, cz), p = pts[i], sinal = lado || ((cx - p.x) * p.nx + (cz - p.y) * p.ny >= 0 ? 1 : -1);
     let x = 0, z = 0, ok = false;
@@ -75,7 +74,7 @@ export function letreiros(tr, add, { hAt, predioEm }) {
       const dx = Math.sin(ang) * (lado2 ? -0.5 : 0.5), dz = Math.cos(ang) * (lado2 ? -0.5 : 0.5);
       mesh.position.set(x + dx, y + y0 + alto / 2, z + dz); mesh.rotation.y = ang + (lado2 ? Math.PI : 0); mesh.userData.semContato = true; add(mesh); total++;
     }
-    tr.reservado.push([x, z, larg * 0.7]); tr.letreirosLV.push({ nome, x, z, i }); refl.push({ x: p.x, z: p.y, h: p.h, tx: p.tx, ty: p.ty, cor });
+    tr.reservado.push([x, z, larg * 0.7]); tr.letreirosLV.push({ nome, x, z, i });
     return { x, y, z };
   };
   // os pilares de neon com o nome dos resorts
@@ -92,13 +91,6 @@ export function letreiros(tr, add, { hAt, predioEm }) {
     const r = poe(m.cx, m.cz + 30, lado, 78, 40, 60, [mat, mat], "lasvegas-telao-" + chave, 0x9fb8ff); if (r) telas.push({ ...t, k: k0, mat });
   }
   if (postes.length) instancias(add, new THREE.BoxGeometry(1, 1, 1), M(0x3a3d44, { roughness: 0.5, metalness: 0.6 }), postes.map((p) => ({ ...p, y: p.y + p.sy / 2 })), { sombra: false, nome: "lasvegas-pilares" });
-  if (refl.length) {
-    const tex = canvasTex(64, 256, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.35, "rgba(255,255,255,0.5)"); g.addColorStop(0.5, "rgba(255,255,255,0.9)"); g.addColorStop(0.65, "rgba(255,255,255,0.5)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); const gx = x.createLinearGradient(0, 0, w, 0); gx.addColorStop(0, "rgba(0,0,0,1)"); gx.addColorStop(0.5, "rgba(0,0,0,0)"); gx.addColorStop(1, "rgba(0,0,0,1)"); x.globalCompositeOperation = "destination-out"; x.fillStyle = gx; x.fillRect(0, 0, w, h); }, false);
-    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, fog: true, toneMapped: false });
-    const geo = new THREE.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2); const im = new THREE.InstancedMesh(geo, mat, refl.length), d = new THREE.Object3D(), c = new THREE.Color();
-    refl.forEach((q, k) => { d.position.set(q.x, q.h + 0.95, q.z); d.rotation.set(0, Math.atan2(-q.ty, q.tx), 0); d.scale.set(70, 1, W * 0.96); d.updateMatrix(); im.setMatrixAt(k, d.matrix); im.setColorAt(k, c.setHex(q.cor)); });
-    im.frustumCulled = false; im.renderOrder = 3; im.name = "lasvegas-reflexos-chao"; im.userData.semContato = true; soDeNoite(tr, add(im));
-  }
   // a animação: os telões trocam de quadro (só de noite, e só os que a câmera pode ver)
   let acc = 0, ultimo = performance.now() / 1000;
   L.quadro.push((noite, foco) => {
