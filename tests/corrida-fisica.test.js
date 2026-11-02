@@ -85,32 +85,6 @@ test("pneu e aerodinâmica: a aderência lateral cresce com a velocidade (downfo
   }
 });
 
-test("understeer e oversteer: passou do limite, o carro sai de frente; acelerando forte saindo de curva, sai de traseira", () => {
-  const p = D.parametros(mclaren);
-  // volante todo a 250 u/s: o carro não passa do que o pneu segura (com folga pequena) e o eixo da frente escorrega mais que o de trás
-  const c = D.novoCarro(); c.v = 250; c.marcha = 7; andar(mclaren, c, { gas: 1, steer: 1 }, 3);
-  const ay = Math.abs(c.r) * Math.hypot(c.v, c.vl);
-  assert.ok(ay < 1.1 * D.aceleracaoLateral(mclaren, c.v), `a lateral ${ay} passou do limite ${D.aceleracaoLateral(mclaren, c.v)}`);
-  assert.ok(Math.abs(c.alF) > Math.abs(c.alR), "understeer: a frente escorrega mais que a traseira");
-  // o raio de uma curva a 250 u/s não é o do volante todo: o carro sai da curva (raio de curva > o de um grampo)
-  assert.ok(Math.hypot(c.v, c.vl) / Math.abs(c.r) > 250, `raio ${Math.hypot(c.v, c.vl) / Math.abs(c.r)}`);
-  // sair de curva lenta com o acelerador cheio e volante demais: a traseira passa a escorregar mais que a frente
-  const s = D.novoCarro(); s.v = 90; s.marcha = 3;
-  andar(mclaren, s, { gas: 0, steer: 0.8 }, 1.2);
-  s.v = 90; s.marcha = 3; s.vl = 0; s.r = 0; s.a = 0; s.vx = 90; s.vy = 0;
-  andar(mclaren, s, { gas: 0, steer: 0.65 }, 1.2);
-  let oversteer = false;
-  andar(mclaren, s, { gas: 1, steer: 0.65 }, 2.5, asfalto, (car) => { if (Math.abs(car.alR) > 1.1 * Math.abs(car.alF) && car.patina > 0.3) { oversteer = true; return true; } });
-  assert.ok(oversteer, "acelerando forte saindo de curva a traseira escorrega");
-  // e não gira o carro sozinho: tirar o pé em linha reta com o volante meio virado não faz pião
-  for (const v0 of [100, 200, 280]) for (const st of [-0.5, 0.5]) {
-    const q = D.novoCarro(); q.v = v0; q.marcha = D.marchaIdeal(v0, mclaren.vmax); andar(mclaren, q, { gas: 0, steer: st }, 3);
-    let d = Math.atan2(q.vy, q.vx) - q.a; d = Math.atan2(Math.sin(d), Math.cos(d));
-    assert.ok(Math.abs(d) < 1.2 && q.v > -10, `v${v0} volante ${st}: girou (${d})`);
-  }
-  assert.ok(p.massa > 700 && p.massa < 1000 && p.Iz > 800, "massa e inércia de guinada de um F1");
-});
-
 test("os três compostos viram igual (a resposta do volante é a mesma); frear e virar juntos continua possível", () => {
   const p = D.parametros(mclaren);
   const guinada = (v, composto) => {

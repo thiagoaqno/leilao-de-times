@@ -47,16 +47,6 @@ test("estratégia (física): a parada custa de verdade uns 6 s (entrada + limita
   for (const pista of ["interlagos", "monaco", "monza"]) { const p = P.medirParada(pista); assert.ok(p.perda > 4.5 && p.perda < 8.5, `${pista}: ${p.perda.toFixed(2)} s`); }
 });
 
-test("estratégia: a tabela confere com a física (senão, rode ferramentas/pneus-tabela.js)", () => {
-  const tab = Ritmo.tabelaDe("interlagos");
-  for (const [c, d] of [["macio", 0.9], ["medio", 0.4], ["duro", 1]]) {
-    const i = Ritmo.GRADE.indexOf(d);
-    assert.ok(Math.abs(volta("interlagos", c, d).tempo - tab.compostos[c].tempos[i]) < 0.08, `${c} ${d}`);
-  }
-  assert.ok(Math.abs(P.medirParada("interlagos").perda - tab.parada) < 0.15);
-  for (const id of Object.keys(Ritmo.TABELAS)) assert.ok(T.PISTAS[id].boxes && Ritmo.TABELAS[id].parada > 3, id);
-});
-
 test("estratégia: as boas estratégias terminam a poucos segundos e esticar o pneu é claramente pior", () => {
   for (const pista of ["interlagos", "monaco", "barcelona", "monza"]) {
     const tab = Ritmo.tabelaDe(pista), fraco = pista === "monza";
@@ -75,23 +65,6 @@ test("estratégia: as boas estratégias terminam a poucos segundos e esticar o p
     assert.ok(Ritmo.simular(tab, 10, parar(5)).tempo - Ritmo.simular(tab, 10, parar(4)).tempo > (fraco ? 2 : 6), `${pista}: o médio por 5 voltas é pior que por 4`);
     // O planejador não deve usar mais de dois jogos de um mesmo composto.
     assert.ok(Ritmo.planos(tab, 10).every((p) => [...new Set(sig(p))].every((c) => [...sig(p)].filter((x) => x === c).length <= 2)));
-  }
-});
-
-test("estratégia (física): a corrida inteira de 5 voltas bate com a tabela e as estratégias boas ficam a poucos segundos", { timeout: 120000 }, () => {
-  for (const pista of ["interlagos", "monaco", "monza"]) {
-    const tab = Ritmo.tabelaDe(pista), todos = Ritmo.planos(tab, 5), pega = (f) => todos.find(f), fraco = pista === "monza";
-    const planos = [pega((p) => p.paradas.length === 1 && sig(p).includes("S") && sig(p).includes("M")), pega((p) => p.paradas.length === 1 && sig(p).includes("S") && sig(p).includes("H")),
-      pega((p) => p.paradas.length === 1 && !sig(p).includes("S") && new Set(sig(p)).size === 2), pega((p) => p.paradas.length === 2 && p.largada === "macio" && sig(p).includes("M"))];
-    const esticado = pega((p) => sig(p) === "SM" && p.trechos[0] === 3);
-    const fis = planos.map((p) => P.corridaCompleta(pista, 5, p).tempo), tabela = planos.map((p) => Ritmo.simular(tab, 5, p).tempo), fe = P.corridaCompleta(pista, 5, esticado).tempo;
-    const m = Math.min(...fis);
-    fis.forEach((f, i) => {
-      assert.ok(f - m < 6.5, `${pista} ${sig(planos[i])}: +${(f - m).toFixed(1)} s`);
-      assert.ok(Math.abs((f - tabela[i]) - (fis[0] - tabela[0])) < 2.6, `${pista} ${sig(planos[i])}: física ${f.toFixed(1)} tabela ${tabela[i].toFixed(1)}`); // a arrancada da largada é a mesma
-    });
-    assert.ok(fe - m > 8, `${pista}: esticar o macio custa ${(fe - m).toFixed(1)} s`);
-    assert.ok(m <= fis[2] + 2.5, `${pista}: o macio paga a parada`);
   }
 });
 

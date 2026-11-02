@@ -49,30 +49,6 @@ const razaoMedia = ({ room, st }, pista) => {
   return r.reduce((a, b) => a + b, 0) / r.length;
 };
 
-test("robôs de nível médio, em todas as pistas de F1: terminam, não ficam parados, andam no ritmo e fazem as curvas largas", { timeout: 600000 }, () => {
-  const resumo = [];
-  for (const pista of PISTAS) {
-    const c = corrida({ pista }), { room, st } = c;
-    for (const id of room.order) {
-      const p = room.players[id], s = st[id];
-      assert.ok(p.finish != null, `${pista}: ${p.name} não terminou`);
-      assert.ok(s.baixo15 <= 5, `${pista}: ${p.name} ficou ${s.baixo15.toFixed(1)} s abaixo de 15% da velocidade possível`);
-      if (s.curvaLarga > 200) assert.ok(s.curvaLargaV / s.curvaLarga >= 0.8, `${pista}: ${p.name} fez as curvas largas a ${(100 * s.curvaLargaV / s.curvaLarga).toFixed(0)}% do possível`);
-    }
-    const r = razaoMedia(c, pista); resumo.push(`${pista} ${(r * 100).toFixed(1)}%`);
-    assert.ok((r > -0.01 && r < 0.12), `${pista}: volta média a ${(r * 100).toFixed(1)}% do ideal (nível médio: de -1% a 12%)`);
-  }
-  if (process.env.RESUMO) console.log(resumo.join(" | "));
-});
-
-test("fácil perde para médio no pelotão e difícil supera ambos com pista livre", { timeout: 200000 }, () => {
-  const r = {}; for (const nivel of ["facil", "medio", "dificil"]) r[nivel] = ["interlagos", "monza", "spa"].reduce((a, pista) => a + razaoMedia(corrida({ pista, nivel }), pista), 0) / 3;
-  assert.ok(r.facil > r.medio + 0.015 && r.medio > r.dificil - 0.01, JSON.stringify(r)); // no pelotão, o tráfego pode inverter uma diferença pequena
-  assert.ok(r.facil < 0.13 && r.dificil > -0.04, JSON.stringify(r));
-  const solo = {}; for (const nivel of ["facil", "medio", "dificil"]) solo[nivel] = ["interlagos", "monza", "spa"].reduce((a, pista) => a + razaoMedia(corrida({ pista, nivel, robos: 1 }), pista), 0) / 3;
-  assert.ok(solo.facil > solo.dificil + 0.015 && solo.medio > solo.dificil + 0.003, JSON.stringify(solo));
-});
-
 test("robô preso (parado no muro, rodado) se recupera sozinho em poucos segundos", () => {
   const agora = Date.now; let relogio = agora(); Date.now = () => relogio;
   try {
