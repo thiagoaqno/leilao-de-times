@@ -100,9 +100,12 @@ export function cidadeDeXangai(tr, add, { raio = 5400, fundo = 900, angulo = Mat
     topos.esfera(x, z, -3 + H * 0.6, 62, bruma2("#a73a5c", 0.3), bruma2("#e0829f", 0.3)); // a do meio
     topos.esfera(x, z, -3 + H * 0.74, 36, bruma2("#a73a5c", 0.3), bruma2("#e0829f", 0.3)); // a de cima
     topos.caixa(x, z, -3 + H * 0.77, 10, H * 0.23, 10, 0, bruma2("#d8dde2"), bruma2("#d8dde2"), 2, 14); }
-  // o chão de longe: a mesma cor da neblina, onde o terreno acaba (o terreno de pista.js já está fundido na névoa a 3700 de distância, então a emenda não aparece)
-  const coroa = new THREE.Mesh(new THREE.RingGeometry(3300, 14000, 64, 1), new THREE.MeshBasicMaterial({ color: tr.look?.fog ?? 0xd0d6d4, fog: false }));
-  coroa.rotation.x = -Math.PI / 2; coroa.position.set(cx, -3.4, cz); coroa.name = `${tr.id}-cidade-chao`; add(coroa);
+  // o chão de longe: de onde o terreno acaba (verde apagado pela névoa) até a cor da neblina, em degradê, para não aparecer a emenda do terreno com o céu
+  { const fog = cor3(tr.look?.fog ?? 0xd0d6d4), perto = fog.clone().lerp(cor3("#5d7c49"), 0.55), g = new THREE.RingGeometry(3600, 14000, 64, 12), pos = g.attributes.position, cores = new Float32Array(pos.count * 3), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) { const rr = Math.hypot(pos.getX(i), pos.getY(i)), t = Math.min(1, Math.max(0, (rr - 3600) / 4200)), u = t * t * (3 - 2 * t); c.copy(perto).lerp(fog, u); cores[i * 3] = c.r; cores[i * 3 + 1] = c.g; cores[i * 3 + 2] = c.b; }
+    g.setAttribute("color", new THREE.BufferAttribute(cores, 3));
+    const coroa = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }));
+    coroa.rotation.x = -Math.PI / 2; coroa.position.set(cx, -3.4, cz); coroa.name = `${tr.id}-cidade-chao`; add(coroa); }
   const matV = new THREE.MeshStandardMaterial({ map: janelas(true), vertexColors: true, roughness: 0.35, metalness: 0.25, fog: false });
   const matP = new THREE.MeshStandardMaterial({ map: janelas(false), vertexColors: true, roughness: 0.85, fog: false });
   const matT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.35, fog: false });
