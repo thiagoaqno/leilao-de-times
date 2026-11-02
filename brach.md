@@ -1,12 +1,10 @@
-# Corrida: iluminação noturna e carros nas bordas
+# Temporada F1: ficha completa dos circuitos
 
-Las Vegas deixa de desenhar faixas de luz e reflexos acima do asfalto, que manchavam a pista e cobriam os pneus. Os refletores passam a usar iluminação ambiente contínua e as lâmpadas permanecem visíveis à distância também nos gráficos baixos; o mesmo vale para os refletores do Bahrein e as lâmpadas de Singapura.
+A aba Circuitos da carreira solo e em grupo passa a mostrar a mesma ficha de GP da sala: foto e créditos, informações oficiais, mapa com curvas numeradas e lista interativa. Ao apontar, tocar ou usar o teclado em uma curva, o mapa destaca o ponto correspondente. As etapas e o estado do calendário continuam visíveis na carreira.
 
-Em F1, a inclinação visual acompanha o asfalto enquanto o carro ainda o toca, evitando que o relevo abaixo da beirada incline o carro em direção ao chão. Fora da pista, continua acompanhando o terreno.
-
-O brilho do pós-processamento é preparado antes da compilação dos sombreadores, para evitar uma recompilação tardia. Isso aborda uma possível origem da pausa inicial de Las Vegas, mas a causa dos dois segundos relatados ainda precisa ser confirmada em jogo no aparelho afetado.
+O desenho e os dados da ficha são compartilhados com a sala, para as duas telas continuarem consistentes.
 
 ## Verificação
 
-- 18 testes aprovados: inclinação na borda e fora dela, iluminação de Las Vegas, Singapura e Bahrein e escapes.
-- Las Vegas à noite conferida no navegador com gráficos baixos: asfalto sem faixas e lâmpadas visíveis ao longo da reta.
+- Três testes no navegador: carreira solo, ficha da sala e temporada em grupo em tela de celular, incluindo destaque no mapa.
+- Ficha de Melbourne conferida visualmente no navegador.
