@@ -13,6 +13,7 @@ import { tecpro, telaos, largada, cais, fonte, cruzeiros, muroDeArrimo } from ".
 import { tunel } from "./kit/monaco/tunel.js";
 import { paddockMonaco } from "./kit/monaco/paddock.js";
 import { grampoMonaco } from "./kit/monaco/grampo.js";
+import { pontePortier } from "./kit/monaco/ponte.js";
 import { fairmontSobreOTunel } from "./kit/monaco/fairmont.js";
 import { arvores, corDoChao } from "./kit/monaco/beira.js";
 import { vidaMonaco as vidaDeMonaco } from "./kit/monaco/vida.js";
@@ -80,6 +81,7 @@ export function cenarioMonaco(tr, ctx) {
   mar(tr, ctx);
   tunel(tr, add);
   fairmontSobreOTunel(tr, add); // o hotel Fairmont, largo e curvo, sobre a entrada do túnel
+  pontePortier(tr, add, hAt, predioEm); // o viaduto da Boulevard du Larvotto, por cima da pista logo antes do Portier (antes das árvores e da vida: reserva o lugar)
   predios(tr, add, lista);
   marcosMonaco(tr, add, lista, hAt);
   porto(tr, add, ctx);
