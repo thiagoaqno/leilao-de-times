@@ -1,10 +1,10 @@
-# Corrida: reparo nos boxes e som do túnel
+# Corrida: apresentação dos destaques de cada GP
 
-Cada visita concluída aos boxes reduz em 90% o dano acumulado, para jogadores e robôs. O reparo também ocorre numa visita dedicada a cumprir stop-and-go; essa visita continua sem registrar uma troca de pneus. Uma parada inválida não repara.
+As 15 pistas com cenário próprio ganharam três tomadas escolhidas para a transmissão antes da largada. Elas mostram tanto partes do circuito como a cidade, a paisagem e os marcos construídos no jogo: por exemplo, o Cassino e o porto de Mônaco, Marina Bay Sands e o Singapore Flyer, ou a Sphere e a Strip em Las Vegas. As câmeras dos marcos usam as coordenadas do próprio cenário. As demais pistas conservam o voo existente.
 
-O túnel recebe um eco leve, com duas reflexões curtas em estéreo, entrando e saindo suavemente conforme a câmera passa pelo trecho coberto. O arquivo de prévia foi renderizado com o sintetizador de motor e a mesma resposta de eco do jogo: primeiro ao ar livre, depois dentro do túnel e por fim na saída.
+A apresentação continua sincronizada com a largada e mantém os cartões, o grid, a opção de pular e a preferência por movimento reduzido.
 
 ## Verificação
 
-- 32 testes de box e punições aprovados. Teste do servidor cobre reparo de humano, robô e stop-and-go, além de parada inválida.
-- Prévia de áudio renderizada no Chromium com Web Audio e os módulos reais do jogo.
+- Testes da transmissão e de pular a largada aprovados.
+- Câmeras verificadas contra o terreno das 15 pistas, em três momentos de cada tomada.
