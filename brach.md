@@ -1,10 +1,11 @@
-# Corrida: previsão de contato respeita o estado fantasma
+# Las Vegas: asfalto iluminado e grid desencontrado
 
-Após uma batida, o servidor deixa os carros sem colisão por dois segundos. A previsão no navegador ignorava esse estado e ainda podia calcular outros impactos, gerando correções de posição e de velocidade enquanto o servidor considerava os carros fantasmas. A previsão agora respeita tanto o fantasma de batida quanto o do box, para o jogador e para os demais pilotos; o contato volta ao normal quando o servidor retira o estado.
+O asfalto de Las Vegas recebe iluminação uniforme à noite sobre a própria textura, sem planos sobre a pista que atravessem os carros. O efeito desliga durante o dia e funciona também nos gráficos baixos.
 
-Isso corrige uma divergência concreta após contatos. A causa de eventuais congelamentos completos de vários segundos ainda não foi confirmada; uma medição local isolada do cálculo de contato do servidor não reproduziu uma pausa dessa ordem.
+Na F1, as posições das duas colunas do grid ficam intercaladas; carros, robôs e marcas no asfalto usam a mesma posição. O grid do modo comum permanece igual.
 
 ## Verificação
 
-- Testes de colisão, punição e fantasma aprovados, incluindo a previsão do contato durante e depois do estado fantasma.
-- 24 testes de rede e reconciliação aprovados.
+- Testes de grid, largada e iluminação noturna passaram.
+- Corrida de Las Vegas com 20 carros e gráficos baixos conferida visualmente no navegador.
+- Os testes de tráfego e robôs passaram, salvo um teste de freio que também falha na main; o teste de turbo passou ao repetir.

@@ -257,7 +257,13 @@ function buildWorld(tr) {
   // a faixa do meio tracejada (uma a cada 10 m) e as marcas de pneu: passando rápido embaixo do carro, dão a noção de velocidade
   const arco = id === "arcoiris" ? canvasTex(128, 32, (x, w, hh) => { ["#ff3b3b", "#ff9a2e", "#ffe14a", "#3ee07a", "#3aa0ff", "#8a5bff", "#ff5fd2"].forEach((c, i) => { x.fillStyle = c; x.fillRect((i * w) / 7, 0, w / 7 + 1, hh); }); x.fillStyle = "#ffffff55"; x.fillRect(0, 0, w, 3); }) : null;
   if (gp?.asfalto) {
-    ribbon(-W / 2, W / 2, 0.4, asfaltoGP(), 80, 0.4, W / 80);
+    const asfalto = asfaltoGP();
+    if (id === "lasvegas") {
+      // Iluminação uniforme sobre o próprio asfalto, sem geometria que atravesse os carros.
+      asfalto.emissive.set(0xffffff); asfalto.emissiveMap = asfalto.map; asfalto.emissiveIntensity = 0;
+      tr.asfaltoLV = asfalto;
+    }
+    ribbon(-W / 2, W / 2, 0.4, asfalto, 80, 0.4, W / 80);
     const tinta = M(0xe2e0d7, { roughness: 0.95, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) ribbon(lado * (W / 2 - 2.6), lado * (W / 2 - 1.2), 0.49, tinta, 80);
     borrachaGP(tr, add);

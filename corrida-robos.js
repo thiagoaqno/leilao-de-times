@@ -264,8 +264,8 @@ function alvoF1(room, p, pf) {
   const folga = FOLGA_F1[room.config.nivel] ?? FOLGA_F1.medio, piloto = p.piloto ? Math.min(0.012, Math.max(0, 96 - p.piloto.ritmo) * 0.0006) : 0.006;
   return Math.max(ref.proteger ? ref.recorde * 1.025 : 0, tempoDaVolta(pf, 1, aderRef()) * (1 + folga + piloto));
 }
-function largada(pts, g, W, f1) { // o mesmo lugar do grid do navegador (gridSpot, em pista.js); com 20 carros as filas ficam mais juntas
-  const n = pts.length, idx = (n - 6 - Math.floor(g / 2) * (f1 ? 8 : 13) + n * 2) % n;
+function largada(pts, g, W, f1) { // mesma posição usada pela física e pelas marcas na pista
+  const { idx } = Sim.vagaDoGrid(pts, g, W, f1);
   return { idx, lat: (g % 2 ? 1 : -1) * W * 0.22 };
 }
 // O nível de um robô (a escala do limite do traçado, em `ia.nivel`). Na F1, o alvo combina recorde/procedural,
