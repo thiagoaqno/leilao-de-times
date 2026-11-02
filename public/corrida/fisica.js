@@ -8,6 +8,7 @@ import { trackFrame, groundH } from "./pista.js";
 import { race, keys, nearest } from "./jogo.js";
 import { pad, direcao } from "./controles.js";
 import { baterNoOutro, MASSA } from "./colisao.js";
+import { podePreverContato } from "./contato-cliente.js";
 import { CARS3, KS } from "./carros.js";
 import { myProg } from "./fantasma.js";
 import { ajudaDePelotao } from "./equilibrio.js";
@@ -234,7 +235,7 @@ function montarAmbiente(R) {
   AMB.stopGo = m.stopGo ? m.stopGo.s : 0; // stop-and-go pendente: a próxima visita ao box é só ele (o servidor usa a mesma conta)
   AMB.agua = atualizarClima().agua; // a água na pista agora (o servidor usa a mesma conta, pelo mesmo relógio)
   // a batida só vale para quem corre (nada na classificação, sob safety car, no box, depois da bandeirada ou fora da corrida)
-  AMB.batida = S.phase === "race" && !AMB.safety && !AMB.segurar && m.finish == null && !m.dnf && !(R.car.box && R.car.box.fase) && !m.fantBox;
+  AMB.batida = S.phase === "race" && !AMB.safety && !AMB.segurar && podePreverContato(m) && !(R.car.box && R.car.box.fase);
   { const [L, W] = window.Sim.dimensoes(m.car); EU.L = L; EU.W = W; EU.massa = window.Sim.massaDe(AMB.spec); }
   const outros = AMB.outros; outros.length = 0;
   for (const [id, gh] of R.ghosts) { const p = P(id); outros.push({ x: gh.x, y: gh.y, z: gh.z, a: gh.a, dnf: !!(p && p.dnf), fant: !!(p && p.finish != null) }); }
@@ -247,7 +248,7 @@ const MODELOS = [], EU = { L: 44, W: 26, massa: 800 }, POSE = {}, M_POR_U = 0.75
 function outrosDoPasso(R, T) {
   let n = 0;
   for (const [id, gh] of R.ghosts) {
-    const p = P(id); if (!p || p.dnf || p.finish != null || !gh.mod || !gh.mod.buf.length || p.fantBox) continue; // (fantBox: no box ou nos 2 s antes e depois dele, fantasma)
+    const p = P(id); if (!podePreverContato(p) || !gh.mod || !gh.mod.buf.length) continue; // fantasmas de batida e de box não recebem novo impulso previsto
     const m = MODELOS[n] || (MODELOS[n] = {}); n++, gh.mod.pose(T, POSE);
     m.id = id; m.x = POSE.x; m.y = POSE.y; m.z = POSE.z; m.a = POSE.a; m.vx = POSE.vx; m.vy = POSE.vy; m.r = POSE.r;
     const [L, W] = window.Sim.dimensoes(p.car); m.L = L; m.W = W; m.massa = window.Sim.massaDe(carOf(p)); m.dnf = false; m.fant = false;

@@ -1,12 +1,10 @@
-# Corrida: iluminação noturna e carros nas bordas
+# Corrida: previsão de contato respeita o estado fantasma
 
-Las Vegas deixa de desenhar faixas de luz e reflexos acima do asfalto, que manchavam a pista e cobriam os pneus. Os refletores passam a usar iluminação ambiente contínua e as lâmpadas permanecem visíveis à distância também nos gráficos baixos; o mesmo vale para os refletores do Bahrein e as lâmpadas de Singapura.
+Após uma batida, o servidor deixa os carros sem colisão por dois segundos. A previsão no navegador ignorava esse estado e ainda podia calcular outros impactos, gerando correções de posição e de velocidade enquanto o servidor considerava os carros fantasmas. A previsão agora respeita tanto o fantasma de batida quanto o do box, para o jogador e para os demais pilotos; o contato volta ao normal quando o servidor retira o estado.
 
-Em F1, a inclinação visual acompanha o asfalto enquanto o carro ainda o toca, evitando que o relevo abaixo da beirada incline o carro em direção ao chão. Fora da pista, continua acompanhando o terreno.
-
-O brilho do pós-processamento é preparado antes da compilação dos sombreadores, para evitar uma recompilação tardia. Isso aborda uma possível origem da pausa inicial de Las Vegas, mas a causa dos dois segundos relatados ainda precisa ser confirmada em jogo no aparelho afetado.
+Isso corrige uma divergência concreta após contatos. A causa de eventuais congelamentos completos de vários segundos ainda não foi confirmada; uma medição local isolada do cálculo de contato do servidor não reproduziu uma pausa dessa ordem.
 
 ## Verificação
 
-- 18 testes aprovados: inclinação na borda e fora dela, iluminação de Las Vegas, Singapura e Bahrein e escapes.
-- Las Vegas à noite conferida no navegador com gráficos baixos: asfalto sem faixas e lâmpadas visíveis ao longo da reta.
+- Testes de colisão, punição e fantasma aprovados, incluindo a previsão do contato durante e depois do estado fantasma.
+- 24 testes de rede e reconciliação aprovados.
