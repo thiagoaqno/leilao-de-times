@@ -55,6 +55,24 @@ antes de cada uma ganhar o cenário fino. Opções: `rua`, `bandeira`, `marcas`,
 `arquibancadas` (trechos a mais), `tribuna: false`, `corTribuna`, `montanha`, `parque`, `beira`, `fachadas`, `horizonte`,
 `som`, `gaivotas`, `amarelas` e `cenario(tr, ctx)` (o que só aquela pista tem, como a ponte do oito de Suzuka).
 
+## A luz dos postes (`luz-postes.js`)
+
+Nos GPs noturnos (Singapura, Las Vegas, Bahrein, Jeddah, Baku e Las Vegas na reta) cada poste/torre/holofote projeta luz de verdade no
+asfalto, nas zebras, no muro e nos carros, como nas fotos de transmissão: cones largos que se sobrepõem, claridade quase uniforme
+(variação sutil), luz de vários ângulos, o asfalto molhado refletindo as lâmpadas. Nada de asfalto emissivo, de volume de luz sólido
+nem de luz real do three.js (cada luz é só uma linha numa textura). Como usar numa peça de poste:
+
+- `luzDaPista(tr, { media })`: o nível de claridade do GP (a irradiância média sobre a pista; Singapura 16, Las Vegas 11, padrão 14).
+- `registrarLuz(tr, { x, y, z, alvo: [x, y, z], cobrir, cor })`: uma luz por cabeça de poste. `cobrir` é o raio, no chão em volta do
+  alvo, que ela precisa cobrir: `raioDeCobertura(passo, tr.W)` = 0,75 × passo entre postes + meia largura. Dele saem o cone (borda
+  macia) e o alcance. `holofotes.js`, `singapura/luz.js`, `lasvegas/luz.js` e `bahrein/luz.js` já registram.
+- `pista.js` chama `fecharLuzes(tr)` no fim da montagem: ajusta as intensidades à `media`, põe uma luz de reforço (sem malha) onde o
+  poste não coube, monta a grade espacial (células de 64, até 16 luzes cada) e a textura `tr.luzPostes`. `useTrack` liga a luz só de
+  noite (`ativarLuzPostes`) e baixa a luz geral da noite pela cobertura (`ambienteDaNoite`).
+- `varrerLuzPostes(scene)` (chamada por `pos.js` a cada 1,5 s e no aquecimento) põe em todo material iluminado da cena (asfalto, zebras,
+  carros...) o pedaço de sombreador que soma as luzes à irradiância direta pelo modelo do three (difuso + GGX).
+- Conferir: `node --test tests/corrida-iluminacao-noturna.test.mjs` (cobertura ≥ 97%, sem trecho escuro, sem salto) e `luzEm(tr, x, y, z)`.
+
 ## O som (`som.js`)
 
 Regiões que o kit acha sozinho: **túnel** (`tr.coberto`: zumbido e eco do motor; o resto quase some), **torcida**

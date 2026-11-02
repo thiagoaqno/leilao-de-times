@@ -1,6 +1,4 @@
-// Singapura — a iluminação do GP: a corrida é à noite sob cerca de 1600 refletores presos em treliças nos postes dos dois lados da pista, que deixam o
-// asfalto claro e uniforme (nada de poças escuras entre um poste e outro). Aqui: os postes (InstancedMesh), a treliça contínua de uma ponta a outra de
-// cada trecho com as lâmpadas penduradas (InstancedMesh, com brilho no pós) e iluminação uniforme durante a noite. O
+// Singapura — a iluminação do GP: a corrida é à noite sob cerca de 1600 refletores presos em treliças nos postes dos dois lados da pista. Aqui: os postes (InstancedMesh), a treliça com as lâmpadas (com brilho no pós) e, de verdade, a luz de cada cabeça de poste sobre a pista (kit/luz-postes.js: cones largos que se sobrepõem, claridade quase uniforme). O
 // laço da noite é o de kit/bahrein/base.js (`luzDaNoite`, `ligarNoite`, `soDeNoite`).
 import * as THREE from "three";
 import { canvasTex, M } from "../../cena.js";
