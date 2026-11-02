@@ -1,10 +1,10 @@
-# Corrida: apresentação dos destaques de cada GP
+# Corrida: evita recalcular os robôs ao aprender uma volta
 
-As 15 pistas com cenário próprio ganharam três tomadas escolhidas para a transmissão antes da largada. Elas mostram tanto partes do circuito como a cidade, a paisagem e os marcos construídos no jogo: por exemplo, o Cassino e o porto de Mônaco, Marina Bay Sands e o Singapore Flyer, ou a Sphere e a Strip em Las Vegas. As câmeras dos marcos usam as coordenadas do próprio cenário. As demais pistas conservam o voo existente.
+Quando um piloto registrava sua melhor volta, o servidor descartava os perfis de todos os robôs daquela pista. No próximo passo da corrida, eles eram calculados de novo no mesmo processo que atende todos os jogadores, provocando pausas e possíveis saltos nas posições.
 
-A apresentação continua sincronizada com a largada e mantém os cartões, o grid, a opção de pular e a preferência por movimento reduzido.
+Cada robô conserva o perfil preparado para sua corrida; a volta aprendida continua disponível para as próximas largadas. Isso também protege outras salas que estejam correndo na mesma pista. Um robô que assume um jogador desconectado calcula seu perfil uma vez.
 
 ## Verificação
 
-- Testes da transmissão e de pular a largada aprovados.
-- Câmeras verificadas contra o terreno das 15 pistas, em três momentos de cada tomada.
+- Testes de regressão nas regras de F1 e no modo clássico: a volta nova não troca os perfis em corrida e é usada na próxima largada.
+- Medição local com 19 robôs em Singapura: o passo seguinte ao aprendizado caiu de aproximadamente 300 ms para 17 ms nesta máquina. O tempo real depende da carga e do servidor.
