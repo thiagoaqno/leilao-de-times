@@ -78,6 +78,19 @@ function compilarTudo(alvo) {
   renderer.setRenderTarget(alvo); const naImagem = renderer.compileAsync(scene, cam); renderer.setRenderTarget(anterior);
   return Promise.all([renderer.compileAsync(scene, cam), naImagem]);
 }
+// Depois de uma batida entre carros os dois viram fantasma (`fantasmaVisual`: material transparente). Trocar `transparent` muda o
+// programa do sombreador (o three liga OPAQUE só no opaco), então o primeiro fantasma da corrida compilava de novo todos os materiais
+// do carro, com a luz dos postes junto, e o jogo travava uns segundos para todo mundo. Aqui os carros passam um instante pelo modo
+// fantasma e compilam essa versão também (nas duas saídas, como `compilarTudo`); os programas ficam guardados para a corrida.
+function compilarFantasmas(alvo) {
+  const karts = [race && race.kart, ...(race ? [...race.ghosts.values()].map((g) => g.kart) : [])].filter((k) => k && !k.mats.some((m) => m._fo));
+  if (!karts.length) return;
+  karts.forEach((k) => fantasmaVisual(k, true));
+  const anterior = renderer.getRenderTarget();
+  try { renderer.setRenderTarget(alvo); renderer.compile(scene, cam); renderer.setRenderTarget(anterior); renderer.compile(scene, cam); }
+  catch (e) { console.warn("Corrida: não deu para preparar o carro fantasma", e); }
+  finally { renderer.setRenderTarget(anterior); karts.forEach((k) => fantasmaVisual(k, false)); }
+}
 function aquecerPista(tr, ceu) {
   let fila = Promise.resolve(), ceuChegou = false;
   ceu.then(() => { ceuChegou = true; }, () => {});
@@ -92,7 +105,7 @@ function aquecerPista(tr, ceu) {
     const alvo = new THREE.WebGLRenderTarget(2, 2);
     const aindaDa = () => race && race.tr === tr && sNow() < race.startAt - 300;
     // 1) compila tudo 2) exercita a chuva 3) sobe as malhas
-    return Promise.all([compilarTudo(alvo), compilarPos()]).then(() => { if (aindaDa()) exercitarChuva(tr); }).then(() => subirMalhas(tr, alvo)).catch((e) => console.warn("Corrida: aquecimento incompleto", e)).finally(() => { alvo.dispose(); scene.remove(amostras); });
+    return Promise.all([compilarTudo(alvo), compilarPos()]).then(() => { if (aindaDa()) { compilarFantasmas(alvo); exercitarChuva(tr); } }).then(() => subirMalhas(tr, alvo)).catch((e) => console.warn("Corrida: aquecimento incompleto", e)).finally(() => { alvo.dispose(); scene.remove(amostras); });
   }); };
   // espera também o carro de F1 e os enfeites do Kenney: quando chegam, os carros e a pista são remontados, e o que
   // nasce depois do aquecimento travaria na primeira vez que aparecesse
