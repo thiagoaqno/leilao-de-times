@@ -78,9 +78,6 @@ function compilarTudo(alvo) {
   renderer.setRenderTarget(alvo); const naImagem = renderer.compileAsync(scene, cam); renderer.setRenderTarget(anterior);
   return Promise.all([renderer.compileAsync(scene, cam), naImagem]);
 }
-  catch (e) { console.warn("Corrida: não deu para preparar o carro fantasma", e); }
-  finally { renderer.setRenderTarget(anterior); karts.forEach((k) => fantasmaVisual(k, false)); }
-}
 function aquecerPista(tr, ceu) {
   let fila = Promise.resolve(), ceuChegou = false;
   ceu.then(() => { ceuChegou = true; }, () => {});
