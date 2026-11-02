@@ -136,6 +136,12 @@ const COMPACTA_N = 5;
 const torreCompacta = () => (race.torreCompacta == null ? (race.torreCompacta = store.get("corrida:torre") !== "completa") : race.torreCompacta);
 function alternarTorre() { race.torreCompacta = !torreCompacta(); try { store.set("corrida:torre", race.torreCompacta ? "compacta" : "completa"); } catch (e) {} race.hudF1T = 0; }
 acoes.torreCompacta = () => (race ? torreCompacta() : true); acoes.torreAlternar = () => { if (race) alternarTorre(); };
+// o minimapa da corrida de F1: a pista inteira (padrão) ou perto, girando com o carro no meio (o mesmo da classificação). Muda no MFD
+// (Ajustes → Mapa) ou tocando no mapa; fica guardado em `corrida:mapa`.
+let mapaPerto = (() => { try { return store.get("corrida:mapa") === "perto"; } catch (e) { return false; } })();
+function alternarMapa() { mapaPerto = !mapaPerto; try { store.set("corrida:mapa", mapaPerto ? "perto" : "inteiro"); } catch (e) {} }
+acoes.mapaPerto = () => mapaPerto; acoes.mapaAlternar = alternarMapa;
+document.addEventListener("click", (ev) => { if (ev.target && ev.target.id === "mini") alternarMapa(); });
 const ICONE_RELOGIO = '<svg class="vr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5"/></svg>';
 function montarTorre() {
   const el = $("hTorre"); if (el.dataset.ok) return; el.dataset.ok = 1;
@@ -345,7 +351,7 @@ export function renderQuali() {
 }
 // minimapa redondo que gira com o carro (a frente é para cima): a pista em cinza e o caminho à frente em azul-claro
 function minimapa(st, m) {
-  if (race.hudF1) return minimapaF1(st, m); // nas regras de F1 o minimapa é o do traçado inteiro (hud-painel.js)
+  if (race.hudF1 && !mapaPerto) return minimapaF1(st, m); // nas regras de F1 o minimapa é o do traçado inteiro (hud-painel.js), se não pediu o de perto
   const cv = $("mini"), c = cv.getContext("2d"), S = cv.width, tr = race.tr, eu = m ? race.car : (st[0] && race.ghosts.get(st[0].id)) || race.car;
   const esc = S / 2 / 900, idx = m ? race.idx : eu.idx || 0;
   c.clearRect(0, 0, S, S); c.save();
