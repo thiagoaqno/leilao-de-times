@@ -2,13 +2,13 @@
 // asfalto claro e uniforme. Os postes e lâmpadas ficam visíveis ao longo da pista, com iluminação ambiente contínua à noite. O laço da noite é o de
 // kit/bahrein/base.js (`luzDaNoite`, `ligarNoite`, `soDeNoite`). (A mesma peça de Singapura, com os postes mais baixos: a Strip já é toda acesa.)
 import * as THREE from "three";
-import { canvasTex, M, hemi } from "../../cena.js";
-import { luzDaNoite, soDeNoite, emissivoDaNoite } from "../bahrein/base.js";
+import { canvasTex, M } from "../../cena.js";
+import { soDeNoite } from "../bahrein/base.js";
+import { registrarLuz, luzDaPista, raioDeCobertura } from "../luz-postes.js";
 
-const ALTO = 64, PASSO = 60, HEMI_NOITE = 1.6;
+const ALTO = 64, PASSO = 60;
 
 export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
-  if (tr.asfaltoLV) emissivoDaNoite(tr, tr.asfaltoLV, 0, 2.4);
   const { pts, n, W } = tr, o = new THREE.Object3D(), postes = [];
   const recuoDe = (q, lado) => tr.murosEscape?.[lado]?.[q] || 14;
   let acc = { 1: 0, [-1]: 0 };
@@ -55,8 +55,15 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   const halos = new THREE.InstancedMesh(haloGeo, haloMat, postes.length);
   postes.forEach((t, k) => { const rot = Math.atan2(-t.nx * t.lado, -t.ny * t.lado); o.position.set(t.x - t.nx * t.lado * 17, t.y + alto - 3, t.z - t.ny * t.lado * 17); o.rotation.set(0, rot, 0); o.updateMatrix(); halos.setMatrixAt(k, o.matrix); });
   halos.frustumCulled = false; halos.renderOrder = 4; halos.name = "lasvegas-halos"; soDeNoite(tr, add(halos)); halos.userData.semContato = true;
-  // A iluminação é uniforme: não há planos acima do asfalto nem refletores que saltam entre postes.
-  luzDaNoite(tr).quadro.push((noite) => { if (noite) hemi.intensity = HEMI_NOITE; });
+  // A luz de verdade: cada cabeça de poste lança um cone macio no asfalto (kit/luz-postes.js); o asfalto não é mais emissivo.
+  // cada cabeça de poste lança um cone largo e macio sobre a pista inteira (raio = 0,75 do passo + meia largura), então os cones se
+  // sobrepõem e a claridade fica quase uniforme, como nas fotos do GP (kit/luz-postes.js)
+  luzDaPista(tr, { media: 11 });
+  const cobrir = raioDeCobertura(passo, W);
+  for (const t of postes) {
+    const cx = t.x - t.nx * t.lado * 17, cz = t.z - t.ny * t.lado * 17, q = tr.pts[t.i];
+    registrarLuz(tr, { x: cx, y: t.y + alto - 3, z: cz, alvo: [q.x + q.tx * 6, q.h, q.y + q.ty * 6], cobrir, cor: 0xf4f2ee });
+  }
   tr.refletoresLV = { postes: postes.length };
   return postes.length;
 }

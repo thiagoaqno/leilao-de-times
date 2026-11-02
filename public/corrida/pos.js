@@ -25,6 +25,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { renderer, scene, cam, sun } from "./cena.js";
 import { clima } from "./clima.js";
+import { varrerLuzPostes } from "./kit/luz-postes.js";
 import { E, toast } from "./estado.js";
 import { qualidade, aoMudar, pixelRatioDe, rebaixar, restaurar } from "./qualidade.js";
 
@@ -150,14 +151,14 @@ function preparar(m) {
   m.customProgramCacheKey = function () { return (chaveAntes ? chaveAntes.call(this) : "") + "|luz" + ganho; };
   m.needsUpdate = true;
 }
-let ultVarredura = 0;
+let ultVarredura = 0, ultLuzPostes = 0;
 function varrer(agora) {
   ultVarredura = agora;
   scene.traverse((o) => { const m = o.material; if (m) { if (Array.isArray(m)) m.forEach(preparar); else preparar(m); } });
 }
 
 // Prepara o brilho antes da compilação dos materiais durante a contagem.
-export function prepararBrilhos() { varrer(performance.now()); }
+export function prepararBrilhos() { varrer(performance.now()); varrerLuzPostes(scene); }
 
 // ---------- a cor pelo clima e pela hora ----------
 let R = 0, W = 0, N = 0, ultCor = 0; // a chuva, a água na pista e a noite, suavizadas (sobem e descem devagar, sem salto)
@@ -203,6 +204,7 @@ export function ajustarTela() { if (atual && atual !== "baixa" && feitos[atual])
 // forca: 0 (nítido) a 1 (bem borrado); com turbo vai até 1,4
 export function desenhar(forca) {
   const q = efetivaPos(); if (q !== atual) aplicarQualidade();
+  if (performance.now() - ultLuzPostes > 1500) { ultLuzPostes = performance.now(); varrerLuzPostes(scene); } // materiais novos (um carro que entrou) ganham a luz dos postes
   if (q === "baixa") { renderer.render(scene, cam); return; }
   const agora = performance.now();
   if (agora - ultVarredura > 1500) varrer(agora);

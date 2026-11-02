@@ -4,6 +4,7 @@
 // ponto mais claro vira a direção do sol, para as sombras baterem com o sol da foto.
 import * as THREE from "three";
 import { renderer, scene, hemi } from "./cena.js";
+import { ambienteDaNoite } from "./kit/luz-postes.js";
 
 // brilho: quanto a foto aparece no fundo · luz: quanto ela ilumina e reflete nos carros · noite: fica a neblina e o sol do tema
 export const CEUS = {
@@ -105,8 +106,8 @@ export function aplicarCeu(tr, look, noite = false, podeMudarLuz = () => true) {
       scene.fog.color.copy(s.horizonte); renderer.setClearColor(s.horizonte);
     }
     const luz = () => {
-      scene.environment = s.env; scene.environmentIntensity = cfg.luz;
-      hemi.intensity = noite ? 0.95 : look.hemi[2] * (cfg.noite ? 1 : 0.65); // a foto já ilumina: a luz ambiente do tema baixa
+      const amb = ambienteDaNoite(tr); scene.environment = s.env; scene.environmentIntensity = cfg.luz * (noite ? amb.ceu : 1);
+      hemi.intensity = noite ? amb.hemi : look.hemi[2] * (cfg.noite ? 1 : 0.65); // a foto já ilumina: a luz ambiente do tema baixa
     };
     if (podeMudarLuz()) luz(); else pendente = { id: chave, luz };
   });
