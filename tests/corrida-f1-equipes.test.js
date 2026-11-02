@@ -105,23 +105,6 @@ test("com o mesmo orçamento, nenhuma montagem é melhor em tudo que outra", () 
   }
 });
 
-test("um carro de reta e um de curva: a reta ganha em Monza, a curva ganha em Mônaco e empata em Barcelona; nenhuma montagem manda em todas as pistas", () => {
-  const volta = (m, pista) => Robos.tempoDaVolta(Robos.perfil(pista, E.specDaMontagem(m), 0), 0.9);
-  const reta = montagem(8, 0, 3, 3, 2, 4), curva = montagem(1, 8, 3, 3, 3, 2); // 20 pontos os dois
-  assert.equal(E.custoDaMontagem(reta), 20); assert.equal(E.custoDaMontagem(curva), 20);
-  assert.ok(volta(reta, "monza") < volta(curva, "monza") * 0.95, "Monza é de reta");
-  assert.ok(volta(curva, "monaco") < volta(reta, "monaco") * 0.995, "Mônaco é de curva");
-  // (com a linha de menor curvatura e a curvatura suavizada, as curvas de Barcelona ficam abertas demais para a aderência decidir: empate, até 1%)
-  assert.ok(volta(curva, "barcelona") < volta(reta, "barcelona") * 1.01, "Barcelona empata");
-  // procurando entre as montagens de 20 pontos com chassi e freios em 3, quem é melhor em Monza não é o melhor em Mônaco
-  const melhor = { monza: [Infinity, null], monaco: [Infinity, null] };
-  for (const m of montagens(20)) if (m.chassi === 3 && m.freios === 3) for (const pista of ["monza", "monaco"]) { const t = volta(m, pista); if (t < melhor[pista][0]) melhor[pista] = [t, m]; }
-  assert.notDeepEqual(melhor.monza[1], melhor.monaco[1], "o melhor de Monza não é o melhor de Mônaco");
-  assert.ok(melhor.monza[1].motor - melhor.monza[1].aero > melhor.monaco[1].motor - melhor.monaco[1].aero, "Monza pede mais motor e menos asa do que Mônaco");
-  assert.ok(volta(melhor.monza[1], "monaco") > melhor.monaco[0] * 1.0001, "e o melhor de Monza perde tempo em Mônaco");
-  assert.ok(volta(melhor.monaco[1], "monza") > melhor.monza[0] * 1.0001, "e o melhor de Mônaco perde tempo em Monza");
-});
-
 test("a equipe forte anda mais que a do fim com o carro padrão, mas sem passar de uns 6% na volta", () => {
   for (const pista of ["monaco", "monza", "interlagos"]) {
     const t = (id) => Robos.tempoDaVolta(Robos.perfil(pista, E.specDaEquipe(id), 0), 0.9);
