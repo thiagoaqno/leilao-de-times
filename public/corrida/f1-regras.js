@@ -521,11 +521,11 @@ function batida(forca) {
 }
 // ---------- as punições de batida entre carros (a escala da direção de prova) ----------
 // A gravidade vem da VELOCIDADE DE APROXIMAÇÃO no impacto (`forca` de sim.js: a velocidade relativa na direção do outro carro, medida
-// ANTES do impulso trocar as velocidades), em u/s (1 u/s = 0,75 km/h): leve a partir de 20 (15 km/h), média a partir de 55 (~41 km/h)
-// e grave a partir de 105 (~79 km/h a mais na traseira de quem estava na frente). A escala de quem CAUSOU a batida: leve +3 s, média
+// ANTES do impulso trocar as velocidades), em u/s (1 u/s = 0,75 km/h): abaixo de 40 (30 km/h) é toque de corrida, sem punição; leve a
+// partir de 40, média a partir de 90 (~68 km/h) e grave a partir de 150 (~112 km/h a mais na traseira de quem estava na frente). A escala de quem CAUSOU a batida: leve +3 s, média
 // +6 s, grave stop-and-go de 8 s (entrar no box, ficar parado 8 s sem trocar pneu e voltar) em até 3 voltas; sem voltas para cumprir,
 // vale +20 s no tempo final; quem não cumpre leva a bandeira preta. A partir da 2ª batida causada a punição sobe um nível; a 6ª é bandeira preta.
-const COLISAO_LEVE = BATIDA_MIN, COLISAO_MEDIA = 55, COLISAO_GRAVE = 105;
+const COLISAO_LEVE = 40, COLISAO_MEDIA = 90, COLISAO_GRAVE = 150; // (margens largas: toque leve de roda não é punido)
 const PUNICAO_LEVE_S = 3, PUNICAO_MEDIA_S = 6, STOPGO_S = 8, STOPGO_VOLTAS = 3, STOPGO_CONVERSAO_S = 20;
 const ESCALA_PUNICAO = ["leve", "media", "grave"];
 function gravidadeDaBatida(forca) {
