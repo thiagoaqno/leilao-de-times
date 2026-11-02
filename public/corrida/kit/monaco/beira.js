@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { D, VK, distanciaDoMar, poligonoDentro } from "./mundo.js";
 import { livre, ocupado, sorteio } from "../comum.js";
+import { PROPS } from "../../props.js";
 
 const mistura = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const RUA = [0.66, 0.6, 0.5], JARDIM = [0.3, 0.5, 0.25], MATA = [0.18, 0.36, 0.2], PEDRA = [0.5, 0.46, 0.41], PAREDAO = [0.42, 0.38, 0.34], AREIA = [0.74, 0.69, 0.55], FUNDO = [0.36, 0.5, 0.54], ENCOSTA = [0.34, 0.45, 0.27];
@@ -74,11 +75,28 @@ export function arvores(tr, add, { hAt, predioEm }) {
   }
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }), o = new THREE.Object3D(), cor = new THREE.Color();
   let total = 0;
+  // perto da pista, os plátanos e os pinheiros viram as árvores do pack de natureza (props.js), quando já carregaram; longe, e as palmeiras
+  // (o pack não tem), seguem as de formas simples. O pack tem uns 3 mil triângulos por árvore: até 320 delas, as que o carro vê de perto.
+  const pack = PROPS.natureza, perto = [];
+  if (pack) for (const tipo of ["platano", "pinheiro"]) {
+    const longe = [];
+    for (const a of listas[tipo]) (perto.length < 320 && tr.distAt(a.x, a.z) < L + 200 ? perto : longe).push({ ...a, tipo });
+    listas[tipo] = longe;
+  }
+  if (perto.length) {
+    const grupos = new Map();
+    perto.forEach((a, k) => { const vs = pack[a.tipo], v = vs[k % vs.length]; if (!grupos.has(v)) grupos.set(v, []); grupos.get(v).push(a); });
+    for (const [pecasArv, lista] of grupos) for (const { geo, mat, folha } of pecasArv) {
+      const m = add(new THREE.InstancedMesh(geo, mat, lista.length)); m.name = "monaco-arvore-pack"; m.castShadow = false; m.receiveShadow = true;
+      lista.forEach((a, i) => { const h = (a.tipo === "pinheiro" ? 52 : 48) * a.s; o.position.set(a.x, a.y, a.z); o.rotation.set(0, a.r, 0); o.scale.set(h, h, h); o.updateMatrix(); m.setMatrixAt(i, o.matrix); if (folha) m.setColorAt(i, cor.setRGB(a.t, a.t, a.t)); });
+    }
+    total += perto.length;
+  }
   for (const [tipo, lista] of Object.entries(listas)) {
     if (!lista.length) continue;
     const m = add(new THREE.InstancedMesh(pecas[tipo](), mat, lista.length)); m.name = `monaco-${tipo}`; m.castShadow = false; m.receiveShadow = true;
     lista.forEach((a, i) => { o.position.set(a.x, a.y, a.z); o.rotation.set(0, a.r, 0); o.scale.set(a.s, a.s * (tipo === "palmeira" ? 1 + (a.t - 1) * 1.6 : 1), a.s); o.updateMatrix(); m.setMatrixAt(i, o.matrix); m.setColorAt(i, cor.setRGB(a.t, a.t, a.t)); });
     total += lista.length;
   }
-  tr.arvoresMonaco = { total, palmeiras: listas.palmeira.length, platanos: listas.platano.length, pinheiros: listas.pinheiro.length };
+  tr.arvoresMonaco = { total, doPack: perto.length, palmeiras: listas.palmeira.length, platanos: listas.platano.length, pinheiros: listas.pinheiro.length };
 }
