@@ -37,7 +37,7 @@ export const THEMES = {
   suzuka: { preview: "#4f8b3d", sky: ["#6f9fd0", "#e2e8e6"], fog: "#d2dbd6", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
   bahrein: { preview: "#d6bf8e", sky: ["#63b0e5", "#fce0aa"], fog: "#e9cc9d", oob: 0xffd6bf8e, roadCol: "#4d4e53" },
   jeddah: { preview: "#d6bf8e", sky: ["#63b0e5", "#fce0aa"], fog: "#e9cc9d", oob: 0xffd6bf8e, roadCol: "#4d4e53" },
-  miami: { preview: "#4f9a46", sky: ["#3f97e0", "#d6f1ff"], fog: "#cfeaf2", oob: 0xff4f9a46, roadCol: "#4d4e53" },
+  miami: { preview: "#4f9a46", sky: ["#4a86d0", "#ffd6b0"], fog: "#f3dcc6", oob: 0xff4f9a46, roadCol: "#4d4e53" },
   montreal: { preview: "#4f8b3d", sky: ["#4a95dc", "#f1eadb"], fog: "#dde6d6", oob: 0xff4f8b3d, roadCol: "#4d4e53" },
   redbullring: { preview: "#467b45", sky: ["#6eb9f0", "#e4f6ff"], fog: "#cde6dd", oob: 0xff467b45, roadCol: "#4d4e53" },
   spa: { preview: "#2f6a32", sky: ["#7d94a8", "#d9e2e6"], fog: "#c8d2d4", oob: 0xff2f6a32, roadCol: "#4d4e53" },
