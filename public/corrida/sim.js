@@ -69,9 +69,9 @@ function procurar(tr, x, y, de) {
   if (bd > 160 * 160) { varre(0, n - 1, 2); varre(best - 3, best + 3); }
   return best;
 }
-// a posição de largada g: atrás da linha, em duas filas (nas regras de F1 as filas ficam a 25,2 pontos uma da outra, em média)
+// A F1 intercala as duas colunas: cada posição fica meia fila atrás da anterior.
 function vagaDoGrid(pts, g, W, f1 = false) {
-  const n = pts.length, idx = (n - 6 - Math.round(Math.floor(g / 2) * (f1 ? 25.2 : 13)) + n * 2) % n, p = pts[idx], nx = -p.ty, ny = p.tx, lado = g % 2 ? 1 : -1, lat = lado * W * 0.22;
+  const n = pts.length, idx = (n - 6 - Math.round(Math.floor(g / 2) * (f1 ? 25.2 : 13) + (f1 && g % 2 ? 12.6 : 0)) + n * 2) % n, p = pts[idx], nx = -p.ty, ny = p.tx, lado = g % 2 ? 1 : -1, lat = lado * W * 0.22;
   return { x: p.x + nx * lat, y: p.y + ny * lat, tx: p.tx, ty: p.ty, nx, ny, a: Math.atan2(p.ty, p.tx), idx };
 }
 

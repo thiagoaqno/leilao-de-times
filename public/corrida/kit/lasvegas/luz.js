@@ -3,11 +3,12 @@
 // kit/bahrein/base.js (`luzDaNoite`, `ligarNoite`, `soDeNoite`). (A mesma peça de Singapura, com os postes mais baixos: a Strip já é toda acesa.)
 import * as THREE from "three";
 import { canvasTex, M, hemi } from "../../cena.js";
-import { luzDaNoite, soDeNoite } from "../bahrein/base.js";
+import { luzDaNoite, soDeNoite, emissivoDaNoite } from "../bahrein/base.js";
 
 const ALTO = 64, PASSO = 60, HEMI_NOITE = 1.6;
 
 export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
+  if (tr.asfaltoLV) emissivoDaNoite(tr, tr.asfaltoLV, 0, 2.4);
   const { pts, n, W } = tr, o = new THREE.Object3D(), postes = [];
   const recuoDe = (q, lado) => tr.murosEscape?.[lado]?.[q] || 14;
   let acc = { 1: 0, [-1]: 0 };

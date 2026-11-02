@@ -1,10 +1,11 @@
-# Temporada F1: ficha completa dos circuitos
+# Las Vegas: asfalto iluminado e grid desencontrado
 
-A aba Circuitos da carreira solo e em grupo passa a mostrar a mesma ficha de GP da sala: foto e créditos, informações oficiais, mapa com curvas numeradas e lista interativa. Ao apontar, tocar ou usar o teclado em uma curva, o mapa destaca o ponto correspondente. As etapas e o estado do calendário continuam visíveis na carreira.
+O asfalto de Las Vegas recebe iluminação uniforme à noite sobre a própria textura, sem planos sobre a pista que atravessem os carros. O efeito desliga durante o dia e funciona também nos gráficos baixos.
 
-O desenho e os dados da ficha são compartilhados com a sala, para as duas telas continuarem consistentes.
+Na F1, as posições das duas colunas do grid ficam intercaladas; carros, robôs e marcas no asfalto usam a mesma posição. O grid do modo comum permanece igual.
 
 ## Verificação
 
-- Três testes no navegador: carreira solo, ficha da sala e temporada em grupo em tela de celular, incluindo destaque no mapa.
-- Ficha de Melbourne conferida visualmente no navegador.
+- Testes de grid, largada e iluminação noturna passaram.
+- Corrida de Las Vegas com 20 carros e gráficos baixos conferida visualmente no navegador.
+- Os testes de tráfego e robôs passaram, salvo um teste de freio que também falha na main; o teste de turbo passou ao repetir.
