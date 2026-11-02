@@ -156,6 +156,9 @@ function varrer(agora) {
   scene.traverse((o) => { const m = o.material; if (m) { if (Array.isArray(m)) m.forEach(preparar); else preparar(m); } });
 }
 
+// Prepara o brilho antes da compilação dos materiais durante a contagem.
+export function prepararBrilhos() { varrer(performance.now()); }
+
 // ---------- a cor pelo clima e pela hora ----------
 let R = 0, W = 0, N = 0, ultCor = 0; // a chuva, a água na pista e a noite, suavizadas (sobem e descem devagar, sem salto)
 const sDir = new THREE.Vector3(), sFrente = new THREE.Vector3(), sPonto = new THREE.Vector3();

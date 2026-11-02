@@ -6,11 +6,8 @@ import { canvasTex, M, hemi } from "../../cena.js";
 import { livre, ocupado } from "../comum.js";
 import { luzDaNoite, soDeNoite } from "./base.js";
 
-// A luz no chão é SpotLight de verdade (ilumina o asfalto e os carros, que passam por dentro dela), não uma placa clara por cima.
-// Uma luz por torre seria caro demais: são LUZES fixas (mudar o número de luzes recompila todos os materiais), que a cada quadro
-// vão para as torres mais perto do carro. A que está para sair da lista já chega apagada (FAIXA), então a troca não pisca.
-// A noite padrão do jogo (hemi 0,95, em pista.js) é clara demais para a luz dos refletores aparecer: no Bahrein ela baixa para HEMI_NOITE.
-const LUZES = 6, FORCA = 1100, FAIXA = 160, ALCANCE = 560, HEMI_NOITE = 0.5;
+// Iluminação ambiente constante e lâmpadas visíveis ao longo da pista.
+const HEMI_NOITE = 1.25;
 
 export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0, ate = 1 } = {}) {
   const { pts, n, W } = tr, lat = W / 2 + recuo, lista = [], ultimo = { 1: -1e9, "-1": -1e9 };
@@ -33,8 +30,8 @@ export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0,
   const k = lista.length;
   const mastros = new THREE.InstancedMesh(mastroGeo, M(0xc9cdd1, { roughness: 0.5, metalness: 0.4 }), k);
   const cabecas = new THREE.InstancedMesh(cabecaGeo, M(0x2a2d33, { roughness: 0.5, metalness: 0.4 }), k);
-  const paineis = new THREE.InstancedMesh(painelGeo, new THREE.MeshBasicMaterial({ map: lampadas, userData: { bloom: 2.2 } }) /* userData.bloom: as lâmpadas brilham no pós (pos.js) */, k * 2);
-  const brilhos = new THREE.InstancedMesh(brilhoGeo, aditivo(brilho), k * 2);
+  const paineis = new THREE.InstancedMesh(painelGeo, new THREE.MeshBasicMaterial({ map: lampadas, fog: false, userData: { bloom: 2.2 } }) /* userData.bloom: as lâmpadas brilham no pós (pos.js) */, k * 2);
+  const brilhos = new THREE.InstancedMesh(brilhoGeo, aditivo(brilho, { fog: false }), k * 2);
   const o = new THREE.Object3D(), cab = new THREE.Matrix4(), local = new THREE.Matrix4();
   o.rotation.order = "YXZ";
   lista.forEach((t, j) => {
@@ -51,35 +48,8 @@ export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0,
   mastros.castShadow = cabecas.castShadow = true; mastros.name = `${tr.id}-holofotes`;
   for (const m of [mastros, cabecas, paineis]) add(m);
   brilhos.frustumCulled = false; brilhos.renderOrder = 4; soDeNoite(tr, add(brilhos));
-  // todos os refletores acesos: a SpotLight de verdade só cabe nas LUZES torres mais perto, então cada torre ganha também uma
-  // mancha de luz no asfalto (aditiva, barata, uma InstancedMesh só), e a pista inteira fica iluminada de longe
-  const poca = canvasTex(128, 128, (c, w, h) => { const g = c.createRadialGradient(64, 64, 4, 64, 64, 64); g.addColorStop(0, "rgba(255,236,196,0.55)"); g.addColorStop(0.5, "rgba(255,226,170,0.22)"); g.addColorStop(1, "rgba(255,220,150,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
-  const pocaGeo = new THREE.PlaneGeometry(260, 200); pocaGeo.rotateX(-Math.PI / 2);
-  const pocas = new THREE.InstancedMesh(pocaGeo, aditivo(poca, { polygonOffset: true, polygonOffsetFactor: -2, fog: true }), k);
-  lista.forEach((t, j) => { o.position.set(t.alvo[0], t.alvo[1] + 0.6, t.alvo[2]); o.rotation.set(0, Math.atan2(-t.nx * t.s, -t.ny * t.s), 0); o.scale.set(1, 1, 1); o.updateMatrix(); pocas.setMatrixAt(j, o.matrix); });
-  pocas.frustumCulled = false; pocas.renderOrder = 2; pocas.name = `${tr.id}-luz-no-chao`; soDeNoite(tr, add(pocas));
-  // as luzes: ficam sempre na cena (de dia, apagadas), para o número de luzes não mudar quando o dia vira noite
-  const luzes = [];
-  for (let j = 0; j < LUZES; j++) {
-    const l = new THREE.SpotLight(0xffe6bf, 0, ALCANCE, 0.72, 0.8, 1); l.name = `${tr.id}-luz-refletor`;
-    add(l); add(l.target); luzes.push(l);
-  }
-  // guardadas em `tr`: elas só andam de noite e com o carro na pista, e o kit/fundir.js congelaria quem não andou no teste dele
-  // (a matriz parada na origem: a luz não chegava na pista)
-  tr.luzesRefletores = luzes.flatMap((l) => [l, l.target]);
-  const perto = lista.map((t) => ({ t, d: 0 }));
-  luzDaNoite(tr).quadro.push((noite, foco) => {
-    if (!noite || !foco) { for (const l of luzes) l.intensity = 0; return; }
-    hemi.intensity = HEMI_NOITE; // (ceu.js e useTrack voltam a pôr a de sempre quando a foto do céu chega ou a pista muda)
-    for (const p of perto) p.d = Math.hypot(p.t.alvo[0] - foco.x, p.t.alvo[2] - foco.y);
-    perto.sort((a, b) => a.d - b.d);
-    const limite = perto[LUZES]?.d ?? Infinity; // a primeira torre que ficou de fora: quem está quase tão longe quanto ela vai apagando
-    luzes.forEach((l, j) => {
-      const p = perto[j]; if (!p) { l.intensity = 0; return; }
-      l.position.set(...p.t.cabeca); l.target.position.set(...p.t.alvo);
-      l.intensity = FORCA * Math.min(1, (limite - p.d) / FAIXA);
-    });
-  });
+  // Sem cartões sobre o asfalto: a luz é contínua, sem atravessar os carros.
+  luzDaNoite(tr).quadro.push((noite) => { if (noite) hemi.intensity = HEMI_NOITE; });
   tr.holofotes = k;
   return k;
 }

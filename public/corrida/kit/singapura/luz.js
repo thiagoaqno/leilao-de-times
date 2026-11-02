@@ -38,7 +38,7 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   // ---- a cabeça: uma barra de lâmpadas (4 por poste, em duas fileiras) virada para a pista ----
   const cabecaGeo = new THREE.BoxGeometry(18, 3, 6); const cabeca = new THREE.InstancedMesh(cabecaGeo, M(0x2c2f34, { roughness: 0.6, metalness: 0.4 }), postes.length);
   const lampGeo = new THREE.PlaneGeometry(5.2, 3.4);
-  const lamp = new THREE.InstancedMesh(lampGeo, new THREE.MeshBasicMaterial({ color: 0xfff1d6, side: THREE.DoubleSide, fog: true, userData: { bloom: 2.4 } }), postes.length * 4);
+  const lamp = new THREE.InstancedMesh(lampGeo, new THREE.MeshBasicMaterial({ color: 0xfff1d6, side: THREE.DoubleSide, fog: false, userData: { bloom: 2.4 } }), postes.length * 4);
   lamp.material.userData.bloom = 2.4;
   postes.forEach((t, k) => {
     const rot = Math.atan2(-t.nx * t.lado, -t.ny * t.lado), cx = t.x - t.nx * t.lado * 17, cz = t.z - t.ny * t.lado * 17, cy = t.y + alto - 2;
@@ -50,7 +50,7 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   lamp.frustumCulled = false; lamp.name = "singapura-lampadas"; lamp.userData.semContato = true; add(lamp);
   // ---- o brilho (halo) de cada cabeça: um cartão aditivo que olha para a câmera (só de noite) ----
   const halo = canvasTex(64, 64, (c, w, h) => { const g = c.createRadialGradient(32, 32, 2, 32, 32, 32); g.addColorStop(0, "rgba(255,246,224,0.95)"); g.addColorStop(0.3, "rgba(255,232,180,0.4)"); g.addColorStop(1, "rgba(255,220,150,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
-  const haloMat = new THREE.MeshBasicMaterial({ map: halo, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: true });
+  const haloMat = new THREE.MeshBasicMaterial({ map: halo, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
   const haloGeo = new THREE.PlaneGeometry(36, 24);
   const halos = new THREE.InstancedMesh(haloGeo, haloMat, postes.length);
   postes.forEach((t, k) => { const rot = Math.atan2(-t.nx * t.lado, -t.ny * t.lado); o.position.set(t.x - t.nx * t.lado * 17, t.y + alto - 3, t.z - t.ny * t.lado * 17); o.rotation.set(0, rot, 0); o.updateMatrix(); halos.setMatrixAt(k, o.matrix); });
