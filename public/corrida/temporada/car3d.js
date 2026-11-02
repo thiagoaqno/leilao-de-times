@@ -13,8 +13,9 @@ export async function montar(palco, equipeId) {
   const luz = new THREE.DirectionalLight(0xff4a3a, 1.1); luz.position.set(5, 2, -4); cena.add(luz);
   const piso = new THREE.Mesh(new THREE.CircleGeometry(3.6, 48), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 })); piso.rotation.x = -Math.PI / 2; piso.position.y = 0.005; cena.add(piso);
   const [c1, c2] = coresDa(eq.pintura, eq.cor || "#e10600");
-  const k = montarF1({ cor: c1, cor2: c2 }); cena.add(k.g);
+  // A pintura da equipe depende dos logos; só monta depois de carregar o modelo e os desenhos.
   await f1Pronto.catch(() => {});
+  const k = montarF1({ cor: c1, cor2: c2, equipe: equipeId }); cena.add(k.g);
   k.g.rotation.y = Math.PI * 0.82;
   cam.position.set(0, 1.5, 7.2 * (TAM / 4.35)); cam.lookAt(0, 0.45, 0);
   let vivo = true, visivel = true, t0 = performance.now();
