@@ -25,7 +25,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { renderer, scene, cam, sun } from "./cena.js";
 import { clima } from "./clima.js";
-import { varrerLuzPostes } from "./kit/luz-postes.js";
+import { varrerLuzPostes, LUZ } from "./kit/luz-postes.js";
 import { E, toast } from "./estado.js";
 import { qualidade, aoMudar, pixelRatioDe, rebaixar, restaurar } from "./qualidade.js";
 
@@ -135,6 +135,8 @@ function pronto(q) {
 const lim = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
 const luma = (c) => c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722;
 const GANHO_LUZ = { value: 0 }; // 0 sem pós, 1 com pós (compartilhado por todos os materiais marcados)
+const TETO_LUZ = 0.95; // com o pós, o que é iluminado (luz dos postes, sol) não passa disso (abaixo do menor limiar do bloom): só as lâmpadas, os faróis e o neon brilham
+const ligarGanho = (v) => { GANHO_LUZ.value = v; LUZ.uLuzTeto.value = v ? TETO_LUZ : 0; };
 const vistos = new WeakSet();
 function preparar(m) {
   if (!m || vistos.has(m)) return; vistos.add(m);
@@ -194,7 +196,7 @@ function aplicarRazao() {
 }
 function aplicarQualidade() {
   const q = efetivaPos(); aplicarRazao();
-  GANHO_LUZ.value = q === "baixa" ? 0 : 1;
+  ligarGanho(q === "baixa" ? 0 : 1);
   if (q !== atual) { atual = q; ultVarredura = 0; ultCor = performance.now(); N = ehNoite() ? 1 : 0; }
   reiniciarMedida();
 }
@@ -258,7 +260,7 @@ function aplicar(n) {
     const px = n >= 2 ? 512 : 1024; sun.shadow.mapSize.set(px, px);
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
   }
-  if (n >= 3 !== antes >= 3) { renderer.shadowMap.enabled = n < 3; scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); GANHO_LUZ.value = n >= 3 || qualidade() === "baixa" ? 0 : 1; } // o último recurso: aí sim recompila
+  if (n >= 3 !== antes >= 3) { renderer.shadowMap.enabled = n < 3; scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; }); ligarGanho(n >= 3 || qualidade() === "baixa" ? 0 : 1); } // o último recurso: aí sim recompila
 }
 // chamada a cada corrida nova: o relógio dos 6 s recomeça
 export function comecarMedida() {

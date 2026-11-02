@@ -45,6 +45,10 @@ export const LUZ = {
   tLuzPostes: { value: vazia },
   uLuzPostesA: { value: new THREE.Vector4(0, 0, 1 / CELULA, 0) }, // origem x, origem z, 1/célula, colunas
   uLuzPostesB: { value: new THREE.Vector4(0, 0, 0, 0) }, // linhas, fator (0 apagado a 1 aceso), primeira célula, —
+  // o teto da claridade do que é iluminado (linear, antes do ajuste de tons): 0 = sem teto (qualidade Baixa, sem bloom). Na Média e na
+  // Alta o bloom pega tudo que passa do limiar (1,0 a 1,1) e a luz dos postes sobre o asfalto, as zebras e os muros passaria disso,
+  // brilhando sobre a pista inteira: o teto (pos.js, `LUZ.uLuzTeto`) deixa o bloom só para as lâmpadas, os faróis e o neon (emissivos).
+  uLuzTeto: { value: 0 },
 };
 
 // a contribuição de uma luz num ponto (a conta que o sombreador repete); `c` é a luminância da cor × intensidade
@@ -146,7 +150,7 @@ export function ativarLuzPostes(tr, noite) {
 
 // ---------- o sombreador ----------
 const GLSL_PARS = `
-uniform sampler2D tLuzPostes; uniform vec4 uLuzPostesA; uniform vec4 uLuzPostesB;
+uniform sampler2D tLuzPostes; uniform vec4 uLuzPostesA; uniform vec4 uLuzPostesB; uniform float uLuzTeto;
 vec4 luzPostesTexel(int i) { return texelFetch(tLuzPostes, ivec2(i & ${LARGURA - 1}, i >> ${Math.log2(LARGURA)}), 0); }
 `;
 const GLSL_LUZ = `
@@ -178,15 +182,23 @@ if (uLuzPostesB.y > 0.001) {
   }
 }
 `;
+// o teto macio: igual até 70% do teto e daí vai achatando até ele (a parte emissiva do material fica de fora)
+const GLSL_TETO = `
+if (uLuzTeto > 0.0 && uLuzPostesB.y > 0.001) {
+  vec3 litLP = outgoingLight - totalEmissiveRadiance;
+  float yLP = dot(litLP, vec3(0.2126, 0.7152, 0.0722)), joelhoLP = 0.7 * uLuzTeto, faixaLP = uLuzTeto - joelhoLP;
+  if (yLP > joelhoLP) { float novoLP = joelhoLP + faixaLP * (1.0 - exp(-(yLP - joelhoLP) / faixaLP)); outgoingLight = litLP * (novoLP / yLP) + totalEmissiveRadiance; }
+}
+#include <opaque_fragment>`;
 const feitos = new WeakSet();
 function ligar(m) {
   const antes = m.onBeforeCompile, chaveAntes = m.customProgramCacheKey, texto = antes ? String(antes) : "";
   m.onBeforeCompile = function (sh, r) {
     if (antes) antes.call(this, sh, r);
     Object.assign(sh.uniforms, LUZ);
-    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\n" + GLSL_PARS).replace("#include <lights_fragment_begin>", GLSL_LUZ);
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\n" + GLSL_PARS).replace("#include <lights_fragment_begin>", GLSL_LUZ).replace("#include <opaque_fragment>", GLSL_TETO);
   };
-  m.customProgramCacheKey = function () { return (chaveAntes ? chaveAntes.call(this) : "") + texto + "|luzpostes2"; };
+  m.customProgramCacheKey = function () { return (chaveAntes ? chaveAntes.call(this) : "") + texto + "|luzpostes3"; };
   m.needsUpdate = true;
 }
 // põe a luz dos postes em todo material iluminado da cena que ainda não tem (só com a luz acesa nesta pista)
