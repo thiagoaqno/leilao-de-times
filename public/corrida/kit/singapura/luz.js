@@ -1,7 +1,6 @@
 // Singapura — a iluminação do GP: a corrida é à noite sob cerca de 1600 refletores presos em treliças nos postes dos dois lados da pista, que deixam o
 // asfalto claro e uniforme (nada de poças escuras entre um poste e outro). Aqui: os postes (InstancedMesh), a treliça contínua de uma ponta a outra de
-// cada trecho com as lâmpadas penduradas (InstancedMesh, com brilho no pós), a luz no chão (uma mancha aditiva por poste, uma faixa só, de lado a
-// lado da pista) e as poucas luzes de verdade (SpotLight) que seguem o carro e acendem os carros e a borda. Tudo só acende de noite (tr.noite): o
+// cada trecho com as lâmpadas penduradas (InstancedMesh, com brilho no pós), as luzes de verdade (SpotLight) que seguem o carro e acendem os carros e a borda. Tudo só acende de noite (tr.noite): o
 // laço da noite é o de kit/bahrein/base.js (`luzDaNoite`, `ligarNoite`, `soDeNoite`).
 import * as THREE from "three";
 import { canvasTex, M, hemi } from "../../cena.js";
@@ -10,7 +9,7 @@ import { luzDaNoite, soDeNoite } from "../bahrein/base.js";
 const ALTO = 96, PASSO = 54, LUZES = 5, FORCA = 380, FAIXA = 140, ALCANCE = 520, HEMI_NOITE = 0.5;
 
 export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
-  const { pts, n, W } = tr, o = new THREE.Object3D(), postes = [], lampadas = [], pocas = [], treliças = [];
+  const { pts, n, W } = tr, o = new THREE.Object3D(), postes = [];
   const recuoDe = (q, lado) => tr.murosEscape?.[lado]?.[q] || 14;
   let acc = { 1: 0, [-1]: 0 };
   for (let i = 0; i < n; i += 3) {
@@ -46,8 +45,6 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
     o.position.set(cx, cy, cz); o.rotation.set(0, rot, 0); o.scale.set(1, 1, 1); o.updateMatrix(); cabeca.setMatrixAt(k, o.matrix);
     const dx = Math.cos(rot), dz = -Math.sin(rot); // o eixo x da cabeça no mundo
     [-6.6, -2.2, 2.2, 6.6].forEach((d, e) => { o.position.set(cx + dx * d, cy - 1.8, cz + dz * d); o.rotation.set(-Math.PI / 2, rot, 0); o.updateMatrix(); lamp.setMatrixAt(k * 4 + e, o.matrix); });
-    // a luz no chão: uma faixa de lado a lado da pista, centrada no ponto da pista mais perto do poste
-    pocas.push({ x: pts[t.i].x, z: pts[t.i].y, h: pts[t.i].h, tx: pts[t.i].tx, ty: pts[t.i].ty });
   });
   cabeca.castShadow = false; cabeca.name = "singapura-cabecas-luz"; cabeca.userData.semContato = true; add(cabeca);
   lamp.frustumCulled = false; lamp.name = "singapura-lampadas"; lamp.userData.semContato = true; add(lamp);
@@ -58,13 +55,6 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   const halos = new THREE.InstancedMesh(haloGeo, haloMat, postes.length);
   postes.forEach((t, k) => { const rot = Math.atan2(-t.nx * t.lado, -t.ny * t.lado); o.position.set(t.x - t.nx * t.lado * 17, t.y + alto - 3, t.z - t.ny * t.lado * 17); o.rotation.set(0, rot, 0); o.updateMatrix(); halos.setMatrixAt(k, o.matrix); });
   halos.frustumCulled = false; halos.renderOrder = 4; halos.name = "singapura-halos"; soDeNoite(tr, add(halos)); halos.userData.semContato = true;
-  // ---- a luz no chão ----
-  const poca = canvasTex(128, 128, (c, w, h) => { const g = c.createRadialGradient(64, 64, 6, 64, 64, 64); g.addColorStop(0, "rgba(255,240,206,0.085)"); g.addColorStop(0.55, "rgba(255,232,190,0.045)"); g.addColorStop(1, "rgba(255,226,170,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
-  const pocaMat = new THREE.MeshBasicMaterial({ map: poca, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, fog: true });
-  const pocaGeo = new THREE.PlaneGeometry(W + 80, 118); pocaGeo.rotateX(-Math.PI / 2);
-  const pocasIM = new THREE.InstancedMesh(pocaGeo, pocaMat, pocas.length);
-  pocas.forEach((q, k) => { o.position.set(q.x, q.h + 0.9, q.z); o.rotation.set(0, Math.atan2(-q.ty, q.tx) + Math.PI / 2 * 0, 0); o.rotation.y = Math.atan2(-q.ty, q.tx) - Math.PI / 2; o.updateMatrix(); pocasIM.setMatrixAt(k, o.matrix); });
-  pocasIM.frustumCulled = false; pocasIM.renderOrder = 2; pocasIM.name = "singapura-luz-no-chao"; soDeNoite(tr, add(pocasIM)); pocasIM.userData.semContato = true;
   // ---- as luzes de verdade: ficam sempre na cena (de dia, apagadas), indo para os postes mais perto do carro ----
   const luzes = [];
   for (let j = 0; j < LUZES; j++) { const l = new THREE.SpotLight(0xfff0d0, 0, ALCANCE, 0.8, 0.85, 1); l.name = "singapura-luz-refletor"; add(l); add(l.target); luzes.push(l); }
@@ -79,6 +69,5 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
     luzes.forEach((l, j) => { const p = alvos[j]; if (!p) { l.intensity = 0; return; } l.position.set(...p.cabeca); l.target.position.set(...p.alvo); l.intensity = FORCA * Math.min(1, (limite - p.d) / FAIXA); });
   });
   tr.refletoresSG = { postes: postes.length };
-  void treliças; void lampadas;
   return postes.length;
 }

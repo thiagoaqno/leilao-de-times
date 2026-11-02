@@ -38,7 +38,7 @@ export const keys = { gas: false, brake: false, left: false, right: false, ers: 
 // quadro fora da tela com a pista inteira (subirMalhas) manda as malhas para a placa e compila a sombra.
 export function prepararPista(id, hora = "dia") {
   const tr = buildTrack(id);
-  ceuPronto(hora === "noite" ? "tokyo" : id).catch(() => {});
+  ceuPronto(id, hora === "noite").catch(() => {});
   subirTexturas(tr.grp);
 }
 const MAPAS = ["map", "normalMap", "roughnessMap", "metalnessMap", "emissiveMap", "alphaMap", "aoMap", "bumpMap"];

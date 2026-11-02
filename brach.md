@@ -1,10 +1,10 @@
-# Corrida: reparo nos boxes e som do túnel
+# Corrida: iluminação de Singapura e céu noturno
 
-Cada visita concluída aos boxes reduz em 90% o dano acumulado, para jogadores e robôs. O reparo também ocorre numa visita dedicada a cumprir stop-and-go; essa visita continua sem registrar uma troca de pneus. Uma parada inválida não repara.
+As faixas luminosas elevadas de Singapura foram removidas: elas se sobrepunham aos pneus. Os refletores continuam iluminando a pista e os carros.
 
-O túnel recebe um eco leve, com duas reflexões curtas em estéreo, entrando e saindo suavemente conforme a câmera passa pelo trecho coberto. O arquivo de prévia foi renderizado com o sintetizador de motor e a mesma resposta de eco do jogo: primeiro ao ar livre, depois dentro do túnel e por fim na saída.
+O céu noturno das pistas comuns agora é um degradê escuro, com brilho discreto no horizonte, também usado nos reflexos. Os céus próprios das pistas fantasiosas continuam preservados.
 
 ## Verificação
 
-- 32 testes de box e punições aprovados. Teste do servidor cobre reparo de humano, robô e stop-and-go, além de parada inválida.
-- Prévia de áudio renderizada no Chromium com Web Audio e os módulos reais do jogo.
+- Corrida noturna de Singapura aberta no navegador; contato dos pneus com a pista conferido visualmente na largada.
+- 15 testes de escapes e barreiras aprovados.

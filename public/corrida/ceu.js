@@ -44,6 +44,22 @@ export const CEUS = {
   arcoiris: { brilho: 0.16, luz: 0.2, noite: true },
 };
 const pmrem = new THREE.PMREMGenerator(renderer);
+// Céu urbano noturno: a luz da cidade clareia discretamente o horizonte, sem estrelas artificiais.
+let noiteUrbana;
+function carregarNoite() {
+  if (!noiteUrbana) {
+    const c = document.createElement("canvas"); c.width = 1024; c.height = 512;
+    const x = c.getContext("2d"), grad = x.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, "#050912"); grad.addColorStop(0.3, "#0b1424");
+    grad.addColorStop(0.46, "#263140"); grad.addColorStop(0.5, "#55483e");
+    grad.addColorStop(0.54, "#26303a"); grad.addColorStop(1, "#080e19");
+    x.fillStyle = grad; x.fillRect(0, 0, c.width, c.height);
+    const tex = new THREE.CanvasTexture(c); tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    noiteUrbana = Promise.resolve({ tex, env: pmrem.fromEquirectangular(tex).texture });
+  }
+  return noiteUrbana;
+}
 const cache = new Map();
 let atual = null;
 
@@ -80,8 +96,8 @@ export function aplicarCeu(tr, look, noite = false, podeMudarLuz = () => true) {
   const chave = `${tr.id}:${noite}`;
   atual = chave; scene.background = null; scene.environment = null; tr.sol = null; pendente = null;
   const cfg = noite ? { brilho: 0.52, luz: 0.32, noite: true } : CEUS[tr.id]; if (!cfg) { if (look.sol) tr.sol = look.sol; return Promise.resolve(); } // (`look.sol`: a luz baixa do entardecer de Baku, sem foto de céu)
-  // Qwantani Night (Pure Sky), Poly Haven CC0; já usado em Tóquio e compartilhado pelas versões noturnas.
-  return carregar(noite ? "tokyo" : cfg.arquivo || tr.id).then((s) => {
+  // As pistas de GP usam um céu urbano; as pistas fantasiosas conservam seus céus próprios.
+  return (noite && !CEUS[tr.id]?.noite ? carregarNoite() : carregar(noite ? "tokyo" : cfg.arquivo || tr.id)).then((s) => {
     if (!s || atual !== chave) return;
     scene.background = s.tex; scene.backgroundIntensity = cfg.brilho;
     if (!cfg.noite) {
@@ -97,4 +113,4 @@ export function aplicarCeu(tr, look, noite = false, podeMudarLuz = () => true) {
 }
 // na próxima largada da mesma pista, a luz que chegou atrasada entra (antes de preparar os shaders)
 export function luzPendente() { if (pendente && pendente.id === atual) pendente.luz(); pendente = null; }
-export const ceuPronto = (id) => carregar(CEUS[id]?.arquivo || id);
+export const ceuPronto = (id, noite = false) => noite && !CEUS[id]?.noite ? carregarNoite() : carregar(noite ? "tokyo" : CEUS[id]?.arquivo || id);
