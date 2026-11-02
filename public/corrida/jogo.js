@@ -83,7 +83,10 @@ function aquecerPista(tr, ceu) {
   ceu.then(() => { ceuChegou = true; }, () => {});
   const aquecer = () => { fila = fila.then(() => {
     if (!race || race.tr !== tr || sNow() >= race.startAt - 300) return;
-    const amostras = new THREE.Group(); amostras.add(amostrasDeEfeitos(), amostraDeFumaca()); scene.add(amostras);
+    const amostras = new THREE.Group(); amostras.add(amostrasDeEfeitos(), amostraDeFumaca());
+    // o compile/compileAsync do three só passa pelo que está visível (traverseVisible): as amostras escondidas não compilavam e a
+    // primeira batida montava a fumaça, os cacos e o "POW!" na hora (travada de ~2 s). Ficam visíveis, mas bem abaixo do chão, longe da câmera.
+    amostras.traverse((o) => { o.visible = true; o.frustumCulled = true; }); amostras.position.y = -1e5; scene.add(amostras);
     prepararBrilhos(); // o pós não deve trocar os shaders depois de aquecidos
     subirTexturas(scene);
     const alvo = new THREE.WebGLRenderTarget(2, 2);
