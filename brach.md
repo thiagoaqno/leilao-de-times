@@ -1,10 +1,10 @@
-# Temporada F1: ficha completa dos circuitos
+# Corrida: previsão de contato respeita o estado fantasma
 
-A aba Circuitos da carreira solo e em grupo passa a mostrar a mesma ficha de GP da sala: foto e créditos, informações oficiais, mapa com curvas numeradas e lista interativa. Ao apontar, tocar ou usar o teclado em uma curva, o mapa destaca o ponto correspondente. As etapas e o estado do calendário continuam visíveis na carreira.
+Após uma batida, o servidor deixa os carros sem colisão por dois segundos. A previsão no navegador ignorava esse estado e ainda podia calcular outros impactos, gerando correções de posição e de velocidade enquanto o servidor considerava os carros fantasmas. A previsão agora respeita tanto o fantasma de batida quanto o do box, para o jogador e para os demais pilotos; o contato volta ao normal quando o servidor retira o estado.
 
-O desenho e os dados da ficha são compartilhados com a sala, para as duas telas continuarem consistentes.
+Isso corrige uma divergência concreta após contatos. A causa de eventuais congelamentos completos de vários segundos ainda não foi confirmada; uma medição local isolada do cálculo de contato do servidor não reproduziu uma pausa dessa ordem.
 
 ## Verificação
 
-- Três testes no navegador: carreira solo, ficha da sala e temporada em grupo em tela de celular, incluindo destaque no mapa.
-- Ficha de Melbourne conferida visualmente no navegador.
+- Testes de colisão, punição e fantasma aprovados, incluindo a previsão do contato durante e depois do estado fantasma.
+- 24 testes de rede e reconciliação aprovados.
