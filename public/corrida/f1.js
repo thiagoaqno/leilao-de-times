@@ -59,7 +59,7 @@ function pneuMat(base, composto) {
 }
 // o número do piloto (1 ou 2 dígitos) vira os dois dígitos do shader (dezena, unidade; -1 = nenhum)
 function setNumero(m, n) {
-  const u = m.userData.liv; if (!u) return; n = Math.floor(+n);
+  const u = m.userData.liv; if (!u) return; n = n == null ? NaN : Math.floor(+n);
   if (!(n >= 0 && n <= 99)) u.numero.value.set(-1, -1); else u.numero.value.set(n >= 10 ? Math.floor(n / 10) : -1, n % 10);
 }
 export function coresDa(pint, corPiloto) { const p = PINTURAS[pint] || PINTURAS.propria; return [p.c || corPiloto, p.c2]; }
