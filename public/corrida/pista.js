@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { PISTAS, sample, elevate, WORLD, rng } from "./estado.js";
 import { drawPreview } from "./menus.js";
 import { renderer, scene, hemi, sun, canvasTex, M, LOOK } from "./cena.js";
+import { fecharLuzes, ambienteDaNoite, ativarLuzPostes } from "./kit/luz-postes.js";
 import { asfaltoGP, borrachaGP } from "./asfalto-gp.js";
 import { aguaUvDaFita, prepararAguaPista } from "./agua-pista.js";
 import { PROPS, aoCarregar } from "./props.js";
@@ -175,6 +176,7 @@ const aguaTex = (cor) => canvasTex(256, 256, (x, w, hh, rr) => { x.fillStyle = c
 function buildWorld(tr) {
   const { pts, n, W, look, id, grp } = tr, t = tr.t, add = (o) => (grp.add(o), o), r = rng(id.length * 977), gp = GPS[id];
   const mundo = mundoDe(id);
+  tr.luzesPista = []; // as luzes dos postes e holofotes (kit/luz-postes.js: registrarLuz); a montagem pode rodar de novo quando os enfeites chegam
   tr.reservado = []; // onde os enfeites soltos não entram (o kit e o cenário de cada GP vão pondo aqui)
   tr.sem = gp?.sem || {}; // o que este GP não tem e vida.js / vida-mais.js não devem pôr (Mônaco: olhos de gato, setas, mastros, roda-gigante...)
   // Reserva as duas faixas e o prédio antes do cenário, do ambiente e da vida da pista.
@@ -258,11 +260,6 @@ function buildWorld(tr) {
   const arco = id === "arcoiris" ? canvasTex(128, 32, (x, w, hh) => { ["#ff3b3b", "#ff9a2e", "#ffe14a", "#3ee07a", "#3aa0ff", "#8a5bff", "#ff5fd2"].forEach((c, i) => { x.fillStyle = c; x.fillRect((i * w) / 7, 0, w / 7 + 1, hh); }); x.fillStyle = "#ffffff55"; x.fillRect(0, 0, w, 3); }) : null;
   if (gp?.asfalto) {
     const asfalto = asfaltoGP();
-    if (id === "lasvegas") {
-      // Iluminação uniforme sobre o próprio asfalto, sem geometria que atravesse os carros.
-      asfalto.emissive.set(0xffffff); asfalto.emissiveMap = asfalto.map; asfalto.emissiveIntensity = 0;
-      tr.asfaltoLV = asfalto;
-    }
     ribbon(-W / 2, W / 2, 0.4, asfalto, 80, 0.4, W / 80);
     const tinta = M(0xe2e0d7, { roughness: 0.95, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) ribbon(lado * (W / 2 - 2.6), lado * (W / 2 - 1.2), 0.49, tinta, 80);
@@ -557,6 +554,7 @@ function buildWorld(tr) {
   const NEON = [["#ff4fd8", "東京"], ["#4fe3ff", "夜道"], ["#ffe14f", "走れ"], ["#7dff6b", "友達"]].map(([c, t]) => canvasTex(64, 128, (x, w, hh) => { x.fillStyle = "#0b0b14"; x.fillRect(0, 0, w, hh); x.strokeStyle = c; x.lineWidth = 4; x.strokeRect(4, 4, w - 8, hh - 8); x.fillStyle = c; x.font = "bold 40px sans-serif"; x.textAlign = "center"; x.fillText(t[0], w / 2, 52); x.fillText(t[1], w / 2, 104); }, false));
   for (const o of neons) { const m = add(new THREE.Mesh(new THREE.PlaneGeometry(26, 52), new THREE.MeshBasicMaterial({ map: NEON[o.g], side: THREE.DoubleSide }))); m.position.set(o.x, o.h + 40, o.y); m.rotation.y = -o.r + Math.PI / 2; const pole = add(new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 16), M(0x222222))); pole.position.set(o.x, o.h + 8, o.y); }
   gp?.depois?.(tr, ctx); // o que vem por cima dos enfeites (Interlagos: o ambiente de interlagos.js)
+  fecharLuzes(tr); // a luz dos postes e holofotes registrados até aqui vira a textura que os materiais leem (kit/luz-postes.js)
   if (gp?.parque) parque(tr, add, gp.parque); // o bosque fechado em volta da pista (kit/parque.js)
   enfeitar(tr, add, r, (x, y, i) => groundH(tr, x, y, i));
   if (id === "losangeles") landmarksLA(tr, add, r);
@@ -636,8 +634,9 @@ export function useTrack(tr, hora = "dia", podeMudarLuz = () => true) {
   const L = tr.look;
   const corNeblina = noite ? 0x101b33 : L.fog;
   scene.fog = new THREE.Fog(corNeblina, noite ? Math.min(L.fogN, 650) : L.fogN, noite ? Math.min(L.fogF, 3400) : L.fogF); renderer.setClearColor(corNeblina);
-  hemi.color.set(noite ? 0x9eb9ee : L.hemi[0]); hemi.groundColor.set(noite ? 0x41445a : L.hemi[1]); hemi.intensity = noite ? 0.95 : L.hemi[2];
-  sun.color.set(noite ? 0xc9dcff : L.sun[0]); sun.intensity = noite ? 0.8 : L.sun[1];
+  const amb = ambienteDaNoite(tr); ativarLuzPostes(tr, noite); // com postes iluminando a volta toda, sobra pouca luz geral: o contraste vem dos cones
+  hemi.color.set(noite ? 0x9eb9ee : L.hemi[0]); hemi.groundColor.set(noite ? 0x41445a : L.hemi[1]); hemi.intensity = noite ? amb.hemi : L.hemi[2];
+  sun.color.set(noite ? 0xc9dcff : L.sun[0]); sun.intensity = noite ? amb.lua : L.sun[1];
   if (tr.sky) { tr.sky.visible = true; tr.sky.material.color.set(noite ? 0x15213d : 0xffffff); }
   return aplicarCeu(tr, L, noite, podeMudarLuz).then(() => { if (worldOn === tr && tr.sky && scene.background) tr.sky.visible = false; }); // a foto do céu chegou: sai o degradê
 }

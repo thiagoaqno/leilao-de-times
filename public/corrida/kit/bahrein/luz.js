@@ -2,12 +2,10 @@
 // para a pista) e, só de noite, o brilho dos painéis e a luz de verdade no asfalto. Mastros, cabeças, painéis e brilhos são 4
 // InstancedMesh para a pista inteira. Cada torre só nasce onde `livre` e `ocupado` deixam.
 import * as THREE from "three";
-import { canvasTex, M, hemi } from "../../cena.js";
+import { canvasTex, M } from "../../cena.js";
 import { livre, ocupado } from "../comum.js";
-import { luzDaNoite, soDeNoite } from "./base.js";
-
-// Iluminação ambiente constante e lâmpadas visíveis ao longo da pista.
-const HEMI_NOITE = 1.25;
+import { soDeNoite } from "./base.js";
+import { registrarLuz } from "../luz-postes.js";
 
 export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0, ate = 1 } = {}) {
   const { pts, n, W } = tr, lat = W / 2 + recuo, lista = [], ultimo = { 1: -1e9, "-1": -1e9 };
@@ -48,8 +46,8 @@ export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0,
   mastros.castShadow = cabecas.castShadow = true; mastros.name = `${tr.id}-holofotes`;
   for (const m of [mastros, cabecas, paineis]) add(m);
   brilhos.frustumCulled = false; brilhos.renderOrder = 4; soDeNoite(tr, add(brilhos));
-  // Sem cartões sobre o asfalto: a luz é contínua, sem atravessar os carros.
-  luzDaNoite(tr).quadro.push((noite) => { if (noite) hemi.intensity = HEMI_NOITE; });
+  // A luz de verdade: cada torre lança um cone macio no asfalto (kit/luz-postes.js), com o brilho do especular onde o asfalto brilha.
+  for (const t of lista) registrarLuz(tr, { x: t.cabeca[0], y: t.cabeca[1] - 4, z: t.cabeca[2], alvo: t.alvo, intensidade: 12, cone: 38, suave: 0.5 });
   tr.holofotes = k;
   return k;
 }

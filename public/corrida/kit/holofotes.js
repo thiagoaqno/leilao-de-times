@@ -12,6 +12,7 @@
 import * as THREE from "three";
 import { canvasTex, M } from "../cena.js";
 import { livre, ocupado } from "./comum.js";
+import { registrarLuz } from "./luz-postes.js";
 
 export function holofotes(tr, add, { passo = 64, recuo = 52, alto = 70, de = 0, ate = 1, cor = 0x8a9096 } = {}) {
   const { pts, n, W } = tr, lat = W / 2 + recuo, lista = [];
@@ -19,7 +20,7 @@ export function holofotes(tr, add, { passo = 64, recuo = 52, alto = 70, de = 0, 
     for (const s of [lado, -lado]) { // tenta o lado da vez e, se não couber, o outro
       const p = pts[i % n], x = p.x + p.nx * s * lat, z = p.y + p.ny * s * lat;
       if (!livre(tr, x, z, recuo - 8) || ocupado(tr, x, z, i % n)) continue;
-      lista.push({ x, z, y: tr.chao ? tr.chao(x, z) - 1.5 : p.h, s, nx: p.nx, ny: p.ny });
+      lista.push({ x, z, y: tr.chao ? tr.chao(x, z) - 1.5 : p.h, s, nx: p.nx, ny: p.ny, cx: p.x, cz: p.y, ph: p.h });
       tr.reservado ||= []; tr.reservado.push([x, z, 14]);
       break;
     }
@@ -48,6 +49,8 @@ export function holofotes(tr, add, { passo = 64, recuo = 52, alto = 70, de = 0, 
     o.position.set(x, y + alto + 4, z); o.rotation.set(0.28, Math.atan2(-nx * s, -ny * s), 0); o.updateMatrix(); // a frente (+z) olha para a pista e para baixo
     caixas.setMatrixAt(k, o.matrix); paineis.setMatrixAt(k, o.matrix.clone().multiply(frente));
   });
+  // a luz de verdade: o painel joga um cone macio na pista (kit/luz-postes.js)
+  for (const t of lista) registrarLuz(tr, { x: t.x, y: t.y + alto + 3, z: t.z, alvo: [t.cx, t.ph, t.cz], intensidade: 10, cone: 34, suave: 0.5 });
   mastros.castShadow = caixas.castShadow = true; mastros.name = `${tr.id}-holofotes`; add(mastros); add(caixas); add(paineis);
   tr.holofotes = lista.length;
   return lista.length;

@@ -3,10 +3,11 @@
 // cada trecho com as lâmpadas penduradas (InstancedMesh, com brilho no pós) e iluminação uniforme durante a noite. O
 // laço da noite é o de kit/bahrein/base.js (`luzDaNoite`, `ligarNoite`, `soDeNoite`).
 import * as THREE from "three";
-import { canvasTex, M, hemi } from "../../cena.js";
-import { luzDaNoite, soDeNoite } from "../bahrein/base.js";
+import { canvasTex, M } from "../../cena.js";
+import { soDeNoite } from "../bahrein/base.js";
+import { registrarLuz } from "../luz-postes.js";
 
-const ALTO = 96, PASSO = 54, HEMI_NOITE = 1.4;
+const ALTO = 96, PASSO = 54;
 
 export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   const { pts, n, W } = tr, o = new THREE.Object3D(), postes = [];
@@ -55,11 +56,11 @@ export function iluminacao(tr, add, { alto = ALTO, passo = PASSO } = {}) {
   const halos = new THREE.InstancedMesh(haloGeo, haloMat, postes.length);
   postes.forEach((t, k) => { const rot = Math.atan2(-t.nx * t.lado, -t.ny * t.lado); o.position.set(t.x - t.nx * t.lado * 17, t.y + alto - 3, t.z - t.ny * t.lado * 17); o.rotation.set(0, rot, 0); o.updateMatrix(); halos.setMatrixAt(k, o.matrix); });
   halos.frustumCulled = false; halos.renderOrder = 4; halos.name = "singapura-halos"; soDeNoite(tr, add(halos)); halos.userData.semContato = true;
-  // Todos os refletores ficam acesos visualmente; uma luz ambiente constante ilumina a pista e os carros.
-  // Evita trocar refletores conforme o carro se move, o que fazia a iluminação piscar entre postes.
-  luzDaNoite(tr).quadro.push((noite) => {
-    if (noite) hemi.intensity = HEMI_NOITE;
-  });
+  // A luz de verdade: cada cabeça de poste lança um cone macio no asfalto (kit/luz-postes.js), em vez de luz uniforme.
+  for (const t of postes) {
+    const cx = t.x - t.nx * t.lado * 17, cz = t.z - t.ny * t.lado * 17, q = tr.pts[t.i];
+    registrarLuz(tr, { x: cx, y: t.y + alto - 3, z: cz, alvo: [q.x + q.tx * 6, q.h, q.y + q.ty * 6], intensidade: 14, cone: 20, suave: 0.6 });
+  }
   tr.refletoresSG = { postes: postes.length };
   return postes.length;
 }
