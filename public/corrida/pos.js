@@ -62,15 +62,17 @@ const GRADE = {
     tDiffuse: { value: null }, aspecto: { value: 16 / 9 },
     chuva: { value: 0 }, molhado: { value: 0 }, noite: { value: 0 }, sat: { value: 1 }, contraste: { value: 1 }, vinheta: { value: 0.25 },
     bruma: { value: new THREE.Color(0.6, 0.65, 0.7) }, sol: { value: new THREE.Vector3(0.5, 0.5, 0) },
+    tom: { value: new THREE.Vector3(1, 1, 1) }, // o filtro da estação do GP (ESTACOES): multiplica a cor
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float aspecto, chuva, molhado, noite, sat, contraste, vinheta; uniform vec3 bruma, sol; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float aspecto, chuva, molhado, noite, sat, contraste, vinheta; uniform vec3 bruma, sol, tom; varying vec2 vUv;
     float ruido(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
     void main() {
       vec3 c = texture2D(tDiffuse, vUv).rgb;
       float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = mix(vec3(L), c, sat);                                                          // saturação: cai na chuva
+      c *= tom;                                                                          // a estação do GP
       c *= mix(vec3(1.0), vec3(1.03, 1.005, 0.965), 0.5 * (1.0 - molhado) * (1.0 - noite)); // seco: um pouco quente
       c *= mix(vec3(1.0), vec3(0.93, 0.985, 1.07), clamp(chuva * 0.85 + molhado * 0.2 + noite * 0.4, 0.0, 1.0)); // chuva e noite: frio
       c = (c - 0.45) * contraste + 0.45;                                                  // contraste em torno do cinza médio
@@ -166,6 +168,27 @@ export function prepararBrilhos() { varrer(performance.now()); varrerLuzPostes(s
 let R = 0, W = 0, N = 0, ultCor = 0; // a chuva, a água na pista e a noite, suavizadas (sobem e descem devagar, sem salto)
 const sDir = new THREE.Vector3(), sFrente = new THREE.Vector3(), sPonto = new THREE.Vector3();
 const ehNoite = () => (E.S && E.S.config && E.S.config.hora === "noite") || (scene.fog ? luma(scene.fog.color) < 0.045 : false); // (Tóquio e o arco-íris são noturnos de qualquer jeito)
+// ---------- o filtro da estação ----------
+// Cada GP tem a estação da data real da corrida, no hemisfério dele, e cada estação um tom leve na tela (só na Média e na Alta, que
+// têm o pós): verão quente e saturado, outono dourado, inverno frio e desbotado, primavera fresca. A chuva e a noite apagam o filtro
+// (elas já têm o tom delas). Pista sem estação fica neutra.
+const FILTROS = {
+  verao: { tom: [1.045, 1.0, 0.93], sat: 0.07, contraste: 0.03 },
+  outono: { tom: [1.06, 0.985, 0.86], sat: -0.02, contraste: 0.02 },
+  inverno: { tom: [0.94, 0.985, 1.07], sat: -0.12, contraste: -0.02 },
+  primavera: { tom: [0.99, 1.025, 0.975], sat: 0.04, contraste: 0 },
+};
+export const ESTACOES = {
+  melbourne: "outono", xangai: "primavera", suzuka: "primavera", bahrein: "verao", jeddah: "verao", miami: "verao",
+  montreal: "primavera", monaco: "verao", barcelona: "verao", redbullring: "verao", silverstone: "verao", spa: "verao",
+  hungaroring: "verao", zandvoort: "verao", monza: "outono", madri: "outono", baku: "outono", singapura: "verao",
+  austin: "outono", mexico: "outono", interlagos: "primavera", lasvegas: "inverno", catar: "verao", abudhabi: "inverno",
+  nurburgring: "outono",
+};
+let filtro = null;
+// chamado quando a corrida monta a pista (jogo.js)
+export function definirEstacao(pista) { filtro = FILTROS[ESTACOES[pista]] || null; }
+
 function atualizarCor(g, agora) {
   const dt = lim((agora - ultCor) / 1000, 0, 0.25); ultCor = agora;
   const k = (t) => 1 - Math.exp(-dt / t);
@@ -173,8 +196,10 @@ function atualizarCor(g, agora) {
   const Rc = lim(R * 1.5); // qualquer chuva, até a garoa (0,45), já deixa a imagem cinza e fria; a forte (1) passa pouco disso
   const molhado = Math.max(Rc, W * 0.7), u = g.uniforms;
   u.chuva.value = Rc; u.molhado.value = molhado; u.noite.value = N;
-  u.sat.value = 1.07 - 0.30 * molhado - 0.05 * N;
-  u.contraste.value = 1.08 - 0.17 * molhado + 0.07 * N;
+  const fe = filtro ? (1 - molhado) * (1 - 0.8 * N) : 0; // a força do filtro da estação
+  u.sat.value = 1.07 - 0.30 * molhado - 0.05 * N + (filtro ? filtro.sat * fe : 0);
+  u.contraste.value = 1.08 - 0.17 * molhado + 0.07 * N + (filtro ? filtro.contraste * fe : 0);
+  if (filtro) u.tom.value.set(1 + (filtro.tom[0] - 1) * fe, 1 + (filtro.tom[1] - 1) * fe, 1 + (filtro.tom[2] - 1) * fe); else u.tom.value.set(1, 1, 1);
   u.vinheta.value = 0.24 + 0.12 * R + 0.10 * N;
   if (scene.fog) { const f = scene.fog.color, e = 1 / 2.2; u.bruma.value.setRGB(Math.pow(f.r, e) * 0.95, Math.pow(f.g, e) * 0.95, Math.pow(f.b, e) * 0.95); }
   // o brilho do sol: só com ele no campo de visão, acima do horizonte, e some na chuva e de noite
