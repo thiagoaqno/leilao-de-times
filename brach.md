@@ -1,10 +1,10 @@
-# Corrida: reparo nos boxes e som do túnel
+# Corrida: evita recalcular os robôs ao aprender uma volta
 
-Cada visita concluída aos boxes reduz em 90% o dano acumulado, para jogadores e robôs. O reparo também ocorre numa visita dedicada a cumprir stop-and-go; essa visita continua sem registrar uma troca de pneus. Uma parada inválida não repara.
+Quando um piloto registrava sua melhor volta, o servidor descartava os perfis de todos os robôs daquela pista. No próximo passo da corrida, eles eram calculados de novo no mesmo processo que atende todos os jogadores, provocando pausas e possíveis saltos nas posições.
 
-O túnel recebe um eco leve, com duas reflexões curtas em estéreo, entrando e saindo suavemente conforme a câmera passa pelo trecho coberto. O arquivo de prévia foi renderizado com o sintetizador de motor e a mesma resposta de eco do jogo: primeiro ao ar livre, depois dentro do túnel e por fim na saída.
+Cada robô conserva o perfil preparado para sua corrida; a volta aprendida continua disponível para as próximas largadas. Isso também protege outras salas que estejam correndo na mesma pista. Um robô que assume um jogador desconectado calcula seu perfil uma vez.
 
 ## Verificação
 
-- 32 testes de box e punições aprovados. Teste do servidor cobre reparo de humano, robô e stop-and-go, além de parada inválida.
-- Prévia de áudio renderizada no Chromium com Web Audio e os módulos reais do jogo.
+- Testes de regressão nas regras de F1 e no modo clássico: a volta nova não troca os perfis em corrida e é usada na próxima largada.
+- Medição local com 19 robôs em Singapura: o passo seguinte ao aprendizado caiu de aproximadamente 300 ms para 17 ms nesta máquina. O tempo real depende da carga e do servidor.
