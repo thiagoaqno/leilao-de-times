@@ -82,9 +82,13 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
 // O carro fantasma (parado na pista e recolocado, sem colisão por uns segundos): semitransparente enquanto dura
 export function fantasmaVisual(k, on) {
   if (!k || !k.mats) return;
+  // O carro fica SEMPRE no passe transparente (com opacidade 1 parece opaco): trocar `transparent` muda o programa do sombreador no three
+  // (OPAQUE), e o primeiro fantasma da corrida recompilava todos os materiais dos carros, travando o jogo de todos. Assim o fantasma só
+  // mexe na opacidade e no depthWrite, que são uniformes e estado, sem compilar nada.
   for (const m of k.mats) {
-    if (on) { if (!m._fo) { m._fo = [m.transparent, m.opacity, m.depthWrite]; m.transparent = true; m.opacity = 0.35; m.depthWrite = false; } }
-    else if (m._fo) { m.transparent = m._fo[0]; m.opacity = m._fo[1]; m.depthWrite = m._fo[2]; m._fo = null; }
+    if (!m.transparent) m.transparent = true;
+    if (on) { if (!m._fo) { m._fo = [m.opacity, m.depthWrite]; m.opacity = 0.35; m.depthWrite = false; } }
+    else if (m._fo) { m.opacity = m._fo[0]; m.depthWrite = m._fo[1]; m._fo = null; }
   }
 }
 // pitch: o bico sobe na subida e desce na descida (o relevo vem de quem chama); lean/roll: inclina para o lado.
