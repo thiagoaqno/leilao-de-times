@@ -71,16 +71,29 @@ function circuitosHTML(cal, gp) {
   const G = root.GpInfo, pistas = root.Pistas;
   return `<section class="circuitos"><header class="circuitos-intro"><h2>Circuitos da temporada</h2><p>Explore o traçado e as curvas de cada etapa do calendário.</p></header>${cal.map((etapa, i) => {
     const t = pistas?.PISTAS[etapa.pista], info = G?.get(etapa.pista); if (!t || !info) return "";
-    const pts = pistas.pontos(t, 18); if (!pts.length) return "";
-    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-    const x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x, hh = Math.max(...ys) - y, m = 90;
-    const caminho = pts.map((p, n) => `${n ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z";
     const foto = G.fundoDe(etapa.pista), credito = G.creditoTxt(etapa.pista);
-    const curvas = info.curvas.length ? `<ol class="circuito-curvas">${info.curvas.map(c => `<li><b>${c.n}</b><span>${h(c.nome || `Curva ${c.n}`)}</span></li>`).join("")}</ol>` : `<p class="boxnota">${h(t.sub || "Detalhes das curvas ainda não disponíveis.")}</p>`;
     return `<details class="circuito" ${i === Math.min(gp, cal.length - 1) ? "open" : ""}><summary><span class="circuito-etapa">${String(i + 1).padStart(2, "0")}</span>${bandeira(etapa.pista)}<span class="circuito-nome"><b>${h(etapa.nome)}</b><small>${i < gp ? "GP disputado" : i === gp ? "Próximo GP" : "Próxima etapa"}</small></span><span class="circuito-seta" aria-hidden="true">+</span></summary>
-      <div class="circuito-corpo">${foto ? `<figure class="circuito-foto"><img src="${h(foto)}" alt="" loading="lazy">${credito ? `<figcaption>${h(credito)}</figcaption>` : ""}</figure>` : ""}<div class="circuito-ficha"><div><h3>${h(info.circuito)}</h3>${info.real ? `<p>${h(info.cidade)} · ${h(info.pais)}</p>` : ""}<div class="circuito-dados">${info.km ? `<span>${info.km.toFixed(3).replace(".", ",")} km</span>` : ""}${info.curvas.length ? `<span>${info.curvas.length} curvas</span>` : ""}${info.voltas ? `<span>${info.voltas} voltas oficiais</span>` : ""}</div></div><svg viewBox="${x-m} ${y-m} ${w+2*m} ${hh+2*m}" role="img" aria-label="Traçado de ${h(t.name)}"><path class="gp-mapa-borda" d="${caminho}"/><path class="gp-mapa-linha" d="${caminho}"/><circle class="gp-mapa-marco" cx="${pts[0].x}" cy="${pts[0].y}" r="28"/></svg></div><div class="circuito-lista"><h4>Curvas</h4>${curvas}</div></div></details>`;
+      <div class="circuito-corpo"><div class="circuito-fundo" ${foto ? `style="background-image:linear-gradient(90deg,#05060af2,#05060aab 60%,#05060a99),url('${h(foto)}')"` : ""}>${root.GpSobre.corpo(etapa.pista, null, "")}${credito ? `<small class="circuito-credito">${h(credito)}</small>` : ""}</div></div></details>`;
   }).join("")}</section>`;
 }
+
+// O destaque é limitado à ficha em que o usuário aponta, toca ou navega pelo teclado.
+function destacarCurva(ficha, numero) {
+  ficha.querySelectorAll(".hi").forEach((el) => el.classList.remove("hi"));
+  ficha.querySelector(".sn-sobre-svg")?.classList.toggle("tem-hi", numero != null);
+  if (numero != null) ficha.querySelectorAll(`[data-n="${numero}"],[data-curva="${numero}"]`).forEach((el) => el.classList.add("hi"));
+}
+for (const evento of ["pointerover", "focusin", "click"]) document.addEventListener(evento, (e) => {
+  const alvo = e.target.closest?.(".circuito-corpo [data-curva], .circuito-corpo [data-n]");
+  if (alvo) destacarCurva(alvo.closest(".circuito-corpo"), alvo.dataset.curva || alvo.dataset.n);
+});
+for (const evento of ["pointerout", "focusout"]) document.addEventListener(evento, (e) => {
+  const alvo = e.target.closest?.(".circuito-corpo [data-curva], .circuito-corpo [data-n]");
+  if (!alvo) return;
+  const ficha = alvo.closest(".circuito-corpo"), proximo = e.relatedTarget?.closest?.("[data-curva], [data-n]");
+  if (proximo && ficha.contains(proximo)) destacarCurva(ficha, proximo.dataset.curva || proximo.dataset.n);
+  else { const foco = ficha.querySelector(".sn-curva:focus"); destacarCurva(ficha, foco?.dataset.curva ?? null); }
+});
 
 // ---------- o carro 3D, que fica no mesmo elemento entre as redesenhadas ----------
 let palco = null, palcoEq = null, falhou3D = false;
