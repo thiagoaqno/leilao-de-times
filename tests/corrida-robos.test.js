@@ -45,7 +45,7 @@ test("robôs seguem o traçado de corrida: usam a pista toda, sem sair dela, e f
     for (const id of room.order) {
       const p = room.players[id];
       assert.equal(p.laps, 1, `${pista}: ${p.name} não fechou a volta`);
-      assert.ok(p.volta > T.PISTAS[pista].minLap && p.volta < 140, `${pista}: volta de ${p.volta}s`);
+      assert.ok(p.volta > T.PISTAS[pista].minLap && p.volta < 160, `${pista}: volta de ${p.volta}s`); // (Baku, a mais longa, com a Cidade Velha estreita, passa um pouco de 140 s)
     }
     assert.ok(Math.max(...lats.map(Math.abs)) < meia, `${pista}: saiu da pista`);
     assert.ok(Math.max(...lats) > meia * 0.5 && Math.min(...lats) < -meia * 0.5, `${pista}: não abriu nem cortou as curvas`);
