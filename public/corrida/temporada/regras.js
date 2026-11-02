@@ -7,11 +7,11 @@ const PONTOS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 // Seleção curta, em ordem do calendário real de 2026, só com pistas presentes no jogo.
 const CALENDARIO = [
   ["melbourne", "Austrália"], ["suzuka", "Japão"], ["bahrein", "Bahrein"], ["jeddah", "Arábia Saudita"], ["montreal", "Canadá"], ["monaco", "Mônaco"], ["barcelona", "Barcelona"],
-  ["silverstone", "Grã-Bretanha"], ["spa", "Bélgica"], ["zandvoort", "Holanda"], ["monza", "Itália"], ["austin", "Estados Unidos"], ["interlagos", "São Paulo"],
+  ["silverstone", "Grã-Bretanha"], ["spa", "Bélgica"], ["zandvoort", "Holanda"], ["monza", "Itália"], ["baku", "Azerbaijão"], ["singapura", "Singapura"], ["austin", "Estados Unidos"], ["interlagos", "São Paulo"], ["lasvegas", "Las Vegas"],
 ];
 // As pistas "mais trabalhadas" (as que já têm cenário próprio): o sorteio do calendário sai só daqui. Quando uma pista
 // ganhar cenário, é só incluir a chave (a mesma de `pistas.js` e do CALENDARIO acima) nesta lista.
-const PISTAS_TRABALHADAS = ["interlagos", "monaco", "melbourne", "bahrein", "silverstone", "suzuka", "jeddah", "monza", "spa", "barcelona", "montreal", "zandvoort"];
+const PISTAS_TRABALHADAS = ["interlagos", "monaco", "melbourne", "bahrein", "silverstone", "suzuka", "jeddah", "monza", "spa", "barcelona", "montreal", "zandvoort", "baku", "singapura", "lasvegas"];
 // mulberry32 sobre o hash do texto (a mesma família de f1-regras.js `sorteio`, sem depender dele aqui)
 function gerador(semente) {
   let a = 2166136261; for (const c of String(semente)) { a ^= c.charCodeAt(0); a = Math.imul(a, 16777619); } a = (a >>> 0) || 1;
@@ -23,7 +23,7 @@ function embaralhar(lista, r) {
   return v;
 }
 // Sorteia `tamanho` GPs sem repetir pista, de PISTAS_TRABALHADAS; se o calendário for maior que a lista, completa com as demais
-// do CALENDARIO (hoje os tamanhos são 4 e 8, então isso não acontece). Depois põe na ordem do CALENDARIO. `anterior` (as pistas
+// do CALENDARIO. Depois põe na ordem do CALENDARIO. `anterior` (as pistas
 // da temporada passada) faz o sorteio tentar outro conjunto, quando existe outro. Devolve a semente que valeu, para guardar no estado.
 function sortearCalendario(tamanho, semente, anterior = []) {
   const n = Math.min(tamanho, CALENDARIO.length), antes = [...anterior].sort().join();
@@ -47,7 +47,7 @@ const inteiro = (n) => Number.isInteger(n) && n >= 0;
 const NIVEIS = ["facil", "medio", "dificil"];
 function criar(nome, equipe, tamanho = 8, voltas = 3, semente = Date.now(), nivel = "medio") {
   if (!Pilotos.EQUIPES[equipe] || !Equipes.EQUIPES[equipe]) throw Error("Equipe inválida.");
-  if (![4, 8].includes(tamanho) || ![2, 3, 5, 10].includes(voltas)) throw Error("Formato inválido.");
+  if (![4, 8, PISTAS_TRABALHADAS.length].includes(tamanho) || ![2, 3, 5, 10].includes(voltas)) throw Error("Formato inválido.");
   if (!NIVEIS.includes(nivel)) throw Error("Nível dos robôs inválido.");
   const titulares = Pilotos.PILOTOS.filter((p) => p.equipe === equipe);
   const sorteado = sortearCalendario(tamanho, semente);

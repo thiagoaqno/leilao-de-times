@@ -1,10 +1,8 @@
-# Corrida: evita recalcular os robôs ao aprender uma volta
+# Temporada: calendário com todas as pistas refeitas
 
-Quando um piloto registrava sua melhor volta, o servidor descartava os perfis de todos os robôs daquela pista. No próximo passo da corrida, eles eram calculados de novo no mesmo processo que atende todos os jogadores, provocando pausas e possíveis saltos nas posições.
-
-Cada robô conserva o perfil preparado para sua corrida; a volta aprendida continua disponível para as próximas largadas. Isso também protege outras salas que estejam correndo na mesma pista. Um robô que assume um jogador desconectado calcula seu perfil uma vez.
+A Temporada solo e em grupo ganha a opção de 15 GPs com todas as pistas de F1 que já têm cenário próprio. Baku, Singapura e Las Vegas também entram no sorteio dos calendários curtos de 4 e 8 GPs. O calendário completo segue a ordem da temporada e continua completo no ano seguinte.
 
 ## Verificação
 
-- Testes de regressão nas regras de F1 e no modo clássico: a volta nova não troca os perfis em corrida e é usada na próxima largada.
-- Medição local com 19 robôs em Singapura: o passo seguinte ao aprendizado caiu de aproximadamente 300 ms para 17 ms nesta máquina. O tempo real depende da carga e do servidor.
+- 22 testes da Temporada, incluindo calendário completo solo e em grupo e transição para o ano seguinte.
+- Temporada solo de 15 GPs criada no navegador, com todas as etapas exibidas.
