@@ -58,6 +58,7 @@ export function vegetacaoDoParque(tr, add, { densidade = 1, semente = 4141 } = {
   // os arbustos podados e a vegetação baixa em manchas, por todo o parque
   for (const o of semear(tr, { passo: 2, dMin: 36, dMax: 560, densidade: 3.2 * densidade, semente, ruidoMin: 0.42, folga: 12 })) {
     const y = chaoEm(tr, o.x, o.z), w = 11 + r() * 17, h = 7 + r() * 8;
+    if (!livre(tr, o.x, o.z, w * 0.7 + 12)) continue; // o arbusto inteiro fora da pista, não só o centro
     arbustos.push({ x: o.x, y: y + h * 0.2, z: o.z, sx: w, sy: h, sz: w * (0.8 + r() * 0.5), r: r() * 6.28, c: ARBUSTOS[(r() * ARBUSTOS.length) | 0] });
     if (r() < 0.12) flores.push({ x: o.x + (r() - 0.5) * w * 0.4, y: y + h * 0.85, z: o.z + (r() - 0.5) * w * 0.4, sx: w * 0.5, sy: h * 0.28, sz: w * 0.5, r: 0, c: FLORES[(r() * 3) | 0] });
   }
@@ -69,7 +70,7 @@ export function vegetacaoDoParque(tr, add, { densidade = 1, semente = 4141 } = {
     if (r() < 0.6) copas.push({ x: o.x + (r() - 0.5) * w * 0.5, y: y + alto * 0.5, z: o.z + (r() - 0.5) * w * 0.5, sx: w * 0.6, sy: alto * 0.44, sz: w * 0.55, r: r() * 6.28, c: CANFORAS[(r() * CANFORAS.length) | 0] });
   }
   // os salgueiros-chorões da margem: o tronco curto e a cortina de folhas que desce até perto da água
-  for (const o of emVoltaDaAgua(tr, { passo: 30, s0: -64, s1: -14, semente: semente + 5, folga: 30 })) {
+  for (const o of emVoltaDaAgua(tr, { passo: 30, s0: -64, s1: -14, semente: semente + 5, folga: 54 })) {
     if (ruido(o.x / 160, o.z / 160, 3) < 0.38 || r() < 0.4) continue;
     const y = chaoEm(tr, o.x, o.z), alto = 46 + r() * 22, w = alto * (1.0 + r() * 0.3);
     troncosS.push({ x: o.x, y: y + 12, z: o.z, sx: alto * 0.055, sy: 26, sz: alto * 0.055, r: 0, c: "#5b4a38" });
@@ -87,12 +88,12 @@ export function vegetacaoDoParque(tr, add, { densidade = 1, semente = 4141 } = {
   }
   const verde = new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), duplo = new THREE.MeshStandardMaterial({ roughness: 1, side: THREE.DoubleSide, flatShading: true });
   const nome = (s) => `${tr.id}-${s}`;
-  colorir(instancias(add, new THREE.IcosahedronGeometry(0.5, 1), verde, arbustos, { sombra: false, nome: nome("arbustos") }), arbustos);
+  colorir(instancias(add, new THREE.IcosahedronGeometry(0.5, 0), verde, arbustos, { sombra: false, nome: nome("arbustos") }), arbustos);
   colorir(instancias(add, new THREE.IcosahedronGeometry(0.5, 0), verde, flores, { sombra: false, nome: nome("flores") }), flores);
   colorir(instancias(add, new THREE.CylinderGeometry(0.7, 1, 1, 5), M(0xffffff, { roughness: 1 }), troncos, { sombra: false, nome: nome("canforas-troncos") }), troncos);
   colorir(instancias(add, new THREE.IcosahedronGeometry(0.5, 1), verde, copas, { sombra: false, nome: nome("canforas-copas") }), copas);
   colorir(instancias(add, new THREE.CylinderGeometry(0.7, 1, 1, 5), M(0xffffff, { roughness: 1 }), troncosS, { sombra: false, nome: nome("salgueiros-troncos") }), troncosS);
-  colorir(instancias(add, new THREE.SphereGeometry(0.5, 9, 6, 0, Math.PI * 2, 0, Math.PI * 0.7), duplo, copasS, { sombra: false, nome: nome("salgueiros-copas") }), copasS);
+  colorir(instancias(add, new THREE.SphereGeometry(0.5, 8, 4, 0, Math.PI * 2, 0, Math.PI * 0.7), duplo, copasS, { sombra: false, nome: nome("salgueiros-copas") }), copasS);
   colorir(instancias(add, new THREE.ConeGeometry(0.5, 1, 4), verde, juncos, { sombra: false, nome: nome("juncos") }), juncos);
   colorir(instancias(add, geoBambu(), duplo, bambus, { sombra: false, nome: nome("bambu") }), bambus);
   tr.vegetacaoXangai = { arbustos: arbustos.length, canforeiras: copas.length, salgueiros: copasS.length, juncos: juncos.length, bambu: bambus.length };

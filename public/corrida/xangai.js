@@ -99,7 +99,7 @@ function curvasFechadas(tr) {
   return runs.filter(([a, b]) => b - a >= 16).map(([a, b]) => ({ a, b, comp: b - a, lado: -k(Math.floor((a + b) / 2)).s })); // o lado de fora: o contrário do de dentro
 }
 function arquibancadasDasCurvas(tr, add) {
-  const proprias = [[0.04, 0.115], [0.78, 0.845], [0.92, 1.05]]; // o caracol, o grampo da curva 14 e a reta dos boxes: ficam por conta das peças próprias
+  const proprias = [[0, 0.04], [0.04, 0.115], [0.78, 0.845], [0.92, 1.0]]; // o caracol, o grampo da curva 14 e a reta dos boxes: ficam por conta das peças próprias
   const livres = curvasFechadas(tr).filter((c) => { const f0 = c.a / tr.n, f1 = c.b / tr.n; return !proprias.some(([a, b]) => f0 < b && f1 > a); }).sort((a, b) => b.comp - a.comp).slice(0, 7);
   const cores = [["#c8102e", "#f4f4f2"], ["#1d3b5c", "#f4f4f2"], ["#e8b62c", "#1d3b5c"], ["#f4f4f2", "#c8102e"]];
   const trechos = livres.map((c, j) => ({ de: Math.max(0, c.a / tr.n - 0.004), ate: (c.b / tr.n) + 0.004, lado: c.lado, degraus: 7 + Math.min(4, Math.round(c.comp / 24)), cor: cores[j % 4][0], encosto: cores[j % 4][1], cobertura: j % 3 === 0, torcida: CAMISAS_CN }));
@@ -112,7 +112,8 @@ function arquibancadasDasCurvas(tr, add) {
 // ---------------------------------------------------------------------------------------------------------------------
 function teloes(tr, { add }) {
   const { W } = tr;
-  const a = colocar(tr, add, telao({ largura: 74, altura: 36, alto: 92, texto: "SHANGHAI" }), { f: 0.066, lado: -1, lats: [W / 2 + 270, W / 2 + 310, W / 2 + 360], w: 84, d: 14, folga: 60, ambos: true, reserva: 30 });
+  let a = null; // o do caracol: por fora do giro, depois das arquibancadas, no primeiro ponto onde cabe
+  for (const f of [0.055, 0.045, 0.075]) { a = colocar(tr, add, telao({ largura: 74, altura: 36, alto: 92, texto: "SHANGHAI" }), { f, lado: -1, lats: [W / 2 + 250, W / 2 + 290, W / 2 + 330], w: 84, d: 14, folga: 60, reserva: 30 }); if (a) break; (tr.faltouXangai ||= []).pop(); }
   const b = colocar(tr, add, telao({ largura: 74, altura: 36, alto: 92, texto: "CHINA GP", fundo: "#1d3b5c" }), { f: 0.812, lado: -1, lats: [W / 2 + 280, W / 2 + 330, W / 2 + 240], w: 84, d: 14, folga: 60, ambos: true, reserva: 30 });
   tr.telaoXangai = { caracol: !!a, grampo: !!b };
 }

@@ -67,7 +67,7 @@ export function paddockSobreOLago(tr, add, { lado = -1, atras = 192, ao0 = 0 } =
   const plano = planoDaAgua(tr), campo = plano.campo, m = new Montador(), S = solido(), V = vidro(), F = new Folhas();
   const pavilhoes = [], cone = new THREE.ConeGeometry(1, 1, 6, 1, true), bola = new THREE.SphereGeometry(1, 6, 4);
   // as fileiras: a distância do eixo (fundo do prédio + k) e as posições ao longo da reta, com um deslocamento por fileira
-  const fileiras = [[300, [-420, -280, -140, 0, 140, 280, 420, 560], 46], [450, [-330, -170, 10, 190, 360, 520], 58], [600, [-250, -60, 130, 330], 50]];
+  const fileiras = [[300, [-700, -560, -420, -280, -140, 0, 140, 280, 420, 560, 700, 840], 46], [450, [-330, -170, 10, 190, 360, 520], 58], [600, [-250, -60, 130, 330], 50]];
   fileiras.forEach(([k, aos, Rb], fi) => {
     const linha = [];
     aos.forEach((ao, j) => {
