@@ -189,6 +189,13 @@ function ligar(m) {
   m.customProgramCacheKey = function () { return (chaveAntes ? chaveAntes.call(this) : "") + texto + "|luzpostes2"; };
   m.needsUpdate = true;
 }
+// o mesmo para UM material que vai nascer no meio da corrida (a fumaça do pneu, por exemplo): ele já nasce com o sombreador final,
+// o mesmo que a varredura dá aos outros e que o aquecimento da largada já compilou. Sem isto o material nascia sem a luz, compilava
+// o sombreador sem ela (uma trava de dezenas de ms, a cada nova nuvem de fumaça) e só 1,5 s depois a varredura o trocava de novo.
+export function luzNoMaterial(m) {
+  if (!(LUZ.uLuzPostesB.value.y > 0) || !m || feitos.has(m) || !(m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial)) return;
+  feitos.add(m); ligar(m);
+}
 // põe a luz dos postes em todo material iluminado da cena que ainda não tem (só com a luz acesa nesta pista)
 export function varrerLuzPostes(scene) {
   if (!(LUZ.uLuzPostesB.value.y > 0)) return 0;

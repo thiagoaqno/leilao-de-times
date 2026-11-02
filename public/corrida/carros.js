@@ -5,6 +5,7 @@ import { montarF1, animarF1, animarDrs, soltarF1, trocarComposto, f1Pronto, core
 import { clima } from "./clima.js";
 let kartChegou = false; f1Pronto.then(() => { kartChegou = true; }); // a foto da garagem é refeita quando o modelo 3D chega
 import { faiscas } from "./efeitos.js";
+import { luzNoMaterial } from "./kit/luz-postes.js";
 import { modeloItem } from "./modelos.js";
 
 // ---------- os carros 3D ----------
@@ -169,14 +170,24 @@ export function carPreview(cv, color, model, mods) {
 }
 
 // fumaça dos pneus e poeira da grama
-const puffs = [], puffGeo = new THREE.IcosahedronGeometry(1, 2), puffMats = {};
+const puffs = [], puffGeo = new THREE.IcosahedronGeometry(1, 2), puffMats = {}, puffLivres = {};
+// Os materiais das nuvens ficam guardados para a próxima nuvem (por cor) e nunca são descartados com `dispose()`: o three.js apaga o
+// programa da placa de vídeo quando o último material dele é descartado, e a nuvem seguinte (a de uma batida ou de uma derrapagem,
+// com a pista de noite e a luz dos postes no sombreador) precisava compilar tudo de novo, dezenas de ms de trava a cada vez.
+const materialDaNuvem = (cor) => {
+  const m = (puffLivres[cor] ||= []).pop();
+  if (m) { m.opacity = 0.6; return m; }
+  const novo = (puffMats[cor] ||= new THREE.MeshLambertMaterial({ color: cor, transparent: true, opacity: 0.6, depthWrite: false })).clone();
+  luzNoMaterial(novo); // já com a luz dos postes: é o mesmo sombreador que a largada compilou (aquecerPista), sem uma segunda compilação 1,5 s depois
+  return novo;
+};
+const guardarMaterial = (p) => (puffLivres[p.cor] ||= []).push(p.m.material);
 // vida: quanto tempo a nuvem dura; cresce: quanto ela incha por segundo; op: quão densa começa
 export function puff(x, y, z, color = "#e6e6e6", s = 3, vida = 0.7, cresce = 1.6, op = 0.56) {
-  if (puffs.length > 220) { const o = puffs.shift(); scene.remove(o.m); o.m.material.dispose(); }
-  const mat = (puffMats[color] ||= new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 0.6, depthWrite: false }));
-  const m = new THREE.Mesh(puffGeo, mat.clone()); m.position.set(x, y, z); m.scale.setScalar(s); scene.add(m);
-  puffs.push({ m, t: vida, t0: vida, op, cresce, vy: 6 + Math.random() * 6, vx: (Math.random() - 0.5) * 8, vz: (Math.random() - 0.5) * 8 });
+  if (puffs.length > 220) { const o = puffs.shift(); scene.remove(o.m); guardarMaterial(o); }
+  const m = new THREE.Mesh(puffGeo, materialDaNuvem(color)); m.position.set(x, y, z); m.scale.setScalar(s); scene.add(m);
+  puffs.push({ m, cor: color, t: vida, t0: vida, op, cresce, vy: 6 + Math.random() * 6, vx: (Math.random() - 0.5) * 8, vz: (Math.random() - 0.5) * 8 });
 }
 // uma nuvem escondida, para a largada já compilar o shader da fumaça (ver amostrasDeEfeitos em efeitos.js)
 export function amostraDeFumaca() { const m = new THREE.Mesh(puffGeo, new THREE.MeshLambertMaterial({ color: "#e6e6e6", transparent: true, opacity: 0.6, depthWrite: false })); m.visible = false; return m; }
-export function stepPuffs(dt) { for (let i = puffs.length - 1; i >= 0; i--) { const p = puffs[i]; p.t -= dt; if (p.t <= 0) { scene.remove(p.m); p.m.material.dispose(); puffs.splice(i, 1); continue; } p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.scale.multiplyScalar(1 + dt * p.cresce); p.m.material.opacity = (p.t / p.t0) * p.op; } }
+export function stepPuffs(dt) { for (let i = puffs.length - 1; i >= 0; i--) { const p = puffs[i]; p.t -= dt; if (p.t <= 0) { scene.remove(p.m); guardarMaterial(p); puffs.splice(i, 1); continue; } p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.scale.multiplyScalar(1 + dt * p.cresce); p.m.material.opacity = (p.t / p.t0) * p.op; } }
