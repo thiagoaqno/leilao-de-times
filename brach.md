@@ -1,10 +1,10 @@
-# Corrida: iluminação de Singapura e céu noturno
+# Corrida: apresentação dos destaques de cada GP
 
-As faixas luminosas elevadas de Singapura foram removidas: elas se sobrepunham aos pneus. Os refletores permanecem acesos e uma iluminação contínua cobre a pista e os carros, sem alternar luzes durante a volta.
+As 15 pistas com cenário próprio ganharam três tomadas escolhidas para a transmissão antes da largada. Elas mostram tanto partes do circuito como a cidade, a paisagem e os marcos construídos no jogo: por exemplo, o Cassino e o porto de Mônaco, Marina Bay Sands e o Singapore Flyer, ou a Sphere e a Strip em Las Vegas. As câmeras dos marcos usam as coordenadas do próprio cenário. As demais pistas conservam o voo existente.
 
-O céu noturno das pistas comuns agora é um degradê escuro, com brilho discreto no horizonte, também usado nos reflexos. Os céus próprios das pistas fantasiosas continuam preservados.
+A apresentação continua sincronizada com a largada e mantém os cartões, o grid, a opção de pular e a preferência por movimento reduzido.
 
 ## Verificação
 
-- Corrida noturna de Singapura aberta no navegador; contato dos pneus com a pista conferido visualmente na largada.
-- 15 testes de escapes e barreiras aprovados.
+- Testes da transmissão e de pular a largada aprovados.
+- Câmeras verificadas contra o terreno das 15 pistas, em três momentos de cada tomada.

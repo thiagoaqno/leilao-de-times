@@ -1,6 +1,6 @@
 // Corrida da Galera — a transmissão de TV antes da largada (regras de F1).
 // O servidor dá um tempo próprio para ela (`room.tvAte`, corrida.js): 25 s numa temporada, 20 s fora dela, e só DEPOIS vêm as
-// luzes. Quatro blocos, cada um com a sua câmera e o seu cartão no estilo da TV: A PISTA (um voo contínuo pelo mapa inteiro, com
+// luzes. Quatro blocos, cada um com a sua câmera e o seu cartão no estilo da TV: A PISTA (tomadas dos destaques ou um voo pelo mapa, com
 // o cartão do circuito e o minimapa), O CLIMA, O CAMPEONATO (só em temporada: pilotos e equipes) e O GRID (a câmera passa
 // entre os carros, com a pole em destaque). Nos últimos 1,3 s a câmera funde com a normal. A sequência anda pelo relógio do
 // servidor e termina em `tvAte`; encolhe para caber se o navegador chegou atrasado. Pular: botão, Esc ou toque (`tvpular`).
@@ -8,6 +8,7 @@
 // temperaturas típicas por circuito e da semente do GP, igual para todos na sala.
 import { E, PISTAS, $, sNow, me, act } from "./estado.js";
 import { transicaoF1 } from "./transicao-f1.js";
+import { DESTAQUES, cameraDestaque } from "./destaques-tv.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const lim = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), suave = (x) => x * x * (3 - 2 * x);
@@ -253,8 +254,12 @@ function acabar(race) {
 // A câmera de cada bloco: devolve a posição e o alvo. `u`: quanto do bloco já passou (0 a 1)
 function camera(tv, tr, b, u) {
   const n = tr.n, W = tr.W;
-  if (b === "pista") { // o voo contínuo pelo mapa inteiro (montarVoo): sem cortes, cada quadro é um ponto da mesma curva
-    const q = tv.voo.quadro(u); tv.alvo = [q.gx, q.gz];
+  if (b === "pista") { // tomadas específicas dos GPs reconstruídos; nos demais, o voo pelo mapa
+    const cenas = DESTAQUES[tr.id];
+    const pos = Math.min(cenas ? cenas.length - 1 : 0, Math.floor(u * (cenas?.length || 1)));
+    const q = cenas ? cameraDestaque(tr, cenas[pos], (u * cenas.length) - pos) : tv.voo.quadro(u);
+    tv.el.querySelector(".tvRotulo").textContent = q.nome || TITULO.pista;
+    tv.alvo = [q.gx, q.gz];
     return q;
   }
   if (b === "clima") { // baixa, ao lado da pista, olhando para o horizonte e o céu
