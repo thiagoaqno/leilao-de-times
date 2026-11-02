@@ -80,6 +80,21 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   return k;
 }
 // O carro fantasma (parado na pista e recolocado, sem colisão por uns segundos): semitransparente enquanto dura
+// O nível de detalhe dos OUTROS carros pela distância até a câmera: cada carro de F1 tem ~30 malhas (uma chamada de desenho cada), e
+// com 19 adversários só os carros passavam de 500 chamadas por quadro. De longe as peças pequenas (volante, câmbio, interior, peças de
+// baixo) não aparecem e saem do desenho; bem longe saem também as suspensões e os detalhes das rodas, e ficam o corpo e os pneus.
+// `d`: a distância em unidades do mundo. Só esconde as peças do modelo (pelo nome), sem mexer nos efeitos (luzes, chamas, faíscas).
+const LOD_PERTO = 320, LOD_LONGE = 1000;
+const LOD1 = new Set(["gear_switch", "interior_details_1", "interior_details_2", "steering_wheel", "back_suspension_2", "car_body_3", "car_body_4"]);
+const LOD2 = new Set(["back_suspension_1", "front_suspension", "car_body_2", "McLaren_mp4_5_2"]);
+export function lodKart(k, d) {
+  if (!k || !k.g) return;
+  const n = d > LOD_LONGE ? 2 : d > LOD_PERTO ? 1 : 0;
+  if (k.lod === n && k.lodMats === k.mats) return; // (k.mats muda quando o modelo de F1 chega: aí as peças são outras)
+  k.lod = n; k.lodMats = k.mats;
+  if (!k.lodPecas || k.lodPecasDe !== k.mats) { k.lodPecas = []; k.lodPecasDe = k.mats; k.g.traverse((o) => { if (o.isMesh && (LOD1.has(o.name) || LOD2.has(o.name))) k.lodPecas.push(o); }); }
+  for (const o of k.lodPecas) o.visible = LOD2.has(o.name) ? n < 2 : n < 1;
+}
 export function fantasmaVisual(k, on) {
   if (!k || !k.mats) return;
   // O carro fica SEMPRE no passe transparente (com opacidade 1 parece opaco): trocar `transparent` muda o programa do sombreador no three
