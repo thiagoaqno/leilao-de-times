@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { canvasTex, M } from "../../cena.js";
 import { livre, ocupado } from "../comum.js";
 import { soDeNoite } from "./base.js";
-import { registrarLuz } from "../luz-postes.js";
+import { registrarLuz, luzDaPista, raioDeCobertura } from "../luz-postes.js";
 
 export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0, ate = 1 } = {}) {
   const { pts, n, W } = tr, lat = W / 2 + recuo, lista = [], ultimo = { 1: -1e9, "-1": -1e9 };
@@ -47,7 +47,9 @@ export function torresDeLuz(tr, add, { gap = 58, recuo = 62, alto = 130, de = 0,
   for (const m of [mastros, cabecas, paineis]) add(m);
   brilhos.frustumCulled = false; brilhos.renderOrder = 4; soDeNoite(tr, add(brilhos));
   // A luz de verdade: cada torre lança um cone macio no asfalto (kit/luz-postes.js), com o brilho do especular onde o asfalto brilha.
-  for (const t of lista) registrarLuz(tr, { x: t.cabeca[0], y: t.cabeca[1] - 4, z: t.cabeca[2], alvo: t.alvo, intensidade: 12, cone: 38, suave: 0.5 });
+  luzDaPista(tr, { media: 14 });
+  const cobrir = raioDeCobertura(gap * 6, W); // gap está em pontos da linha central (6 de distância cada)
+  for (const t of lista) registrarLuz(tr, { x: t.cabeca[0], y: t.cabeca[1] - 4, z: t.cabeca[2], alvo: t.alvo, cobrir, cor: 0xfff4e0 });
   tr.holofotes = k;
   return k;
 }

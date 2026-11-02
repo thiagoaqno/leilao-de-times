@@ -19,23 +19,29 @@ test('postes noturnos viram luzes registradas, sem asfalto emissivo e sem luzes 
   }
 });
 
-test('Singapura: poças embaixo dos postes, mais escuro entre eles, sem salto', { timeout: 120000 }, async () => {
-  const { tr } = await montar('singapura'), P = tr.luzPostes;
-  // a grade dá o mesmo que a soma de todas as luzes, em pontos da pista e da beira
-  let pior = 0;
-  for (let i = 0; i < tr.n; i += 7) for (const lat of [-30, 0, 30]) {
-    const p = tr.pts[i], x = p.x + p.nx * lat, z = p.y + p.ny * lat, a = luzEm(tr, x, p.h + 0.4, z), b = luzEmTodas(tr, x, p.h + 0.4, z);
-    pior = Math.max(pior, Math.abs(a - b) / Math.max(1, b));
-  }
-  assert.ok(pior < 0.02, `a grade perde luz que importa: ${pior}`);
-  // o contraste ao longo do eixo: mais claro sob os cones que entre eles, mas nunca preto (a luz geral e a dos vizinhos)
-  let min = 1e9, max = 0, salto = 0, ant = null;
-  for (let k = 0; k < tr.n * 4; k++) {
-    const f = k / 4, a = Math.floor(f) % tr.n, b = (a + 1) % tr.n, u = f - Math.floor(f), pa = tr.pts[a], pb = tr.pts[b];
-    const v = luzEm(tr, pa.x + (pb.x - pa.x) * u, pa.h + 0.4, pa.y + (pb.y - pa.y) * u);
-    min = Math.min(min, v); max = Math.max(max, v); if (ant != null) salto = Math.max(salto, Math.abs(v - ant)); ant = v;
-  }
-  assert.ok(max / Math.max(min, 0.01) > 2.5, `há poças e trechos escuros: ${min} a ${max}`);
-  assert.ok(salto < 0.1 * max, `a luz muda de modo contínuo ao andar (maior salto ${salto} de ${max})`);
-  assert.ok(P.maxPorCelula <= 12);
-});
+// Como nas fotos dos GPs noturnos: a pista inteira bem iluminada, claridade quase uniforme (variação sutil), sem trecho escuro entre os
+// postes e sem salto. As luzes são cones largos que se sobrepõem (raio = 0,75 do passo + meia largura).
+for (const id of ['singapura', 'lasvegas']) {
+  test(`${id}: a pista inteira iluminada, quase uniforme e sem salto`, { timeout: 120000 }, async () => {
+    const { tr } = await montar(id), P = tr.luzPostes;
+    // a grade dá o mesmo que a soma de todas as luzes, em pontos da pista e da beira
+    let pior = 0;
+    for (let i = 0; i < tr.n; i += 7) for (const lat of [-30, 0, 30]) {
+      const p = tr.pts[i], x = p.x + p.nx * lat, z = p.y + p.ny * lat, a = luzEm(tr, x, p.h + 0.4, z), b = luzEmTodas(tr, x, p.h + 0.4, z);
+      pior = Math.max(pior, Math.abs(a - b) / Math.max(1, b));
+    }
+    assert.ok(pior < 0.03, `a grade perde luz que importa: ${pior}`);
+    const v = [];
+    for (let k = 0; k < tr.n * 4; k++) {
+      const f = k / 4, a = Math.floor(f) % tr.n, b = (a + 1) % tr.n, u = f - Math.floor(f), pa = tr.pts[a], pb = tr.pts[b];
+      v.push(luzEm(tr, pa.x + (pb.x - pa.x) * u, pa.h + 0.4, pa.y + (pb.y - pa.y) * u));
+    }
+    const media = v.reduce((a, b) => a + b, 0) / v.length, min = Math.min(...v), max = Math.max(...v);
+    const claros = v.filter((x) => x >= 0.6 * P.media).length / v.length, salto = Math.max(...v.slice(1).map((x, i) => Math.abs(x - v[i])));
+    assert.ok(claros >= 0.97, `${id}: ${(claros * 100).toFixed(1)}% da volta bem iluminada (mínimo 97%)`);
+    assert.ok(min > 0.4 * media, `${id}: sem trecho escuro (mín ${min.toFixed(1)}, média ${media.toFixed(1)})`);
+    assert.ok(max < 2.2 * media, `${id}: variação sutil (máx ${max.toFixed(1)}, média ${media.toFixed(1)})`);
+    assert.ok(salto < 0.06 * media, `${id}: a luz muda de modo contínuo ao andar (maior salto ${salto.toFixed(2)})`);
+    assert.ok(P.maxPorCelula <= 16 && P.cheias === 0);
+  });
+}

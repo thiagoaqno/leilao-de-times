@@ -12,7 +12,7 @@
 import * as THREE from "three";
 import { canvasTex, M } from "../cena.js";
 import { livre, ocupado } from "./comum.js";
-import { registrarLuz } from "./luz-postes.js";
+import { registrarLuz, luzDaPista, raioDeCobertura } from "./luz-postes.js";
 
 export function holofotes(tr, add, { passo = 64, recuo = 52, alto = 70, de = 0, ate = 1, cor = 0x8a9096 } = {}) {
   const { pts, n, W } = tr, lat = W / 2 + recuo, lista = [];
@@ -50,7 +50,9 @@ export function holofotes(tr, add, { passo = 64, recuo = 52, alto = 70, de = 0, 
     caixas.setMatrixAt(k, o.matrix); paineis.setMatrixAt(k, o.matrix.clone().multiply(frente));
   });
   // a luz de verdade: o painel joga um cone macio na pista (kit/luz-postes.js)
-  for (const t of lista) registrarLuz(tr, { x: t.x, y: t.y + alto + 3, z: t.z, alvo: [t.cx, t.ph, t.cz], intensidade: 10, cone: 34, suave: 0.5 });
+  luzDaPista(tr, {});
+  const cobrir = raioDeCobertura(passo * 6, W); // o passo está em pontos da linha central (6 de distância cada)
+  for (const t of lista) registrarLuz(tr, { x: t.x, y: t.y + alto + 3, z: t.z, alvo: [t.cx, t.ph, t.cz], cobrir, cor: 0xfff6e8 });
   mastros.castShadow = caixas.castShadow = true; mastros.name = `${tr.id}-holofotes`; add(mastros); add(caixas); add(paineis);
   tr.holofotes = lista.length;
   return lista.length;
