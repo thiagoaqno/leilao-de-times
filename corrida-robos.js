@@ -434,6 +434,28 @@ const TRANSITO_NIVEL = { facil: { margem: 52, antec: 0.75, defende: 0 }, medio: 
 function distanciaDaFreada(fis, n, i, v) { const lim = v * 0.9; for (let k = 0; k <= 90; k++) if (fis[(i + k) % n] < lim) return k * STEP; return Infinity; }
 // o lado de dentro da próxima curva de verdade (+1: lado de lat positivo; -1; 0 sem curva nos próximos ~600 u)
 function ladoDeDentro(pf, i) { for (let k = 0; k <= 100; k++) { const j = (i + k) % pf.n; if (pf.kf[j] > 1 / 400) return pf.linha.sinal[j]; } return 0; }
+// Resume até três curvas à frente: direção e distância. Uma sequência da mesma direção conta como uma curva;
+// uma mudança de direção só entra quando é sustentada, para o ruído da linha não inventar um S.
+function curvasAdiante(pf, i) {
+  const curvas = []; let direcao = 0, candidata = 0, pontos = 0, distancia = 0, reta = 0;
+  for (let k = 0; k <= 500 && k < pf.n; k += 4) {
+    const j = (i + k) % pf.n, s = pf.kf[j] > 1 / 500 ? Math.sign(pf.linha.sinal[j]) : 0;
+    if (!s) { if (++reta >= 4) direcao = 0; candidata = 0; pontos = 0; continue; }
+    reta = 0;
+    if (s === direcao) { candidata = 0; pontos = 0; continue; }
+    if (s !== candidata) { candidata = s; pontos = 1; distancia = k * STEP; } else pontos++;
+    if (pontos >= 3) { curvas.push({ lado: s, distancia }); direcao = s; candidata = 0; pontos = 0; if (curvas.length === 3) break; }
+  }
+  return curvas;
+}
+// Na disputa, privilegia a primeira curva, mas considera a segunda e a terceira para não escolher um lado ruim para um S.
+function ordemDaPassagem(pf, i, latOutro, margem, baseLat, dentro) {
+  const curvas = curvasAdiante(pf, i), pesos = [1, 0.65, 0.4];
+  const valor = (lado) => curvas.reduce((v, curva, j) => v + lado * curva.lado * pesos[j] / (1 + curva.distancia / 2000), 0)
+    - Math.abs(latOutro + lado * margem - baseLat) / 500;
+  if (!curvas.length && dentro) return [dentro, -dentro];
+  return valor(1) >= valor(-1) ? [1, -1] : [-1, 1];
+}
 function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
   const ponto = pf.pts[i], c = pf.c, k = pf.kf, n = pf.n, now = Date.now();
   const niv = TRANSITO_NIVEL[room.config.nivel] || TRANSITO_NIVEL.medio;
@@ -497,7 +519,7 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
       const chega = lento || dFreio === Infinity || tAlcance < tFreio * niv.antec, foraDaFreada = lento || dFreio > 30;
       if (((fecha > 6 && ia.v > 30) || (preso && ia.v > 30) || (ia.v < 12 && alvo.ov < 12)) && chega && foraDaFreada) {
         // o lado: o de dentro da próxima curva se couber; o de fora só com folga de tempo (ou sem freada à vista); sem curva, o mais perto da minha linha
-        const lados = dentro ? [dentro, -dentro] : (Math.abs(alvo.latOutro + MARG - baseLat) < Math.abs(alvo.latOutro - MARG - baseLat) ? [1, -1] : [-1, 1]);
+        const lados = ordemDaPassagem(pf, i, alvo.latOutro, MARG, baseLat, dentro);
         const folgaFora = lento || dFreio === Infinity || tAlcance < tFreio * niv.antec * 0.8;
         let lado = 0;
         // carro PARADO à frente (acidente, rodado): passa raspando, com menos folga lateral e usando até perto do muro (senão, numa pista estreita, ninguém cabia ao lado dele)
