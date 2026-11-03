@@ -1,0 +1,33 @@
+/* HUD alternativo: telemetria projetada, inspirado na referência de cockpit. */
+.hud-tele{display:none;position:relative;width:min(600px,90vw);height:210px;color:#fff;text-shadow:0 1px 3px #000;font:700 10px/1.1 system-ui,sans-serif;pointer-events:none;font-style:italic}
+.hud-tele-moldura{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.hud-tele-moldura path{fill:none;stroke:#d9e6ed;stroke-width:1.2;opacity:.75}
+.hud-tele-centro{position:absolute;left:50%;top:27px;transform:translateX(-50%);width:112px;height:112px;border:2px solid #8fcdf3;border-radius:50%;background:#0a1b2ad9;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 10px #67bce740;gap:1px}
+.hud-tele-centro small{font-size:8px;letter-spacing:.07em}.hud-tele-centro strong{font-size:27px;line-height:.88}.hud-tele-centro span{font-size:8px;color:#94b6cd;padding:3px 0}.hud-tele-centro strong.hud-tele-mph{font-size:18px}
+.hud-tele-lado{position:absolute;top:56px;width:92px;display:flex;flex-direction:column;gap:4px;color:#d8f3ff;font-size:9px;text-align:center}.hud-tele-lado.esquerdo{right:calc(50% + 62px);transform:rotate(-8deg)}.hud-tele-lado.direito{left:calc(50% + 62px);transform:rotate(8deg)}
+.hud-tele-barras{height:27px;background:repeating-linear-gradient(0deg,#1c3d59 0 3px,#0a2037 3px 5px);border:1px solid #66bde9;overflow:hidden;transform:skewX(-15deg)}.hud-tele-barras i{display:block;height:100%;background:repeating-linear-gradient(0deg,#33bfe8 0 3px,#0c6d98 3px 5px)}.hud-tele-barras.acel i{background:repeating-linear-gradient(0deg,#60fa41 0 3px,#198d35 3px 5px)}
+.hud-tele-cambio{position:absolute;top:117px;left:calc(50% + 118px);width:210px;transform:rotate(19deg);transform-origin:left top;text-align:left;color:#fff}.hud-tele-cambio>div:first-child{display:flex;align-items:center;gap:6px}.hud-tele-cambio small{font-size:8px}.hud-tele-marchas{display:flex;gap:8px}.hud-tele-marchas b{color:#cad6dc;font-size:10px}.hud-tele-marchas b.atual{color:#fff;font-size:15px}.hud-tele-cambio strong{font-size:19px}.hud-tele-rpm{height:6px;background:#4a6473aa;margin:3px 0}.hud-tele-rpm i{display:block;height:100%;background:linear-gradient(90deg,#59c5f6,#ff9a28,#f32d26)}
+#race.f1hud.hud-telemetria #hCentro{width:min(600px,90vw);bottom:26%}#race.f1hud.hud-telemetria #hCentro>:not(.hud-tele){display:none}#race.f1hud.hud-telemetria #hCentro>.hud-tele{display:block}
+#race.f1hud.hud-telemetria .hud.bl{left:auto;right:12px;bottom:auto;top:65px}#race.f1hud.hud-telemetria #mini{background:transparent;box-shadow:none}#race.f1hud.hud-telemetria #hTempo{top:225px}
+.al-preview{position:relative}.al-preview>.hud-tele{position:absolute;left:50%;bottom:15%;transform:translateX(-50%) scale(.65);transform-origin:center bottom}.al-preview[data-hud="telemetria"]>.hud-tele{display:block}
+@media(max-width:700px){#race.f1hud.hud-telemetria #hCentro{bottom:18%;transform:translateX(-50%) scale(.68);transform-origin:center bottom}#race.f1hud.hud-telemetria #hTempo{top:155px}#race.f1hud.hud-telemetria .hud.bl{top:58px;right:6px}}
+/* A página de ajustes ganhou mais uma linha para o estilo do HUD. */
+#race:is(.f1hud,.f1mfd) #hMfd:has(.mfd-pg[data-pg="ajustes"]:not([hidden])){height:min(350px,70vh)}
+#race:is(.f1hud,.f1mfd) #hMfd:has(.mfd-pg[data-pg="ajustes"]:not([hidden])) .mfd-corpo{overflow-y:auto}
+/* A posição projetada prevalece nas câmeras que mostram o arco do próprio carro. */
+#race.f1hud.hud-telemetria #hCentro.ancorado,.al-preview>.hud-tele.ancorado{left:var(--hud-x);top:var(--hud-y);bottom:auto;width:600px;transform:translateX(-50%) scale(var(--hud-escala));transform-origin:50% 0}
+#race.f1hud.hud-telemetria #hCentro.ancorado>.hud-tele{width:600px}
+/* Vidro fosco: desfoca somente a cena atrás dos instrumentos. */
+.hud-tele-centro,.hud-tele-barras,.hud-tele-cambio{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.hud-tele-centro{background:#0a1b2aaa}
+.hud-tele-barras{background-color:#0a20378c}
+.hud-tele-cambio{padding:5px 8px;background:#0a1b2a80;border:1px solid #89c7e944;border-radius:5px}
+/* Barras de pedais verticais e trilhos azuis, como na referência. */
+.hud-tele-lado{top:42px;width:100px;align-items:center;gap:3px}
+.hud-tele-lado.esquerdo{right:calc(50% + 55px);transform:rotate(-7deg)}
+.hud-tele-lado.direito{left:calc(50% + 55px);transform:rotate(7deg)}
+.hud-tele-conjunto{display:flex;justify-content:center;align-items:stretch;gap:3px;height:78px}
+.hud-tele-barras{position:relative;width:28px;height:78px;transform:skewX(-8deg);border-radius:5px;background:repeating-linear-gradient(0deg,#29455a 0 5px,#102a40 5px 8px)}
+.hud-tele-barras i{position:absolute;bottom:0;left:0;width:100%;height:0;background:repeating-linear-gradient(0deg,#fa6475 0 5px,#b82644 5px 8px)}
+.hud-tele-barras.acel i{background:repeating-linear-gradient(0deg,#65f747 0 5px,#209d35 5px 8px)}
+.hud-tele-ers{display:grid;place-items:center;width:23px;background:#086fa8c9;border:1px solid #75c9fa;color:#bfe8ff;writing-mode:vertical-rl;font:700 7px/1 system-ui,sans-serif;letter-spacing:.08em;border-radius:4px}
+.hud-tele-lado small{white-space:nowrap;font-size:8px}

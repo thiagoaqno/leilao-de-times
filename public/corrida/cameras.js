@@ -151,13 +151,13 @@ const tremorDaVelocidade = (v) => { const kmh = Math.abs(v || 0) * 0.75, b = Mat
 function pov(x, p) {
   const { R, C, dt, tr, c, rm, speedK, fovStep, nearest } = x;
   const A = ajusteDe(x.mode), kt = A.trem / 100; // o ajuste do jogador: avanço (z) e altura (y) em metros, inclinação em graus, tremor em %, FOV de base
-  const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = p.fo + A.z * KS, eh = p.eh + A.y * KS;
+  const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = p.fo + A.z * KS, eh = p.eh + A.y * KS, lat = A.x * KS;
   let ahead = c.air ? c.z : groundH(tr, c.x + fx * 70, c.y + fy * 70, nearest(tr, c.x + fx * 70, c.y + fy * 70, R.idx));
   if (!(Math.abs(ahead - c.z) < 30)) ahead = c.z; // (o ponto à frente caiu noutro trecho da pista, como em cima do túnel de Mônaco: não deixa a vista mirar o teto)
   C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));
   C.pitch = (C.pitch || 0) + ((R.pitch || 0) - (C.pitch || 0)) * (1 - Math.exp(-dt * 8));
-  cam.position.set(c.x + fx * fo, c.z + eh + p.lift + Math.sin(C.pitch) * fo * 0.5, c.y + fy * fo); C.pos = null;
-  cam.lookAt(c.x + fx * (fo + 70), Math.max(C.lookY, c.z + Math.tan(C.pitch) * 70 - 6) + p.eh * p.mira - (p.baixo || 0) * 70 + Math.tan(A.incl * Math.PI / 180) * 70, c.y + fy * (fo + 70)); // (baixo: o olhar inclinado para o volante)
+  cam.position.set(c.x + fx * fo - fy * lat, c.z + eh + p.lift + Math.sin(C.pitch) * fo * 0.5, c.y + fy * fo + fx * lat); C.pos = null;
+  cam.lookAt(c.x + fx * (fo + 70) - fy * lat, Math.max(C.lookY, c.z + Math.tan(C.pitch) * 70 - 6) + p.eh * p.mira - (p.baixo || 0) * 70 + Math.tan(A.incl * Math.PI / 180) * 70, c.y + fy * (fo + 70) + fx * lat); // (baixo: o olhar inclinado para o volante)
   if (!rm) { // a vibração cresce com a velocidade e o volante inclina um pouco a cabeça
     const trem = (speedK * speedK * 0.35 * tremorDaVelocidade(x.src.v) + (R.offroad ? p.tremOff : 0)) * p.trem * kt;
     cam.position.y += (Math.random() - 0.5) * trem; cam.position.x += (Math.random() - 0.5) * trem * 0.5;
@@ -177,7 +177,7 @@ function perseguicao(x) {
   // (como no jogo de F1: a próxima fica a uns 5,2 m do carro e 1,5 m acima; a afastada, a uns 9,8 m e 2,9 m; o ajuste do jogador soma metros)
   const back = Math.max(12, (near ? 52 + speedK * (rm ? 4 : 12) + a * 5 : 98 + speedK * (rm ? 8 : 22) + a * 9) + C.surge * 6 + A.z * KS);
   const up = (near ? 14.5 + speedK * 1.5 + a * 3.2 : 29 + speedK * 4 + a * 7) + A.y * KS;
-  const wx = src.x - fx * back, wz = src.y - fy * back;
+  const lat = A.x * KS, wx = src.x - fx * back - fy * lat, wz = src.y - fy * back + fx * lat;
   const y = Math.max((src.z || 0) + up, groundH(tr, wx, wz, nearest(tr, wx, wz, R.idx)) + (near ? 8 : 6));
   if (!C.pos) C.pos = V3(wx, y, wz); else { C.pos.x = wx; C.pos.z = wz; C.pos.y += (y - C.pos.y) * (1 - Math.exp(-dt * 9)); }
   // No túnel de Mônaco, a câmera externa fica abaixo do teto opaco.
@@ -189,7 +189,7 @@ function perseguicao(x) {
   // olha para o chão lá na frente: na subida a câmera levanta o olhar, na descida abaixa
   const la = near ? 60 : 85, lx = src.x + fx * la, ly = src.y + fy * la, chao = groundH(tr, lx, ly, nearest(tr, lx, ly, R.idx));
   C.lookH = C.lookH == null ? chao : C.lookH + (chao - C.lookH) * (1 - Math.exp(-dt * 5));
-  cam.lookAt(lx, Math.max((src.z || 0) + 4 + (C.lookH - (src.z || 0)) * 0.6, C.lookH + 2) + Math.tan(A.incl * Math.PI / 180) * la, ly);
+  cam.lookAt(lx - fy * lat, Math.max((src.z || 0) + 4 + (C.lookH - (src.z || 0)) * 0.6, C.lookH + 2) + Math.tan(A.incl * Math.PI / 180) * la, ly + fx * lat);
   cam.fov += (A.fov + speedK * (rm ? 4 : near ? 16 : 14) + C.surge * 5 - cam.fov) * fovStep; cam.updateProjectionMatrix();
 }
 

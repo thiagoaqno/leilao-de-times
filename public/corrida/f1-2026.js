@@ -156,6 +156,8 @@ export function construir2026(raiz, tam, leve) {
   // para a pintura (f1-pintura.js): `pcar` = (x, y, s) com s = distância desde a ponta do bico, `ncar` = a normal e `mcar` = quanto vale a pintura
   // (0 = carbono: a barriga e o assoalho)
   let zNariz = 1e9; for (const f of restoFontes) for (let i = 2; i < f.pos.length; i += 3) if (f.pos[i] < zNariz) zNariz = f.pos[i];
+  // Referência para projetar o HUD sobre o arco, no quadro local deste modelo.
+  D.haloReferencia = { z: zNariz + 1.925 };
   // o miolo do volante também é "pintura" no arquivo, mas o volante é de carbono: fica fora (caixa em metros do arquivo)
   const vA = F(-0.16, 0.5, 0.44), vB = F(0.16, 0.7, 0.64), vMin = vA.map((v, i) => Math.min(v, vB[i])), vMax = vA.map((v, i) => Math.max(v, vB[i]));
   const noVolante = (x, y, z) => x > vMin[0] && x < vMax[0] && y > vMin[1] && y < vMax[1] && z > vMin[2] && z < vMax[2];
@@ -167,7 +169,7 @@ export function construir2026(raiz, tam, leve) {
       let m = Math.min(1, Math.max(0, (ny + 0.45) / 0.3)); // de baixo para cima: a barriga é de carbono
       if (y < 0.1 && sv > 1.15 && sv < 4.05) m = 0;         // o assoalho, entre os eixos
       if (noVolante(p.getX(i), y, p.getZ(i))) m = 0;
-      if (tinta) m *= tinta.getX(i); // o carbono do arquivo
+      if (tinta && !(sv > 2.15 && sv < 3.85 && y > 0.42)) m *= tinta.getX(i); // tampa externa pode receber a pintura da equipe
       M[i] = m;
     }
     if (tinta) g.deleteAttribute("color");

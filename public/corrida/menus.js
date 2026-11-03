@@ -5,6 +5,7 @@ import { MODS3, MODS_PADRAO, carPreview } from "./carros.js";
 import { loadBest } from "./fantasma.js";
 import { f1Pronto } from "./f1.js";
 import { palco } from "./palco.js";
+import { montarAjustes, pararAjustes } from "./ajustes-lobby.js";
 import { iniciarControle } from "./sala-controle.js";
 const EQUIPES_F1 = window.EQUIPES_F1 || {};
 // o logo da equipe sozinho (sem a sigla por trás, que aparecia pelas transparências do PNG); só sem arquivo, ou se ele não carregar, entra a sigla
@@ -32,7 +33,7 @@ export function show(id) {
     if (veioDaCorrida) { etapa = "grid"; veioDaCorrida = false; }
     animarEntrada(el(etapa));
   }
-  if (id !== "lobby") { fecharGaveta(); fecharSobre(false); palco.parar(); if (id === "race") veioDaCorrida = true; }
+  if (id !== "lobby") { fecharGaveta(); fecharSobre(false); palco.parar(); pararAjustes(); if (id === "race") veioDaCorrida = true; }
 }
 
 // ---------- a sala de espera: quatro etapas, sem abas ----------
@@ -42,8 +43,8 @@ export function show(id) {
 // controle) avança, Esc ou B voltam; as setas e o direcional movem o foco (sala-controle.js). Fora das regras de F1 não há a etapa da
 // equipe; quem só assiste vê o GP e o grid; numa sala da carreira só o grid. Cada trecho só mexe no HTML quando ele muda (`trocar`),
 // para o foco e as animações não se perderem a cada estado que chega do servidor.
-const ORDEM = ["equipe", "carro", "gp", "grid"];
-const NOMES = { equipe: "Equipe", carro: "Carro e pneu", gp: "GP", grid: "Grid" };
+const ORDEM = ["equipe", "carro", "ajustes", "gp", "grid"];
+const NOMES = { equipe: "Equipe", carro: "Carro e pneu", ajustes: "Câmera", gp: "GP", grid: "Grid" };
 const NIVEL = { facil: "fácil", medio: "médio", dificil: "difícil" };
 const DESC_PNEU = { macio: "Aderência máxima. Dura uma volta e meia.", medio: "O equilíbrio. Dura de 3 a 4 voltas.", duro: "Aguenta mais de 6 voltas, com menos aderência.", chuva: "Para a pista molhada. No seco derrete em 2 ou 3 voltas." };
 const el = (k) => document.querySelector(`.sn-etapa[data-etapa="${k}"]`);
@@ -53,9 +54,10 @@ let etapa = "equipe", gavetaAberta = false, focoAntes = null, pendente = null, t
 
 const etapasAtivas = () => {
   const S = E.S, m = me();
-  if (!S || S.temporada) return ["grid"]; // a sede da carreira controla o resto
+  if (!S) return ["grid"];
+  if (S.temporada) return m ? ["ajustes", "grid"] : ["grid"]; // a sede da carreira controla o resto
   if (!m) return ["gp", "grid"]; // só assistindo
-  return S.config.regras === "f1" ? ["equipe", "carro", "gp", "grid"] : ["carro", "gp", "grid"];
+  return S.config.regras === "f1" ? ["equipe", "carro", "ajustes", "gp", "grid"] : ["carro", "ajustes", "gp", "grid"];
 };
 // troca o HTML de um trecho só se ele mudou, e devolve o foco ao mesmo botão (quando o trecho refaz os botões)
 const chaveDe = (e) => { const d = Object.entries(e.dataset).map(([k, v]) => `${k}=${v}`).join("&"); return `${e.tagName}|${d || (e.id || "") + e.textContent.trim().slice(0, 30)}`; };
@@ -414,6 +416,13 @@ export function renderLobby() {
   else if (etapa === "grid") renderGrid(m, isHost, f1, c, t, robos, total);
   if (gavetaAberta) renderGaveta();
   if (sobreAberto) renderSobre();
+  if (etapa === "ajustes" && m) {
+    palco.parar();
+    const eqInfo = f1 && m.equipe && window.F1Pilotos.EQUIPES[m.equipe];
+    const mods = eqInfo && MODS3.pintura[eqInfo.pintura] ? { ...(m.mods || MODS_PADRAO), pintura: eqInfo.pintura } : m.mods;
+    montarAjustes($("alPreview"), m, mods); return;
+  }
+  pararAjustes();
   // o palco 3D: o carro girando na vitrine da etapa (Equipe e Carro e pneu); nas outras etapas ele descansa
   const vitrine = etapa === "equipe" && m && f1 ? $("vitrineEquipe") : etapa === "carro" && m ? $("vitrineCarro") : null;
   if (!vitrine) { palco.parar(); return; }

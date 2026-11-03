@@ -13,7 +13,7 @@
 //     y  512 ..  896  de cima (a frente à esquerda; +x para cima):        X = s K                Y = 704 - x K
 //     y  896 .. 1152  frente (x 0 .. 512, +x à esquerda) e traseira (x 512 .. 1024, +x à direita): Y = 896 + (1,1 - y) K
 //
-// Os patrocínios são decalques inventados no ESTILO dos de verdade (nada de marca registrada copiada); os logos das
+// Os patrocínios usam nomes reais em representação tipográfica aproximada; os logos das
 // equipes vêm de logos/ (o projeto já os usa nos menus). O número do piloto é um decalque à parte (um atlas de dígitos
 // compartilhado) porque muda de carro para carro; o composto do pneu vira uma faixa na lateral do pneu (shader do pneu).
 import * as THREE from "three";
@@ -60,6 +60,13 @@ function texto(c, str, a, b, h, cor, { peso = 800, estilo = "italic", fam = "'Ar
   if (borda) { c.lineWidth = Math.max(1.5, h * K * 0.12); c.strokeStyle = borda; c.lineJoin = "round"; c.strokeText(str, x, y, larg ? larg * K : undefined); }
   c.fillText(str, x, y, larg ? larg * K : undefined); c.restore();
 }
+// Letra transversal ao carro, para ser lida do cockpit (a folha superior tem o eixo lateral na vertical).
+function textoTopo(c, str, s, x, h, cor, { larg = 0, borda = null, estilo = "normal" } = {}) {
+  const [px, py] = pt(c, s, x); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.translate(px, py); c.rotate(-Math.PI / 2);
+  c.font = `${estilo} 900 ${Math.round(h * K)}px Arial, sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
+  if (borda) { c.strokeStyle = borda; c.lineWidth = Math.max(2, h * K * 0.14); c.lineJoin = "round"; c.strokeText(str, 0, 0, larg ? larg * K : undefined); }
+  c.fillStyle = cor; c.fillText(str, 0, 0, larg ? larg * K : undefined); c.restore();
+}
 // o logo da equipe numa caixa (a0..a1 x b0..b1, em metros) sem deformar, centrado
 function logo(c, id, a0, b0, a1, b1, tinta) {
   const r = logoRecortado(id, tinta); if (!r) return;
@@ -67,7 +74,7 @@ function logo(c, id, a0, b0, a1, b1, tinta) {
   const e = Math.min(bw / r.w, bh / r.h), w = r.w * e, h = r.h * e;
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(r.c, bx + (bw - w) / 2, by + (bh - h) / 2, w, h); c.restore();
 }
-// um "patrocinador" inventado: nome em letra de marca, sem copiar nenhuma marca de verdade
+// nome de patrocinador em tipografia aproximada (não é o logotipo oficial)
 function patro(c, nome, a, b, h, cor, opc = {}) { texto(c, nome, a, b, h, cor, opc); }
 const mulberry = (seed) => () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
@@ -98,31 +105,35 @@ function base(ctx, cor) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fi
 DESENHOS.mclaren = {
   numero: "#ffffff",
   pintar(ctx) {
-    const PAP = "#ff8000", PRETO = "#101114", AZUL = "#2a6bff";
+    const PAP = "#ff8000", PRETO = "#101114";
     base(ctx, PAP);
     lados(ctx, (c) => {
       // tampa do motor / airbox preto, com a frente cortada em diagonal e a parte de baixo papaia
       poli(c, [[2.18, 1.1], [4.45, 1.1], [4.45, 0.42], [3.8, 0.44], [3.25, 0.53], [2.7, 0.7], [2.42, 0.56], [2.18, 0.58]], PRETO);
-      // faixa azul acompanhando o corte
-      poli(c, [[2.18, 0.58], [2.42, 0.56], [2.7, 0.7], [3.25, 0.53], [3.8, 0.44], [3.8, 0.47], [3.25, 0.56], [2.7, 0.74], [2.42, 0.6], [2.18, 0.62]], AZUL);
-      // faixa azul no bico
-      poli(c, [[0.1, 0.17], [0.95, 0.31], [0.95, 0.34], [0.1, 0.2]], AZUL);
+      // Sidepod escuro e faixa papaia da tampa, conforme a pintura MCL40.
+      poli(c, [[1.05, 0.08], [3.85, 0.08], [3.85, 0.41], [3.45, 0.43], [2.75, 0.40], [1.55, 0.43], [1.05, 0.34]], PRETO);
+      poli(c, [[2.65, 0.43], [3.65, 0.43], [3.85, 0.53], [3.30, 0.57], [2.75, 0.57]], PAP);
       // asa traseira: endplate papaia com a parte de baixo preta
       poli(c, [[3.88, 0.42], [4.4, 0.42], [4.4, 0.6], [3.88, 0.6]], PRETO);
-      logo(c, "mclaren", 2.45, 0.62, 3.2, 0.95, "#ff8000");
-      patro(c, "KORVO", 3.0, 0.43, 0.075, "#ffffff", { esp: 0.01 });
-      patro(c, "AURELIA", 1.5, 0.4, 0.07, "#101114", { esp: 0.012 });
-      patro(c, "nexon", 3.25, 0.27, 0.09, "#101114", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
-      patro(c, "OKTA·X", 1.05, 0.26, 0.06, "#101114");
+      ret(c, 1.30, 0.41, 1.85, 0.51, "#15263d");
+      c.beginPath(); c.arc(3.25, 0.29, 0.045, 0, Math.PI * 2); c.fillStyle = "#eb001b"; c.fill();
+      c.beginPath(); c.arc(3.31, 0.29, 0.045, 0, Math.PI * 2); c.fillStyle = "#ff9f00"; c.fill();
+      patro(c, "Gemini", 3.03, 0.72, 0.12, "#ffffff", { estilo: "normal", larg: 0.62 });
+      patro(c, "VELO", 2.48, 0.55, 0.075, PRETO, { estilo: "normal", larg: 0.35 });
+      patro(c, "DP WORLD", 1.55, 0.46, 0.065, "#ffffff", { esp: 0.008 });
+      patro(c, "DELL", 3.50, 0.49, 0.08, PRETO, { estilo: "normal" });
+      patro(c, "OKX", 2.85, 0.32, 0.075, "#ffffff");
+      patro(c, "allwyn", 2.5, 0.90, 0.055, "#ffffff", { estilo: "normal" });
     });
     vista(ctx, "T", (c) => {
+      // Ao lado do cockpit o preto e as faixas azul-escuras contrastam com o bico papaia.
+      ret(c, 1.80, -0.30, 2.10, -0.12, PRETO); ret(c, 1.80, 0.12, 2.10, 0.30, PRETO);
       ret(c, 2.3, -0.3, 4.0, 0.3, PRETO); poli(c, [[2.3, 0.3], [2.3, -0.3], [2.0, -0.12], [2.0, 0.12]], PRETO);
-      ret(c, 0.15, -0.025, 1.0, 0.025, AZUL);
-      ret(c, 3.9, -0.5, 4.4, 0.5, PAP); ret(c, 4.0, -0.5, 4.2, 0.5, PRETO);
-      logo(c, "mclaren", 3.9, -0.2, 4.35, 0.2, "#ffffff");
+      ret(c, 3.9, -0.5, 4.4, 0.5, PAP); ret(c, 4.32, -0.5, 4.4, 0.5, PRETO);
+      textoTopo(c, "DHL", 4.10, 0, 0.11, PRETO, { larg: 0.65 });
     });
     vista(ctx, "F", (c) => { ret(c, -0.8, 0.0, 0.8, 0.45, PAP); ret(c, -0.55, 0.0, 0.55, 0.15, PRETO); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0.0, 0.8, 1.0, PAP); ret(c, -0.5, 0.45, 0.5, 0.75, PRETO); patro(c, "KORVO", 0, 0.8, 0.07, "#101114"); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0.0, 0.8, 1.0, PAP); ret(c, -0.5, 0.45, 0.5, 0.75, PRETO); patro(c, "DHL", 0, 0.8, 0.12, "#101114"); });
   },
 };
 
@@ -142,13 +153,15 @@ DESENHOS.ferrari = {
       poli(c, [[0.05, 0.15], [1.2, 0.34], [1.2, 0.37], [0.05, 0.18]], BRANCO);
       logo(c, "ferrari", 2.55, 0.72, 2.95, 0.98);
       logo(c, "ferrari", 1.5, 0.16, 1.9, 0.4);
-      patro(c, "SOLARA", 1.6, 0.42, 0.09, "#ffd200", { esp: 0.02 });
-      patro(c, "vektra", 3.3, 0.7, 0.1, "#1b3fb4", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
-      patro(c, "KAYMAN", 3.25, 0.24, 0.06, "#ffffff", { esp: 0.012 });
+      patro(c, "Shell", 1.6, 0.42, 0.09, "#ffd200", { esp: 0.02 });
+      patro(c, "HP", 3.3, 0.7, 0.1, "#1b3fb4", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      patro(c, "UniCredit", 3.25, 0.24, 0.06, "#ffffff", { esp: 0.012 });
     });
     vista(ctx, "T", (c) => {
       ret(c, 2.5, -0.3, 4.0, 0.3, BRANCO); ret(c, 2.5, -0.012, 3.95, 0.012, VERM);
       ret(c, 0.05, -0.8, 0.5, 0.8, VERM); ret(c, 0.15, -0.015, 1.0, 0.015, BRANCO);
+      // Nas imagens onboard, o cockpit e o bico imediato são brancos; as bordas continuam vermelhas.
+      ret(c, 1.30, -0.28, 2.06, 0.28, BRANCO);
       ret(c, 3.9, -0.5, 4.4, 0.5, PRETO);
       logo(c, "ferrari", 0.78, -0.07, 1.0, 0.07);
     });
@@ -157,34 +170,50 @@ DESENHOS.ferrari = {
   },
 };
 
-// Mercedes: carro preto, faixa verde-água em diagonal na caixa lateral, asas e bico prateados
+// Mercedes W17: preto e prata, filetes Petronas e grafismos AMG.
 DESENHOS.mercedes = {
   numero: "#00d7b6",
   pintar(ctx) {
-    const PRETO = "#0a0b0e", PRATA = "#c8cdd3", VERDE = "#00d7b6";
+    const PRETO = "#0a0b0e", PRATA = "#c8cdd3", VERDE = "#00bda9";
     base(ctx, PRETO);
     lados(ctx, (c) => {
-      // faixa verde-água em diagonal na caixa lateral (do meio para a traseira) com a ponta prateada
-      poli(c, [[1.95, 0.26], [2.5, 0.28], [3.45, 0.5], [3.45, 0.56], [2.55, 0.4], [1.95, 0.35]], VERDE);
-      poli(c, [[1.95, 0.35], [2.55, 0.4], [3.45, 0.56], [3.45, 0.6], [2.5, 0.45], [1.95, 0.4]], PRATA);
-      // bico prateado (a frente do carro, com o corte para o preto)
-      poli(c, [[0.0, 0.0], [1.05, 0.0], [0.95, 0.4], [0.0, 0.4]], PRATA);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], "#16181c");
-      poli(c, [[0.95, 0.12], [2.05, 0.12], [2.05, 0.46], [0.95, 0.46]], "#2b2f35");
-      poli(c, [[0.95, 0.12], [2.05, 0.12], [2.05, 0.15], [0.95, 0.15]], PRATA);
-      // as estrelinhas da tampa do motor (pontos prateados sumindo para trás)
-      const R = mulberry(7); for (let i = 0; i < 60; i++) { const s = 2.6 + R() * 1.2, y = 0.62 + R() * 0.3 - (s - 2.6) * 0.18; c.fillStyle = `rgba(200,205,211,${0.2 + R() * 0.5})`; c.beginPath(); c.arc(s, y, 0.008 + R() * 0.01, 0, 6.3); c.fill(); }
-      logo(c, "mercedes", 1.1, 0.14, 2.0, 0.42);
-      patro(c, "PETRAL", 3.2, 0.2, 0.05, "#00d7b6", { esp: 0.02 });
-      patro(c, "kodiak", 1.55, 0.42, 0.06, "#c8cdd3", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      // Faixa estreita acompanha o contorno das caixas laterais.
+      poli(c, [[1.95,0.40],[2.60,0.43],[3.60,0.55],[3.60,0.57],[2.60,0.46],[1.95,0.43]], VERDE);
+      // Recortes prateados verticais do padrão AMG, sobre a parte superior do sidepod.
+      for (let i = 0; i < 4; i++) {
+        const s = 2.34 + i * 0.21;
+        poli(c, [[s,0.46],[s+0.12,0.47],[s+0.16,0.61],[s+0.04,0.60]], PRATA);
+      }
+      poli(c, [[0,0.25],[1.05,0.25],[0.95,0.40],[0,0.40]], PRATA);
+      poli(c, [[0,0.40],[0.95,0.40],[0.95,0.415],[0,0.415]], VERDE);
+      // Estrelas de três pontas da tampa, em vez de pontos circulares.
+      c.save(); c.strokeStyle = "rgba(210,216,220,0.65)"; c.lineWidth = 0.010;
+      for (let row=0; row<3; row++) for (let col=0; col<6; col++) {
+        const x=2.72+col*0.18+row*0.07, y=0.68+row*0.085-col*0.014, r=0.033;
+        c.beginPath(); for (let k=0; k<3; k++) { const a=-Math.PI/2+k*2*Math.PI/3; c.moveTo(x,y); c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r); } c.stroke();
+      }
+      c.restore();
+      patro(c,"PETRONAS",2.65,0.36,0.075,"#ffffff",{estilo:"normal",larg:0.58});
+      patro(c,"TeamViewer",2.22,0.59,0.046,"#ffffff",{estilo:"normal"});
+      patro(c,"Microsoft",2.44,0.83,0.046,"#ffffff",{estilo:"normal"});
+      patro(c,"SOLERA",2.62,0.76,0.045,"#ffffff",{estilo:"normal"});
+      patro(c,"INEOS",1.55,0.43,0.055,"#ffffff",{estilo:"normal"});
+      patro(c,"IWC",0.40,0.23,0.045,"#ffffff",{estilo:"normal"});
+      patro(c,"CROWDSTRIKE",4.04,0.75,0.045,"#ffffff",{estilo:"normal"});
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.55, 0.75, PRATA); ret(c, 0.1, -0.2, 1.05, 0.2, "#d9dde2");
-      ret(c, 2.3, -0.3, 4.0, 0.3, "#121418"); ret(c, 3.9, -0.5, 4.4, 0.5, "#181a1f");
-      ret(c, 2.5, -0.1, 2.6, 0.1, VERDE);
+      // Asas pretas, bico prateado estreito e contorno verde-água.
+      ret(c, 0.10,-0.19,1.18,0.19,VERDE);
+      ret(c, 0.10,-0.16,1.18,0.16,"#d9dde2");
+      ret(c, 1.30,-0.28,2.08,0.28,PRATA);
+      ret(c, 2.30,-0.30,4.00,0.30,"#121418");
+      ret(c, 3.90,-0.50,4.40,0.50,"#181a1f");
+      textoTopo(c,"PETRONAS",4.10,0,0.095,"#ffffff",{larg:0.65});
+      textoTopo(c,"TeamViewer",0.25,-0.48,0.045,"#ffffff",{larg:0.35});
+      textoTopo(c,"TeamViewer",0.25,0.48,0.045,"#ffffff",{larg:0.35});
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, PRATA); ret(c, -0.55, 0, 0.55, 0.15, PRETO); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, "#16181c"); ret(c, -0.5, 0.45, 0.5, 0.75, VERDE); });
+    vista(ctx, "F", (c) => { ret(c,-0.8,0,0.8,0.45,PRETO); ret(c,-0.18,0.2,0.18,0.45,PRATA); });
+    vista(ctx, "R", (c) => { ret(c,-0.8,0,0.8,1.0,"#16181c"); patro(c,"PETRONAS",0,0.78,0.10,"#ffffff",{estilo:"normal",larg:0.8}); });
   },
 };
 
@@ -202,13 +231,27 @@ DESENHOS["red-bull"] = {
       poli(c, [[3.0, 0.88], [4.45, 0.46], [4.45, 0.5], [3.1, 0.9]], VERM);
       poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], "#1c2b60");
       logo(c, "red-bull", 1.1, 0.14, 2.0, 0.4);
-      patro(c, "ORBITA", 3.3, 0.66, 0.09, "#ffffff", { esp: 0.015 });
-      patro(c, "Teklar", 1.5, 0.4, 0.07, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
-      patro(c, "GATE·7", 3.25, 0.22, 0.05, "#ffcc00");
+      patro(c, "Red Bull", 3.3, 0.66, 0.09, "#ffffff", { esp: 0.015 });
+      patro(c, "Mobil 1", 1.5, 0.4, 0.07, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      patro(c, "ORACLE", 2.9, 0.23, 0.09, "#ffffff", { estilo: "normal", larg: 0.72 });
     });
     vista(ctx, "T", (c) => {
       ret(c, 0.05, -0.75, 0.5, 0.75, VERM); ret(c, 0.0, -0.16, 0.7, 0.16, AMAR); ret(c, 0.7, -0.2, 1.1, 0.2, VERM);
       ret(c, 2.3, -0.3, 4.0, 0.3, "#102150"); ret(c, 2.3, -0.1, 2.9, 0.1, VERM);
+      // Padrão azul discreto, como o acabamento da pintura, sem textura extra na GPU.
+      const R = mulberry(22);
+      for (let i = 0; i < 400; i++) {
+        const s = 1.28 + R() * 0.88, x = -0.38 + R() * 0.76, w = 0.008 + R() * 0.023, h = 0.004 + R() * 0.013;
+        ret(c, s, x, s + w, x + h, R() > 0.5 ? "#23366a55" : "#070f2b66");
+      }
+      // Detalhes visíveis do cockpit, inspirados na imagem onboard: a marca no bico e os parceiros junto ao piloto.
+      // O símbolo dos touros é recortado do logo da equipe já incluído no jogo.
+      const marca = LOGOS.get("red-bull")?.img;
+      if (marca) {
+        const [px, py] = pt(c, 1.48, 0); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.translate(px, py); c.rotate(-Math.PI / 2);
+        c.drawImage(marca, marca.naturalWidth * 0.56, marca.naturalHeight * 0.41, marca.naturalWidth * 0.44, marca.naturalHeight * 0.20, -0.12 * K, -0.055 * K, 0.24 * K, 0.11 * K); c.restore();
+      }
+      textoTopo(c, "Red Bull", 1.60, 0, 0.11, "#e51a3a", { larg: 0.26, borda: "#ffffff" });
       ret(c, 3.9, -0.5, 4.4, 0.5, "#1c2b60"); logo(c, "red-bull", 3.92, -0.35, 4.38, 0.35);
     });
     vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, VERM); ret(c, -0.2, 0.1, 0.2, 0.45, AMAR); });
@@ -231,8 +274,8 @@ DESENHOS["racing-bulls"] = {
       poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], MAR);
       poli(c, [[2.95, 0.1], [3.5, 0.1], [3.3, 0.3], [2.95, 0.3]], MAR);
       logo(c, "racing-bulls", 1.1, 0.12, 2.0, 0.42, MAR);
-      patro(c, "VANTO", 1.35, 0.42, 0.075, MAR, { esp: 0.015 });
-      patro(c, "Cashly", 3.45, 0.2, 0.06, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      patro(c, "VISA", 1.35, 0.42, 0.075, MAR, { esp: 0.015 });
+      patro(c, "Cash App", 3.45, 0.2, 0.06, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
     });
     vista(ctx, "T", (c) => {
       ret(c, 0.05, -0.75, 0.5, 0.75, MAR); ret(c, 0.0, -0.17, 0.9, 0.17, LARANJA); ret(c, 0.0, -0.08, 0.45, 0.08, AMAR);
@@ -256,9 +299,9 @@ DESENHOS["aston-martin"] = {
       poli(c, [[0.0, 0.18], [1.1, 0.37], [1.1, 0.4], [0.0, 0.21]], LIMAO);
       poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
       logo(c, "aston-martin", 1.1, 0.14, 2.0, 0.4, "#ffffff");
-      patro(c, "ARAMEX", 3.3, 0.2, 0.08, "#ffffff", { esp: 0.01, estilo: "normal" });
-      patro(c, "Cyntra", 1.4, 0.43, 0.06, "#cedc00", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
-      patro(c, "ELM", 2.7, 0.65, 0.09, "#cedc00");
+      patro(c, "aramco", 3.3, 0.2, 0.08, "#ffffff", { esp: 0.01, estilo: "normal" });
+      patro(c, "Cognizant", 1.4, 0.43, 0.06, "#cedc00", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      patro(c, "BOSS", 2.7, 0.65, 0.09, "#cedc00");
     });
     vista(ctx, "T", (c) => {
       ret(c, 0.05, -0.75, 0.5, 0.75, ESC); ret(c, 0.15, -0.012, 1.1, 0.012, LIMAO);
@@ -282,11 +325,12 @@ DESENHOS.williams = {
       poli(c, [[0, 0.17], [1.2, 0.36], [1.2, 0.39], [0, 0.2]], BRANCO);
       poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], "#0e3a8c");
       logo(c, "williams", 1.1, 0.14, 2.0, 0.4);
-      patro(c, "KOMATIX", 3.3, 0.2, 0.075, "#ffffff", { esp: 0.012 });
-      patro(c, "Barclane", 1.3, 0.45, 0.055, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      patro(c, "ATLASSIAN", 3.3, 0.2, 0.075, "#ffffff", { esp: 0.012 });
+      patro(c, "KOMATSU", 1.3, 0.45, 0.055, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
     });
     vista(ctx, "T", (c) => {
       ret(c, 0.05, -0.75, 0.5, 0.75, CEU); ret(c, 0.15, -0.015, 1.15, 0.015, BRANCO);
+      // Patrocínios visíveis no onboard oficial do FW48.
       ret(c, 2.5, -0.3, 4.0, 0.3, MAR); ret(c, 3.9, -0.5, 4.4, 0.5, "#0e3a8c");
     });
     vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, CEU); ret(c, -0.55, 0, 0.55, 0.12, MAR); });
@@ -308,12 +352,13 @@ DESENHOS.audi = {
       poli(c, [[0.0, 0.0], [1.0, 0.0], [0.9, 0.4], [0.0, 0.4]], ESC);
       poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
       logo(c, "audi", 2.2, 0.62, 3.2, 0.96, "#ff3d0a");
-      patro(c, "Revona", 3.25, 0.2, 0.09, "#ffffff", { peso: 800, estilo: "normal", fam: "Arial, sans-serif" });
+      patro(c, "REVOLUT", 3.25, 0.2, 0.09, "#ffffff", { peso: 800, estilo: "normal", fam: "Arial, sans-serif" });
       patro(c, "NINJAONE", 1.3, 0.42, 0.05, "#14161a", { esp: 0.01 });
-      patro(c, "VISIT·QA", 3.5, 0.25, 0.05, "#ffffff");
+      patro(c, "visitQATAR", 3.5, 0.25, 0.05, "#ffffff");
     });
     vista(ctx, "T", (c) => {
       ret(c, 0.05, -0.75, 0.5, 0.75, ESC); ret(c, 0.1, -0.2, 1.05, 0.2, PRATA);
+      // Patrocinadores visíveis ao redor do piloto na vista onboard do R26.
       ret(c, 2.3, -0.3, 4.0, 0.3, PRETO); ret(c, 3.9, -0.5, 4.4, 0.5, PRETO);
       c.fillStyle = degrade(c, 2.1, 0, 3.9, 0, [[0, "rgba(255,61,10,0)"], [1, "#ff3d0a"]]); c.fillRect(2.1, -0.3, 1.8, 0.1); c.fillRect(2.1, 0.2, 1.8, 0.1);
     });
@@ -336,11 +381,12 @@ DESENHOS.alpine = {
       poli(c, [[2.0, 0.08], [3.4, 0.08], [3.2, 0.3], [2.0, 0.3]], CLARO);
       poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], "#081c4a");
       logo(c, "alpine", 1.1, 0.14, 2.0, 0.4, "#ffffff");
-      patro(c, "BRIVA", 3.7, 0.24, 0.1, ROSA, { esp: 0.01 });
-      patro(c, "Mercura", 1.5, 0.43, 0.06, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      patro(c, "BWT", 3.7, 0.24, 0.1, ROSA, { esp: 0.01 });
+      patro(c, "Microsoft", 1.5, 0.43, 0.06, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
     });
     vista(ctx, "T", (c) => {
       ret(c, 0.05, -0.75, 0.5, 0.75, ROSA); ret(c, 0.0, -0.17, 1.0, 0.17, ROSA); ret(c, 1.0, -0.17, 1.9, 0.17, AZUL);
+      ret(c, 1.30, -0.19, 1.75, 0.19, ROSA);
       ret(c, 2.3, -0.3, 4.0, 0.3, AZUL); ret(c, 3.0, -0.3, 4.0, -0.12, ROSA); ret(c, 3.0, 0.12, 4.0, 0.3, ROSA);
       ret(c, 3.9, -0.5, 4.4, 0.5, "#081c4a");
     });
@@ -364,8 +410,8 @@ DESENHOS.haas = {
       poli(c, [[2.9, 1.1], [4.45, 1.1], [4.45, 0.52], [3.7, 0.7], [3.3, 0.9]], PRETO);
       poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
       logo(c, "haas", 1.55, 0.3, 2.0, 0.45);
-      patro(c, "TOREX", 3.3, 0.76, 0.09, "#ffffff", { esp: 0.012 });
-      patro(c, "G·R", 1.7, 0.45, 0.09, PRETO);
+      patro(c, "TOYOTA", 3.3, 0.76, 0.09, "#ffffff", { esp: 0.012 });
+      patro(c, "GR", 1.7, 0.45, 0.09, PRETO);
     });
     vista(ctx, "T", (c) => {
       ret(c, 0.05, -0.75, 0.5, 0.75, VERM); ret(c, 0.0, -0.17, 0.9, 0.17, BRANCO); ret(c, 0.4, -0.04, 1.0, 0.04, PRETO);
@@ -386,17 +432,22 @@ DESENHOS.cadillac = {
     const R = mulberry(11);
     // os pixels: quanto mais para trás (s grande), mais quadradinhos pretos
     const pix = (c, a0, a1, b0, b1, p) => { const q = 0.042; for (let a = a0; a < a1; a += q) for (let b = b0; b < b1; b += q) { const f = (a - a0) / (a1 - a0); if (R() < Math.pow(f, p) * 0.9) { c.fillStyle = PRETO; c.fillRect(a, b, q, q); } } };
-    lados(ctx, (c) => {
+    lados(ctx, (c, lado) => {
+      const direita = lado > 0;
+      if (direita) ret(c, 0, 0, 4.4, 1.1, PRETO);
       poli(c, [[0.0, 0.0], [1.0, 0.0], [0.7, 0.3], [0.0, 0.3]], PRETO);
       pix(c, 2.1, 3.5, 0.05, 1.05, 1.8);
       poli(c, [[3.5, 1.1], [4.45, 1.1], [4.45, 0.35], [3.5, 0.35]], PRETO);
       poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
-      logo(c, "cadillac", 1.1, 0.16, 2.0, 0.4, PRETO);
-      patro(c, "TWK", 2.55, 0.5, 0.17, "#111111", { esp: 0.01 });
-      patro(c, "Claro·a", 1.2, 0.43, 0.05, "#111111", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      logo(c, "cadillac", 1.1, 0.16, 2.0, 0.4, direita ? BRANCO : PRETO);
+      patro(c, "TWG", 2.55, 0.5, 0.17, direita ? BRANCO : "#111111", { esp: 0.01 });
+      patro(c, "Claro", 1.2, 0.43, 0.05, direita ? BRANCO : "#111111", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
     });
     vista(ctx, "T", (c) => {
       ret(c, 0.05, -0.75, 0.5, 0.75, PRETO); ret(c, 0.0, -0.17, 0.9, 0.17, PRETO); ret(c, 0.9, -0.17, 1.6, 0.17, BRANCO);
+      // Pintura assimétrica do carro de Pérez: o lado direito é predominantemente preto.
+      ret(c, 0.9, 0.13, 3.5, 0.8, PRETO);
+      // Telcel aparece duas vezes no painel dianteiro, ao lado do pilar do halo.
       pix(c, 2.1, 3.5, -0.3, 0.3, 1.5); ret(c, 3.5, -0.3, 4.0, 0.3, PRETO); ret(c, 3.9, -0.5, 4.4, 0.5, PRETO);
     });
     vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, BRANCO); ret(c, -0.8, 0, 0.8, 0.12, PRETO); });
@@ -408,6 +459,152 @@ DESENHOS.cadillac = {
 export const temDesenho = (equipe) => !!DESENHOS[equipe];
 export const corDoNumero = (equipe) => DESENHOS[equipe]?.numero || "#ffffff";
 
+// Marcas nos halos de 2026, inspiradas nas vistas onboard e nas parcerias de cada equipe.
+// O atlas é compartilhado entre os carros da equipe; o shader o projeta só na barra do halo.
+const HALOS = {
+  mclaren: ["AIRWALLEX", "DP WORLD", "VELO.COM", "Gemini", "ECOLAB"],
+  ferrari: ["Bitdefender", "Shell", "HP", "RICHARD MILLE", "Bitdefender"],
+  mercedes: ["INEOS", "", "CROWDSTRIKE", "", "INEOS"],
+  "red-bull": ["Hard Rock", "ORACLE", "TAG HEUER", "AT&T", "FORD"],
+  "racing-bulls": ["HUGO", "VISA", "FORD", "Cash App", "HUGO"],
+  "aston-martin": ["BOSS", "Valvoline", "VALHALLA", "aramco", "Cognizant"],
+  williams: ["DURACELL", "kraken", "WILLIAMS", "kraken", "DURACELL"],
+  audi: ["", "Castrol", "aneis", "QATAR", ""],
+  alpine: ["", "eni", "BWT", "MSC", ""],
+  haas: ["OAKBERRY", "HAAS", "TOYOTA", "TGR", "Pirelli"],
+  cadillac: ["", "3M", "", "", ""],
+};
+const TEXTURAS_HALO = new Map();
+export function texturaDoHalo(equipe) {
+  if (!HALOS[equipe]) return null;
+  if (TEXTURAS_HALO.has(equipe)) return TEXTURAS_HALO.get(equipe);
+  const cv = document.createElement("canvas"); cv.width = 2048; cv.height = 256;
+  const ctx = cv.getContext("2d"); ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  // Nos halos claros o branco some; as marcas usam o azul ou o preto da equipe.
+  ctx.fillStyle = ({ alpine: "#182356", haas: "#151a21", audi: "#151a20" })[equipe] || "#fff";
+  HALOS[equipe].forEach((nome, i) => {
+    const x = equipe === "mclaren" ? [260, 600, 1024, 1448, 1788][i] : 180 + i * 422, central = i === 2;
+    ctx.save(); ctx.translate(x, 128); ctx.scale(1, 0.9);
+    if (central && equipe === "mercedes") {
+      ctx.fillStyle = "#1ccfb7"; ctx.fillRect(-150, -100, 300, 18);
+      ctx.fillStyle = "#fff"; ctx.font = "900 31px Arial, sans-serif"; ctx.fillText("CROWDSTRIKE", 0, -25, 275);
+      ctx.font = "700 30px Arial, sans-serif"; ctx.fillText("Snapdragon", 0, 27, 245);
+    } else if (central && equipe === "audi") {
+      // Os quatro anéis laranja no topo e Revolut na face dianteira do arco.
+      ctx.strokeStyle = "#f24d1d"; ctx.lineWidth = 7;
+      for (const dx of [-57, -19, 19, 57]) { ctx.beginPath(); ctx.ellipse(dx, -26, 31, 22, 0, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.fillStyle = "#ffffff"; ctx.font = "700 50px Arial, sans-serif"; ctx.fillText("Revolut", 0, 44, 205);
+    } else if (central && equipe === "ferrari") {
+      // Painel branco do HP sobre o arco escuro, como na vista onboard.
+      ctx.fillStyle = "#f3f3f1"; ctx.fillRect(-160, -145, 320, 290);
+      ctx.fillStyle = "#1674ba"; ctx.font = "italic 900 78px Arial, sans-serif"; ctx.fillText("hp", 0, 0);
+    } else if (equipe === "ferrari" && nome === "Shell") {
+      ctx.fillStyle = "#ffcf00"; ctx.strokeStyle = "#d91e26"; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(-46, -5); ctx.quadraticCurveTo(-40, -45, 0, -48); ctx.quadraticCurveTo(40, -45, 46, -5); ctx.lineTo(28, 25); ctx.lineTo(10, 33); ctx.lineTo(0, 25); ctx.lineTo(-10, 33); ctx.lineTo(-28, 25); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (equipe === "mclaren" && nome === "Gemini") {
+      ctx.fillStyle = "#79c9ff"; ctx.beginPath(); ctx.moveTo(-144, -27); ctx.quadraticCurveTo(-125, -22, -119, -42); ctx.quadraticCurveTo(-113, -22, -94, -17); ctx.quadraticCurveTo(-113, -12, -119, 8); ctx.quadraticCurveTo(-125, -12, -144, -17); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = "600 49px Arial, sans-serif"; ctx.fillText("Gemini", 12, 0, 235);
+    } else if (central && equipe === "red-bull") {
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(-122, -54); ctx.lineTo(122, -54); ctx.lineTo(122, 30); ctx.lineTo(0, 70); ctx.lineTo(-122, 30); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#087044"; ctx.fillRect(-110, -44, 220, 38); ctx.fillStyle = "#cf142b"; ctx.fillRect(-110, -4, 220, 31);
+      ctx.fillStyle = "#fff"; ctx.font = "900 28px Arial, sans-serif"; ctx.fillText("TAG", 0, -25); ctx.fillText("HEUER", 0, 12);
+    } else {
+      ctx.font = equipe === "mclaren" ? `${central ? 700 : 600} ${central ? 57 : 48}px Arial, sans-serif` : `${central ? 900 : 800} ${central ? 65 : 64}px Arial, sans-serif`;
+      ctx.fillText(nome, 0, 0, central ? 330 : 300);
+    }
+    ctx.restore();
+  });
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.userData.baseEscura = equipe === "cadillac" || equipe === "ferrari" || equipe === "mclaren" || equipe === "williams" || equipe === "mercedes" || equipe === "aston-martin" || equipe === "racing-bulls"; t.userData.faceAudi = equipe === "audi"; t.userData.baseRosa = equipe === "alpine"; TEXTURAS_HALO.set(equipe, t); return t;
+}
+export function aplicarHalo(sh, textura) {
+  sh.uniforms.haloPatrocinios = { value: textura };
+  sh.uniforms.haloBaseEscura = { value: textura.userData.baseEscura ? 1 : 0 };
+  sh.uniforms.haloFaceAudi = { value: textura.userData.faceAudi ? 1 : 0 };
+  sh.uniforms.haloBaseRosa = { value: textura.userData.baseRosa ? 1 : 0 };
+  sh.fragmentShader = "uniform sampler2D haloPatrocinios;\nuniform float haloBaseEscura;\nuniform float haloFaceAudi;\nuniform float haloBaseRosa;\n" + sh.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>
+  { // A barra curva do halo no modelo 2026; a folha acompanha a curva e não pinta a carroceria.
+    float hx = vPc.x, hz = 1.925 + 0.60 * abs(hx) + 0.40 * hx * hx;
+    float hy = 0.765 - 1.0 * hx * hx;
+    vec2 huv = vec2((hx + 0.30) / 0.60, 0.5 + (vPc.y - hy) / 0.08);
+    if (vPc.y > 0.68 && vPc.y < 0.84 && abs(hx) < 0.30 && abs(vPc.z - hz) < 0.08 && huv.y > 0.0 && huv.y < 1.0) {
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.012, 0.014, 0.018), haloBaseEscura);
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.012, 0.014, 0.018), haloFaceAudi * (1.0 - smoothstep(0.28, 0.42, huv.y)));
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.48, 0.72), haloBaseRosa);
+      vec4 marca = texture2D(haloPatrocinios, huv);
+      diffuseColor.rgb = mix(diffuseColor.rgb, marca.rgb, marca.a);
+    }
+  }`);
+}
+
+// Decalques em alta resolução para a pequena área vista pelo piloto. A folha da carroceria
+// cobre o carro inteiro; aqui cada pixel é dedicado ao cockpit, evitando letras borradas.
+const COCKPIT_MARCAS = {
+  "red-bull": { lado: ["Mobil 1", "Mobil 1"], cor: "#ffffff" },
+  "aston-martin": { centro: ["CoreWeave", "CoreWeave"], lado: ["JCB", "JCB"], cor: "#ffffff" },
+  "racing-bulls": { centro: ["Red", "Bull"], lado: ["TUDOR", "TUDOR"], cor: "#1c2231", corCentro: "#e21c40" },
+  mercedes: { asa: ["nu", "nu"], lado: ["TeamViewer", "TeamViewer"], cor: "#25272b" },
+  alpine: { centro: ["BWT", "BWT"], lado: ["ALPINE", "ALPINE"], cor: "#183865", corLado: "#ffffff" },
+  mclaren: { lado: ["allwyn", "allwyn"], asa: ["FxPro", "FxPro"], anguloAsa: 0, posAsa: 1.84, tamanhoAsa: 24, cor: "#ffffff" },
+  ferrari: { lado: ["ambipar", "ambipar"], asa: ["CEVA", "CEVA"], cor: "#111111" },
+  williams: { centro: ["KOMATSU", "KOMATSU"], lado: ["BARCLAYS", "BARCLAYS"], cor: "#ffffff" },
+  audi: { centro: ["NEXO", "NEXO"], asa: ["aleph", "aleph"], lado: ["WORLD OF HYATT", "WORLD OF HYATT"], cor: "#25272b" },
+  cadillac: { centro: ["telcel", "telcel"], lado: ["TWG", "TWG"], cor: "#34383a", corDireita: "#ffffff" },
+};
+const TEXTURAS_COCKPIT = new Map();
+export function texturaDoCockpit(equipe) {
+  const dados = COCKPIT_MARCAS[equipe]; if (!dados) return null;
+  if (TEXTURAS_COCKPIT.has(equipe)) return TEXTURAS_COCKPIT.get(equipe);
+  const cv = document.createElement("canvas"); cv.width = cv.height = 1024; const ctx = cv.getContext("2d");
+  const X = x => (x + 0.35) / 0.70 * 1024, Y = s => (s - 1.30) / 0.90 * 1024;
+  const desenhar = (txt, s, x, h, largura, giro, cor) => {
+    if (!txt) return; ctx.save(); ctx.translate(X(x), Y(s)); ctx.rotate(giro); ctx.fillStyle = cor;
+    ctx.font = `800 ${h}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(txt, 0, 0, largura); ctx.restore();
+  };
+  for (let i = 0; i < 2; i++) {
+    const lado = i ? 1 : -1, cor = i && dados.corDireita ? dados.corDireita : dados.cor;
+    desenhar(dados.centro?.[i], 1.60, lado * 0.072, 48, 160, 0, dados.corCentro || cor);
+    desenhar(dados.asa?.[i], dados.posAsa ?? 1.80, lado * 0.22, dados.tamanhoAsa ?? 40, 150, dados.anguloAsa ?? -Math.PI / 2, cor);
+    desenhar(dados.lado?.[i], 1.94, lado * 0.18, 46, 250, -Math.PI / 2, dados.corLado || cor);
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.userData.mclaren = equipe === "mclaren";
+  t.userData.mercedes = equipe === "mercedes";
+  if (t.userData.mclaren || t.userData.mercedes) {
+    // Atlas separado para manter as marcas do bico legíveis sem afetar outras equipes.
+    const nariz = document.createElement("canvas"); nariz.width = nariz.height = 1024;
+    const nc = nariz.getContext("2d"); nc.fillStyle = "#151515"; nc.textAlign = "center"; nc.textBaseline = "middle";
+    const marcas = t.userData.mclaren ? [["DELL", 0.84, 62], ["Deloitte", 0.73, 45], ["webex", 0.62, 49], ["DEWALT", 0.51, 48], ["PIRELLI", 0.40, 45]] : [["PETRONAS", 0.87, 45], ["Syntium", 0.78, 42], ["INEOS", 0.57, 42], ["SAP", 0.45, 42]];
+    for (const [marca, s, tamanho] of marcas) {
+      nc.font = `800 ${tamanho}px Arial, sans-serif`; nc.fillText(marca, 512, (s - 0.25) / 0.90 * 1024, 360);
+    }
+    const nt = new THREE.CanvasTexture(nariz); nt.colorSpace = THREE.SRGBColorSpace; nt.anisotropy = 8; nt.minFilter = THREE.LinearMipmapLinearFilter;
+    t.userData.nariz = nt;
+  }
+  TEXTURAS_COCKPIT.set(equipe, t); return t;
+}
+export function aplicarCockpit(sh, textura) {
+  sh.uniforms.cockpitMarcas = { value: textura };
+  sh.uniforms.cockpitMclaren = { value: textura.userData.mclaren ? 1 : 0 };
+  sh.uniforms.marcasNariz = { value: textura.userData.nariz || textura };
+  sh.uniforms.temMarcasNariz = { value: textura.userData.nariz ? 1 : 0 };
+  sh.fragmentShader = "uniform sampler2D cockpitMarcas;\nuniform sampler2D marcasNariz;\nuniform float temMarcasNariz;\nuniform float cockpitMclaren;\n" + sh.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>
+  { // somente as superfícies superiores ao redor do piloto, sem pintar o halo
+    vec2 uvCockpit = vec2((vPc.x + 0.35) / 0.70, 1.0 - (vPc.z - 1.30) / 0.90);
+    if (abs(vPc.x) < 0.35 && vPc.z > 1.30 && vPc.z < 2.20 && vPc.y < 0.66 && vNc.y > 0.25) {
+      vec4 marcaCockpit = texture2D(cockpitMarcas, uvCockpit);
+      if (cockpitMclaren > 0.5 && vPc.y < 0.60 && vPc.z < 1.90 && abs(vPc.x) > 0.16) marcaCockpit.a = 0.0;
+      diffuseColor.rgb = mix(diffuseColor.rgb, marcaCockpit.rgb, marcaCockpit.a);
+    }
+    if (temMarcasNariz > 0.5 && abs(vPc.x) < 0.18 && vPc.z > 0.25 && vPc.z < 1.15 && vPc.y < 0.60 && vNc.y > 0.25) {
+      vec2 uvNariz = vec2((vPc.x + 0.18) / 0.36, 1.0 - (vPc.z - 0.25) / 0.90);
+      vec4 marcaNariz = texture2D(marcasNariz, uvNariz);
+      diffuseColor.rgb = mix(diffuseColor.rgb, marcaNariz.rgb, marcaNariz.a);
+    }
+  }`);
+}
+
 // ---------------------------------------------------------------- as texturas (uma por equipe, guardada)
 const FOLHAS = new Map();
 export function folhaDaEquipe(equipe) {
@@ -415,7 +612,7 @@ export function folhaDaEquipe(equipe) {
   if (FOLHAS.has(equipe)) return FOLHAS.get(equipe);
   const cv = document.createElement("canvas"); cv.width = FW; cv.height = FH;
   const ctx = cv.getContext("2d"); DESENHOS[equipe].pintar(ctx);
-  lados(ctx, (c) => ret(c, 2.1, 0.12, 2.9, 0.46, CARBONO)); // a entrada de ar das caixas laterais é escura em qualquer pintura
+  lados(ctx, (c) => ret(c, 2.1, 0.39, 2.35, 0.46, CARBONO)); // a entrada de ar das caixas laterais é escura em qualquer pintura
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
   t.userData.cv = cv; FOLHAS.set(equipe, t); return t;
 }
