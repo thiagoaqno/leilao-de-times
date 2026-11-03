@@ -1,4 +1,4 @@
-/* Corrida da Galera — a tela de resultado do GP (resultado-gp.js): o pódio com o carro girando, os degraus na cor de cada equipe e a
+/* Corrida da Galera — a tela de resultado do GP (resultado-gp.js): o pódio com os carros dos 3 primeiros, os degraus na cor de cada equipe e a
    tabela no estilo da transmissão (faixa em degradê da equipe, logo, sigla, ícones e chips). Cada equipe entra por variáveis na linha:
    --eq (a cor), --eq6 / --eq3 / --eq1 (a mesma cor com 65%, 30% e 12% de opacidade). "Reduzir movimento" desliga toda animação. */
 .results .placa.gp.rg-placa{width:min(1040px,100%);max-height:100%;overflow:auto;overflow-x:hidden}
@@ -8,39 +8,37 @@
 .rg-titulo svg{width:1.05em;height:1.05em;color:#ffd23f;flex:none}
 
 /* ---------- o pódio ---------- */
-.rg-podio{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:12px;margin:6px 0 14px;align-items:stretch}
-.rg-palco{position:relative;min-height:270px;overflow:hidden;border:1px solid var(--eq3);border-top:3px solid var(--eq);background:radial-gradient(120% 85% at 50% 105%,var(--eq3),transparent 62%),linear-gradient(180deg,#10151d,#06080c)}
-.rg-carro{position:absolute;inset:0}
-.rg-carro .sn-palco3d{position:absolute;inset:0;width:100%;height:100%;display:block}
+.rg-podio{position:relative;isolation:isolate;margin:6px 0 14px;padding:clamp(8px,2vw,16px) clamp(6px,1.6vw,16px) 0;overflow:hidden;border:1px solid var(--eq3);border-top:3px solid var(--eq);background:radial-gradient(90% 60% at 50% 70%,var(--eq3),transparent 70%),linear-gradient(180deg,#10151d,#06080c)}
+.rg-podio3d{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:0}
 .rg-logo-grande{position:absolute;inset:0;display:grid;place-items:center;transition:opacity .3s}
-.rg-logo-grande .equipe-marca{width:clamp(110px,22vw,170px);height:clamp(110px,22vw,170px);filter:drop-shadow(0 8px 22px #000b)}
-.rg-logo-grande .equipe-marca .sigla{font-size:34px}
-.rg-carro.tem-3d .rg-logo-grande{opacity:0;pointer-events:none}
-.rg-palco-txt{position:absolute;left:12px;bottom:10px;z-index:2;display:flex;flex-direction:column;text-shadow:0 2px 8px #000}
-.rg-palco-txt small{font:700 11px Manrope,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#cfd6e2}
-.rg-palco-txt b{font:800 clamp(22px,3.6vw,32px)/1 var(--display,"Barlow Condensed",sans-serif);font-style:italic;text-transform:uppercase;color:#fff;border-left:4px solid var(--eq);padding-left:8px;margin-top:3px}
-.rg-vitoria{position:absolute;left:0;right:0;top:9%;z-index:3;display:flex;flex-direction:column;align-items:center;pointer-events:none;text-shadow:0 4px 18px #000c}
-.rg-vitoria b{font:900 clamp(40px,7.2vw,72px)/.95 var(--display,"Barlow Condensed",sans-serif);font-style:italic;letter-spacing:.04em;color:#fff;background:linear-gradient(180deg,#fff 20%,#ffd23f 60%,#ff9f1a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 3px 0 #0009)}
+.rg-logo-grande .equipe-marca{width:min(100%,clamp(44px,9vw,92px));aspect-ratio:1;height:auto;filter:drop-shadow(0 8px 22px #000b)}
+.rg-logo-grande .equipe-marca .sigla{font-size:clamp(16px,3vw,28px)}
+.rg-deg-car.tem-3d .rg-logo-grande{opacity:0;pointer-events:none}
+.rg-deg-car{position:relative;height:clamp(60px,13vw,132px);z-index:1}
+.rg-seu{position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:2;white-space:nowrap;font:800 10px Manrope,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#1a1300;background:#ffd23f;padding:2px 8px;border-radius:9px;box-shadow:0 2px 10px #000a}
+.rg-vitoria{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;margin:2px 0 4px;pointer-events:none;text-shadow:0 4px 18px #000c}
+.rg-vitoria b{font:900 clamp(34px,6vw,60px)/.95 var(--display,"Barlow Condensed",sans-serif);font-style:italic;letter-spacing:.04em;color:#fff;background:linear-gradient(180deg,#fff 20%,#ffd23f 60%,#ff9f1a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 3px 0 #0009)}
 .rg-vitoria small{margin-top:4px;font:800 12px Manrope,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:var(--eq);padding:3px 10px}
 
-.rg-degraus{display:flex;align-items:flex-end;justify-content:center;gap:6px;min-width:0}
+.rg-degraus{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:center;gap:6px;min-width:0}
 .rg-deg{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:stretch}
 .rg-deg.d1{flex-grow:1.3;order:2}.rg-deg.d2{order:1}.rg-deg.d3{order:3}
-.rg-deg-info{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;padding:0 2px 8px;min-width:0}
+.rg-deg-info{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;gap:2px;padding:8px 2px 10px;min-width:0;min-height:clamp(104px,15vw,128px);box-sizing:border-box}
 .rg-deg-info .rg-marca{width:clamp(34px,5vw,48px);height:clamp(34px,5vw,48px);margin-bottom:3px}
-.rg-deg.d1 .rg-deg-info .rg-marca{width:clamp(48px,7vw,70px);height:clamp(48px,7vw,70px)}
 .rg-copa{width:28px;height:28px;color:#ffd23f;filter:drop-shadow(0 0 8px #ffd23f99)}.rg-copa svg{width:100%;height:100%;display:block}
 .rg-deg-nome{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 clamp(14px,1.9vw,18px)/1.1 var(--display,"Barlow Condensed",sans-serif);text-transform:uppercase;letter-spacing:.02em;color:#fff}
-.rg-deg.d1 .rg-deg-nome{font-size:clamp(18px,2.8vw,26px)}
+.rg-deg.d1 .rg-deg-nome{font-size:clamp(16px,2.2vw,21px)}
 .rg-deg-eq{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px Manrope,sans-serif;color:#b9c4d0}
 .rg-deg-tempo{font:800 14px Manrope,sans-serif;font-variant-numeric:tabular-nums;color:#fff}
-.rg-deg.d1 .rg-deg-tempo{font-size:17px;color:#ffe36a}
+.rg-deg.d1 .rg-deg-tempo{color:#ffe36a}
 .rg-deg-pts{font:800 11px Manrope,sans-serif;color:#0b1016;background:#ffffffd9;padding:1px 7px;border-radius:9px}
 .rg-sigla{font-weight:800;letter-spacing:.06em;color:#e6ebf2}
 .rg-bloco{height:56px;display:grid;place-items:center;position:relative;transform-origin:bottom;background:linear-gradient(180deg,var(--eq6),var(--eq3) 70%,var(--eq1));border-top:3px solid var(--eq);box-shadow:inset 0 1px 0 #ffffff33}
 .rg-bloco span{font:900 clamp(30px,5vw,46px)/1 var(--display,"Barlow Condensed",sans-serif);font-style:italic;color:#fff;text-shadow:0 2px 10px #0009}
 .rg-deg.d1 .rg-bloco{height:104px;box-shadow:0 0 36px var(--eq3),inset 0 1px 0 #ffffff55}
 .rg-deg.d2 .rg-bloco{height:78px}
+.rg-bloco::after{content:"";position:absolute;inset:0;pointer-events:none}
+.rg-deg.eu .rg-bloco::after{border:2px solid #ffd23f;box-shadow:0 0 22px #ffd23f88}
 .rg-deg.eu .rg-deg-nome::after{content:"  ·  você";font-size:.7em;color:#ffd23f}
 
 /* ---------- a tabela ---------- */
@@ -95,12 +93,11 @@
 .rg-deg.d3 .rg-bloco{animation-delay:.1s}.rg-deg.d2 .rg-bloco{animation-delay:.4s}.rg-deg.d1 .rg-bloco{animation-delay:.75s,1.6s;animation-name:rg-sobe,rg-brilho;animation-duration:.7s,2.6s;animation-iteration-count:1,infinite}
 .rg-deg-info{animation:rg-surge .5s ease both}
 .rg-deg.d3 .rg-deg-info{animation-delay:.6s}.rg-deg.d2 .rg-deg-info{animation-delay:.9s}.rg-deg.d1 .rg-deg-info{animation-delay:1.3s}
-.rg-palco{animation:rg-surge .6s ease both}
 .rg-vitoria b{animation:rg-carimbo .7s cubic-bezier(.2,.9,.3,1.2) .5s both}.rg-vitoria small{animation:rg-surge .5s ease 1s both}
 .rg-linha{animation:rg-entra .4s ease both;animation-delay:calc(1.1s + var(--i,0) * 45ms)}
 .confetti{position:fixed;top:-14px;width:9px;height:14px;z-index:65;pointer-events:none;border-radius:2px;animation:rg-cai linear forwards}
 @media (prefers-reduced-motion:reduce){
-  .rg-bloco,.rg-deg-info,.rg-palco,.rg-vitoria b,.rg-vitoria small,.rg-linha,.rg-logo-grande{animation:none!important;transition:none!important}
+  .rg-bloco,.rg-deg-info,.rg-vitoria b,.rg-vitoria small,.rg-linha,.rg-logo-grande{animation:none!important;transition:none!important}
   .rg-deg.d1 .rg-bloco{box-shadow:0 0 36px var(--eq3),inset 0 1px 0 #ffffff55}
   .rg-vitoria b{transform:rotate(-1deg)}
   .confetti{display:none}
@@ -108,8 +105,9 @@
 
 /* ---------- celular: nada de rolagem para o lado ---------- */
 @media (max-width:760px){
-  .rg-podio{grid-template-columns:minmax(0,1fr)}
-  .rg-palco{min-height:210px}
+  .rg-degraus{gap:4px}
+  .rg-deg-car{height:clamp(52px,17vw,90px)}
+  .rg-deg-info{min-height:104px}
   .rg-deg.d1 .rg-bloco{height:78px}.rg-deg.d2 .rg-bloco{height:58px}.rg-bloco{height:42px}
   .rg-cab{display:none}
   .rg-linha{grid-template-columns:30px minmax(0,1fr) auto;grid-template-areas:"pos piloto tempo" "pos extra pts";row-gap:3px;padding:5px 8px 5px 0}
@@ -124,7 +122,9 @@
   .rg-alerta::after{left:auto;right:-30px}
 }
 @media (max-width:420px){
-  .rg-deg-info .rg-marca{width:30px;height:30px}.rg-deg.d1 .rg-deg-info .rg-marca{width:42px;height:42px}
-  .rg-deg-tempo{font-size:12px}.rg-deg.d1 .rg-deg-tempo{font-size:14px}
+  .rg-deg-info .rg-marca{width:30px;height:30px}
+  .rg-deg-tempo{font-size:12px}
+  .rg-deg-info{min-height:96px}
   .rg-deg-eq{display:none}
+  .rg-deg-nome{font-size:13px}.rg-deg.d1 .rg-deg-nome{font-size:15px}
 }
