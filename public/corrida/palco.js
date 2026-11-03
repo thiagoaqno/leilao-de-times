@@ -3,7 +3,7 @@
 // só dele, ao vivo, que roda enquanto o palco está na tela (a sala escondida não desenha nada). Com "reduzir movimento" o carro
 // fica parado, de três quartos. Sem WebGL, `palco.ok` é falso e a sala mostra a foto parada de `carPreview`.
 import * as THREE from "three";
-import { makeKart, dropKart } from "./carros.js";
+import { makeKart, dropKart, vitrinePiloto } from "./carros.js";
 
 const reduz = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
 let renderer = null, cena = null, cam = null, anel = null, rim1 = null, rim2 = null, carro = null, chave = "", host = null, ro = null, raf = 0, ultimo = 0, sujo = true, tam = "";
@@ -86,6 +86,6 @@ function quadro(t) {
   raf = requestAnimationFrame(quadro);
   const dt = Math.min(0.1, (t - ultimo) / 1000); ultimo = t;
   if (!host || !host.isConnected || document.hidden || !host.clientWidth) return;
-  if (carro && !reduz.matches) { angulo += dt * 0.36; carro.g.rotation.y = angulo; sujo = true; } // ~17 s por volta
+  if (carro && !reduz.matches) { angulo += dt * 0.36; carro.g.rotation.y = angulo; vitrinePiloto(carro, dt); sujo = true; } // ~17 s por volta (e o piloto mexendo a cabeça)
   if (sujo) { renderer.render(cena, cam); sujo = !reduz.matches; }
 }

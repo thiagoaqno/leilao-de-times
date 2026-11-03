@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { scene } from "./cena.js";
 import { montarF1, animarF1, animarDrs, soltarF1, trocarComposto, f1Pronto, coresDa, TAM, PINTURAS } from "./f1.js";
 import { clima } from "./clima.js";
+import { criarPiloto, animarPiloto, ocultarPiloto as ocultarPilotoDe, soltarPiloto } from "./f1-piloto.js";
 let kartChegou = false; f1Pronto.then(() => { kartChegou = true; }); // a foto da garagem é refeita quando o modelo 3D chega
 import { faiscas } from "./efeitos.js";
 import { luzNoMaterial } from "./kit/luz-postes.js";
@@ -21,7 +22,7 @@ export const CARS3 = {
 export const KS = 10; // metros do modelo -> unidades da pista
 export const MODS3 = window.Pistas.MODS, MODS_PADRAO = window.Pistas.MODS_PADRAO;
 // leve: o modelo com menos triângulos e sem sombra projetada (os carros dos outros; não há mais sombra redonda falsa no chão: era a mancha preta oval sob o carro)
-// op: { volante (o carro do jogador: a tela e as luzes de troca do volante, f1.js), numero (o número do piloto, no carro de equipe), semPintura (a pintura de equipe fica de fora: a máscara de cores) }
+// op: { sigla (o piloto robô, f1-capacetes.js: o capacete é o dele), volante (o carro do jogador: a tela e as luzes de troca do volante, f1.js), numero (o número do piloto, no carro de equipe), semPintura (a pintura de equipe fica de fora: a máscara de cores) }
 export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene, leve = false, op = {}) {
   const tipo = CARS3[model] ? model : "equilibrado", spec = CARS3[tipo], md = { ...MODS_PADRAO, ...(mods || {}) };
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
@@ -75,6 +76,8 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
       disco.position.copy(r.esterca.position); disco.position.x -= Math.sign(disco.position.x) * (kt.disco?.dx ?? 0.1); disco.scale.setScalar(kt.disco?.k ?? 1);
     });
     kt.g.traverse((o) => { if (o.isMesh) o.castShadow = !ghost && !leve; });
+    // o piloto (f1-piloto.js): capacete e luvas nas cores da equipe (ou da "Sua cor"); só no carro de 2026 e nunca no fantasma do recorde
+    if (!ghost && !k.pil && kt.modelo?.dados && kt.rodas.length) k.pil = criarPiloto(kt, { cor1, cor2, numero: op.numero, nome: name, semente: op.semente, sigla: op.sigla });
     if (ghost) for (const m of kt.mats) { m.transparent = true; m.opacity = 0.5; m.depthWrite = false; }
   };
   kt.aoMontar = pronto; pronto();
@@ -87,8 +90,8 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
 // `d`: a distância em unidades do mundo. Só esconde as peças do modelo (pelo nome), sem mexer nos efeitos (luzes, chamas, faíscas).
 const LOD_PERTO = 320, LOD_LONGE = 1000;
 // (os nomes do carro clássico e, depois, os das peças que f1-2026.js monta)
-const LOD1 = new Set(["gear_switch", "interior_details_1", "interior_details_2", "steering_wheel", "back_suspension_2", "car_body_3", "car_body_4", "volante", "volante-det", "miudezas"]);
-const LOD2 = new Set(["back_suspension_1", "front_suspension", "car_body_2", "McLaren_mp4_5_2", "detalhes", "mecanica"]);
+const LOD1 = new Set(["gear_switch", "interior_details_1", "interior_details_2", "steering_wheel", "back_suspension_2", "car_body_3", "car_body_4", "volante", "volante-det", "miudezas", "luvas", "luvas-aro", "braco", "tronco"]); // (o piloto: as luvas, os braços e os ombros saem de longe)
+const LOD2 = new Set(["back_suspension_1", "front_suspension", "car_body_2", "McLaren_mp4_5_2", "detalhes", "mecanica", "capacete", "viseira"]); // (e, bem longe, a cabeça)
 export function lodKart(k, d) {
   if (!k || !k.g) return;
   const n = d > LOD_LONGE ? 2 : d > LOD_PERTO ? 1 : 0;
@@ -99,6 +102,7 @@ export function lodKart(k, d) {
 }
 export function fantasmaVisual(k, on) {
   if (!k || !k.mats) return;
+  k.pil?.ocultarFantasma(on); // (os materiais do piloto são de todos os carros da equipe: no fantasma ele some em vez de ficar opaco)
   // O carro fica SEMPRE no passe transparente (com opacidade 1 parece opaco): trocar `transparent` muda o programa do sombreador no three
   // (OPAQUE), e o primeiro fantasma da corrida recompilava todos os materiais dos carros, travando o jogo de todos. Assim o fantasma só
   // mexe na opacidade e no depthWrite, que são uniformes e estado, sem compilar nada.
@@ -132,6 +136,7 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   k.tempoGP += dt;
   k.lanterna.visible = k.freios.visible = !!fx.f1 && !fx.bala;
   const desaceleracao = dt > 0 ? ((k.velAnterior ?? v) - v) / dt : 0; k.velAnterior = v;
+  if (k.pil) animarPiloto(k.pil, { dt, v, steer: k.steerV, dec: desaceleracao, lod: k.lod || 0 }); // a cabeça e as mãos (f1-piloto.js), depois do volante girar
   const freando = fx.f1 && v > 90 && desaceleracao > 90 && Math.abs(z - ground) < 5;
   // A luz de chuva (cada carro com o seu material e a sua fase): pulso de 0,8 s só com chuva, e acesa fraca no seco; com menos movimento fica acesa.
   // A de freio acende forte e firme enquanto ESTE carro freia (a desaceleração dele), não importa o que os outros fazem.
@@ -162,8 +167,12 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
     for (const s of [-1, 1]) faiscas(x - fx0 * 16 - fy0 * s * 9, z + 2, y - fy0 * 16 + fx0 * s * 9, fx.bala ? "#ff7a1a" : fx.estrela ? "#ffd84a" : fx.derrapa > 1 ? "#ff9a20" : "#6cc8ff", 2, 22);
   }
 }
+// na câmera de cockpit do MEU carro o capacete e o corpo do piloto somem (as luvas no volante ficam); jogo.js chama a cada quadro com o modo da câmera
+export const ocultarPiloto = ocultarPilotoDe;
+// o piloto na vitrine da sala (palco.js): o carro não anda, então a cabeça só respira, mexe de leve e olha o espelho de vez em quando
+export function vitrinePiloto(k, dt) { if (k?.pil) animarPiloto(k.pil, { dt, v: 0, steer: 0, dec: 0, vitrine: true }); }
 export function dropKart(k) {
-  if (!k) return; (k.target || scene).remove(k.g);
+  if (!k) return; soltarPiloto(k); (k.target || scene).remove(k.g);
   for (const grupo of [k.lanterna, k.freios]) grupo.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
   soltarF1(k.kt); for (const f of k.chamas || []) f.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
 }

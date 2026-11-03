@@ -10,7 +10,7 @@ import { updateGhosts } from "./rede.js";
 import { gridSpot, buildTrack, groundH, useTrack } from "./pista.js";
 import { inclinacao as inclinacaoDoCarro } from "./inclinacao.js";
 import { renderer, scene, cam, sun, V3 } from "./cena.js";
-import { CARS3, KS, makeKart, poseKart, fantasmaVisual, lodKart, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
+import { CARS3, KS, makeKart, poseKart, fantasmaVisual, lodKart, ocultarPiloto, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
 import { camMode, pollPad, pad } from "./controles.js";
 import { quadroCamera, somDaCamera, camEstado } from "./cameras.js";
 import { physics, quadroDeFisica, quadroParado, criarRede, PASSO } from "./fisica.js";
@@ -248,7 +248,7 @@ function draw(dt) {
   for (const [id, gh] of race.ghosts) {
     const pl = P(id); if (!pl) continue;
     if (pl.dnf) { if (gh.kart) { dropKart(gh.kart); gh.kart = null; } continue; }
-    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}) + (pl.numero || ""); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true, { numero: pl.numero }); gh.kartKey = key; }
+    const key = pl.color + pl.car + JSON.stringify(pl.mods || {}) + (pl.numero || ""); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true, { numero: pl.numero, sigla: pl.bot ? pl.sigla : null }); gh.kartKey = key; }
     const spec = CARS3[pl.car] || CARS3.equilibrado, gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
     gh.vz = ((gh.z - (gh.zAnt ?? gh.z)) / Math.max(dt, 1e-3)) * 0.3 + (gh.vz || 0) * 0.7; gh.zAnt = gh.z;
     const inc = inclinacao(tr, gh.x, gh.y, gh.a, gh.idx || 0, spec.L * KS, spec.W * KS, gh.vz, noAr, gh.v || 0);
@@ -293,6 +293,7 @@ function draw(dt) {
   // a câmera (cameras.js): cockpit, onboard, bico, perseguição próxima e afastada, aérea e TV; quem só assiste ou já
   // passou a bandeirada começa na TV
   const mode = quadroCamera(race, { dt, tr, c, src, nearest, olharTras: keys.olharTras || pad.olharTras, rm: motionPreference.matches, escolha: camMode, assistindo: !(src === c && race.kart), acabou: !!me() && me().finish != null, spec: CARS3[me()?.car] || CARS3.equilibrado });
+  ocultarPiloto(race.kart, mode === "cockpit"); // na primeira pessoa o capacete e o corpo do piloto somem (as luvas no volante ficam)
   // o volante do jogador (a tela e as luzes de troca) só anda na câmera de cockpit; atualizarVolante só refaz a textura quando algo muda
   if (mode === "cockpit" && race.kart?.kt?.tela?.cv) atualizarVolante(race.kart.kt, { marcha: race.marcha || 1, kmh: Math.round(Math.abs(race.car.v) * 0.75), rpm: race.rpm || 0, bateria: race.ers ? race.ers.carga : 0, ersAtivo: !!race.ersAtivo, drsAberto: !!race.drsAtivo, drsPronto: !!me() && me().drsZona >= 0 });
   const modoClima = somDaCamera(mode); // o clima só conhece perto, cockpit, longe e cima
