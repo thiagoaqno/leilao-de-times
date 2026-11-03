@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { renderer, scene, cam } from "./cena.js";
 import { qualidade } from "./qualidade.js";
 
-const LARG = 256, FOV_H = 50 * Math.PI / 180, DE_DENTRO = new Set(["cockpit", "onboard", "bico"]), PERTO = 120; // PERTO: até onde (unidades) uma câmera de fora ainda refaz o espelho
+const LARG = 256, FOV_H = 34 * Math.PI / 180, ABRE = 15 * Math.PI / 180, BAIXA = 3 * Math.PI / 180, DE_DENTRO = new Set(["cockpit", "onboard", "bico"]), PERTO = 120; // PERTO: até onde (unidades) uma câmera de fora ainda refaz o espelho
 const GEO = new THREE.PlaneGeometry(1, 1);
 const v = new THREE.Vector3(), d = new THREE.Vector3(), cima = new THREE.Vector3(), olho = new THREE.Vector3(), M = new THREE.Matrix4();
 let contador = 0;
@@ -25,8 +25,10 @@ function criar(kart) {
     painel.scale.set(e.w * 0.98, e.h * 0.98, 1); painel.position.copy(centro).addScaledVector(n, 0.004); painel.quaternion.setFromRotationMatrix(M.makeBasis(r, u, n)); // (o plano olha para onde a face olha)
     painel.castShadow = false; painel.receiveShadow = false; painel.name = "espelho-vidro"; kt.carro.add(painel);
     // para onde o espelho olha: o raio do olho do piloto até ele, refletido pela normal (no quadro do carro; a cada quadro vai para o mundo pela matriz do carro)
-    const incide = centro.clone().sub(eye).normalize(), refl = incide.clone().addScaledVector(n, -2 * incide.dot(n));
-    refl.x += Math.sign(centro.x || 1) * 0.33; refl.normalize(); // (um piloto abre o espelho uns 18° para fora: sem isso ele só enxergaria a própria carroceria)
+    // (como o piloto regula o retrovisor de verdade: para trás (+z no carro), aberto ABRE para fora e um pouco para baixo, com o campo estreito de um espelho;
+    // assim se vê a pista e os carros atrás e, na borda de dentro, só um pedacinho da lateral do próprio carro. O raio do olho refletido pela face
+    // apontava para a carroceria)
+    const lado = Math.sign(centro.x || 1), refl = new THREE.Vector3(lado * Math.sin(ABRE), -Math.sin(BAIXA), Math.cos(ABRE)).normalize(); void eye; void n;
     const camera = new THREE.PerspectiveCamera(2 * Math.atan(Math.tan(FOV_H / 2) / razao) * 180 / Math.PI, razao, 0.5, 1800);
     return { e, centro: centro.clone().addScaledVector(n, 0.03), refl, rt, mat, painel, cam: camera, feito: false };
   });
