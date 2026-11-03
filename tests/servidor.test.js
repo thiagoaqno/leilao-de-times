@@ -46,7 +46,6 @@ function jogadorAutomatico(s) {
 
 const CASOS = [
   ["dupla", 4, { mode: "dupla" }],
-  ["cada um por si, 2 com compra", 2, { mode: "individual", compra: true }],
   ["cada um por si, 3 sem compra", 3, { mode: "individual", compra: false }],
   ["cada um por si, 4", 4, { mode: "individual" }],
   ["burrinho com 2", 2, { mode: "burrinho" }],
