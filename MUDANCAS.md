@@ -1,17 +1,16 @@
-# Corrida: Mônaco com a largura certa por trecho, guard-rail colado, escapes de asfalto e o cenário dos pontos famosos
+# Corrida: o cenário próprio da Cidade do México (Foro Sol, parque, Peraltada e vulcões)
 
-## O que estava errado
-Mônaco tinha a mesma pista larga da reta dos boxes à Rascasse (112 entre os guard-rails, uns 24 m no mapa, contra 7,5 a 9 m de verdade) e um muro fixo a 14 unidades do asfalto. Nenhum escape de verdade (Sainte Dévote, Mirabeau, a saída do túnel), e a Piscine e a Rascasse não pareciam coladas no muro.
+## O que estava faltando
+O Autódromo Hermanos Rodríguez era só o GP simples do kit: nada do que faz o circuito reconhecível, e o trecho do estádio de beisebol não existia.
 
 ## O que mudou
-- **Largura por trecho** (`muros` em `pistas.js`, o mesmo formato e a mesma escala de Baku e Las Vegas: recuo da borda do asfalto até a barreira, negativo estreita a pista; ~9 unidades por metro). Entre as barreiras: reta dos boxes 108 (~12 m), porto 96, rua e Piscine 86 (guard-rail colado; recuo 1, porque recuo 0 é "sem barreira"), Rascasse 80, Casino/Massenet e Mirabeau 64 (~7,5 m). A reta continua larga para ultrapassar e o grid e os boxes não mudam.
-- **Escapes de asfalto**: Sainte Dévote em frente, do lado de fora da curva 1; Mirabeau, escape curto; saída do túnel e Nouvelle Chicane, escape grande do lado de fora da primeira curva (por onde se corta a chicane). Física, robôs e desenho usam a mesma matriz `tr.murosEscape` (e `SUPERFICIES_ESCAPE.monaco`, asfalto: não segura nem queima o carro como grama). O guard-rail, a cerca de detritos e os blocos Tecpro seguem a face da barreira (`tr.latMuro`); `kit/monaco/escapes.js` pinta o asfalto cinza com a linha branca e mantém prédios, árvores e enfeites fora.
-- **Curvas**: conferidas contra o mapa de 19 curvas (`gp-info.js`): a curva 1 é à direita (72° na linha central do OpenStreetMap), a Nouvelle Chicane é esquerda-direita (74° e 78°) à beira do porto, com as zebras altas amarelas, e a Anthony Noghès é à direita (72°) antes da reta. A linha central do OSM ficou como estava; só a largura e as barreiras mudaram.
-- **Cenário** (`kit/monaco/pontos.js` e `monaco.js`): o arco de patrocínio sobre a pista antes da curva 1 e a arquibancada A1 por dentro de Sainte Dévote (por fora ficam o escape e a capela); as arquibancadas do porto na Nouvelle Chicane; a Rascasse com o bar e a arquibancada de fora; a Anthony Noghès com a arquibancada por dentro e um prédio claro atrás.
-- **Robôs**: com a barreira colada, a linha de corrida fica mais longe dela (`folgaLinha`) e a chicane agressiva de antes (que usava a folga do muro largo) não vale mais em Mônaco; a volta de um robô difícil fica em ~57 s (era ~53 s) sem bater.
-- **Recordes**: `migracoes/025-monaco-real-2.sql` zera as voltas e os recordes de Mônaco (a pista mais estreita é mais lenta; os tempos de antes não valem).
+Só código (sem modelo baixado, sem marca registrada nova); o traçado não mudou. `public/corrida/mexico.js`, `gps/mexico.js` e `kit/mexico/` (`foro.js`, `parque.js`, `horizonte.js`, `lugar.js`, `marcas.js`).
+- **Foro Sol:** a arquibancada em ferradura lotada de verde, branco e vermelho, aberta onde a pista passa perto; o campo listrado com o losango; o pódio no meio, de frente para a torcida; as bandeiras do México, as torres de luz e a fumaça verde, branca e vermelha.
+- **Reta principal:** prédio dos boxes com o paddock e a tribuna principal; arquibancadas nas curvas 1 a 3 e no meio.
+- **Parque Magdalena Mixhuca:** lagos, quadras, jacarandás, ahuehuetes, eucaliptos e pinheiros; o Palácio dos Esportes de cúpula de cobre.
+- **Peraltada antiga:** um pedaço do anel inclinado que ficou de fora, visível do lado.
+- **Horizonte:** a cidade baixa, a Torre Latinoamericana e os vulcões Popocatépetl e Iztaccíhuatl na névoa.
+- Painéis só com nomes de lugar e de comida do México.
 
-## Conferido
-- Só o que a pista pede, sem rodar a suíte (o CI roda): sintaxe de cada módulo; `node tests/ajuda-cena/invasao.mjs` na cena de Mônaco (0 peças dentro da pista); `medir.mjs monaco` (377 malhas, 188 chamadas por quadro, dentro dos tetos); `tests/corrida-escapes.test.js` (com o caso novo de Mônaco); um robô difícil sozinho e 10 robôs em 3 voltas (médio e difícil) sem batida no muro; a volta de robôs do teste de `corrida-robos`.
-- Prints no navegador (câmera de perseguição) de Sainte Dévote, da Nouvelle Chicane, da Rascasse e da Anthony Noghès: sem erro no console.
-- Limitações: o ângulo da curva 1 é o da linha do OSM (72°, não 90°); a A1 de Sainte Dévote é curta (os prédios reais ocupam o resto do lado de dentro); o arco se apoia nas fachadas; o prédio da Anthony Noghès é genérico (não há planta real dele no recorte do OSM).
+## Peso e conferência
+`node tests/ajuda-cena/medir.mjs mexico`: ~145 chamadas de desenho e ~236 mil triângulos na vista do jogo (antes, 101 e 164 mil); a conferência de invasão acusa 0. Rodei só a sintaxe dos módulos e essas duas conferências; o CI roda os testes. Sem mexer em `sons.js` nem em `motor-*.js`.
