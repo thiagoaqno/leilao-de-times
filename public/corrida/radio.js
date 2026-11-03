@@ -6,7 +6,7 @@
 const F = (typeof module !== "undefined" && module.exports) ? require("./radio/falas.js") : root.RadioFalas;
 const INTERVALO = 10000; // no máximo uma fala a cada 10 s, salvo as urgentes (box, safety car): o rádio não pode cansar
 const ESPERA = 30000;   // a mesma situação não se repete antes disso
-const ESPERA_SIT = { ganhou: 90000, perdeu: 90000, dano: 60000, pneu: 60000 }; // as que acontecem toda hora falam bem menos
+const ESPERA_SIT = { ganhou: 90000, perdeu: 90000, dano: 60000, pneu: 60000, rival: 50000 }; // as que acontecem toda hora falam bem menos
 const espera = (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; };
 const temDOM = typeof document !== "undefined" && typeof window !== "undefined";
 
@@ -100,7 +100,37 @@ function proximo() {
   if (mudo || !temDOM) { timerFila = espera(proximo, 50); return; }
   tocando = true;
   const livre = () => { tocando = false; ultimaFala = Date.now(); timerFila = espera(proximo, 80); }; // a fila não sobrepõe: a próxima só começa quando esta acaba
-  carregar(f).then((buf) => { if (!buf || !tocar(buf, livre)) livre(); }).catch(livre);
+  (f.partes ? emendar(f.partes) : carregar(f)).then((buf) => { if (!buf || !tocar(buf, livre)) livre(); }).catch(livre);
+}
+
+// as falas montadas em pedaços (RadioFalas.PECAS): carrega cada mp3 e junta num buffer só, com uma pausa curta entre eles, para o rádio
+// abrir e fechar uma vez. O pedaço que falta (o nome de quem não tem mp3) fica de fora; com menos de dois, não fala nada.
+function emendar(ids) {
+  return Promise.all(ids.map((id) => carregar({ id }))).then((bufs) => {
+    const ok = bufs.filter(Boolean), x = contexto(); if (ok.length < 2 || !x) return null;
+    const sr = ok[0].sampleRate, pausa = Math.round(sr * 0.06), n = ok.reduce((a, b) => a + b.length, 0) + pausa * (ok.length - 1);
+    const out = x.c.createBuffer(1, n, sr), d = out.getChannelData(0); let pos = 0;
+    for (const b of ok) { d.set(b.getChannelData(0).subarray(0, b.length), pos); pos += b.length + pausa; }
+    return out;
+  });
+}
+// uma fala em pedaços (ids de RadioFalas.PECAS), com a situação `quando` contando no intervalo dela
+function frase(partes, quando, op = {}) {
+  try {
+    const agora = Date.now();
+    if (!op.forcar && agora - (porSituacao[quando] || -Infinity) < (ESPERA_SIT[quando] || ESPERA)) return null;
+    if (fila.length && !op.forcar) return null;
+    const f = { id: partes.join("+"), partes: partes.filter(Boolean), quando }; porSituacao[quando] = agora;
+    if (op.forcar) fila.unshift(f); else fila.push(f);
+    proximo(); return f;
+  } catch { return null; }
+}
+// um pedaço de um grupo (frente, tras, chegando...), sem repetir o último do mesmo grupo
+const ultimoPedaco = {};
+function pedaco(quando) {
+  const l = F.pecasDe ? F.pecasDe(quando) : []; if (!l.length) return null;
+  const op = l.length > 1 ? l.filter((p) => p.id !== ultimoPedaco[quando]) : l, p = op[Math.floor(Math.random() * op.length)];
+  ultimoPedaco[quando] = p.id; return p.id;
 }
 
 // pede a fala de uma situação; devolve a escolhida (ou null se ficou de fora)
@@ -136,6 +166,6 @@ function avisoF1(tipo) { // `tipo` vem de AvisosF1.tipoDoTexto
 function fim(pos, pontos, dnf) { dizer(dnf ? "abandono" : pos === 1 ? "vitoria" : pos <= 3 ? "podio" : pontos > 0 ? "pontos" : "foradospontos", { forcar: true }); }
 function classificacao(pos, total) { dizer(pos <= Math.ceil(total / 3) ? "classboa" : pos > Math.floor(total * 2 / 3) ? "classruim" : "", { forcar: true }); }
 
-const api = { escolher, dizer, usarSaida, posicao, uma, avisoF1, fim, classificacao, silenciar, desenharBotoes, get mudo() { return mudo; }, get tocando() { return tocando; }, INTERVALO };
+const api = { escolher, dizer, frase, pedaco, usarSaida, posicao, uma, avisoF1, fim, classificacao, silenciar, desenharBotoes, get mudo() { return mudo; }, get tocando() { return tocando; }, INTERVALO };
 if (typeof module !== "undefined" && module.exports) module.exports = api; else root.Radio = api;
 })(typeof self !== "undefined" ? self : this);

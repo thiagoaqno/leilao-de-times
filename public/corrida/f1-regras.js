@@ -15,9 +15,9 @@
 // metade e o de chuva com 90%. O de chuva no seco tem o `pico` do duro, mas `derrete` (o desgaste vai a ×2,8) e `esquenta` (a
 // temperatura passa de 1, até +0,4, e a aderência cai até 25%) quando a pista está seca: dura 2 a 3 voltas.
 const PNEUS = {
-  macio: { nome: "Macio", cor: "#e8202a", pico: 1.38, vida: 1.5, aquece: 1.7, perdaAntes: 0.03, molhado: 0.5 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 3.8, aquece: 1.1, perdaAntes: 0.03, molhado: 0.5 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.32, vida: 7, aquece: 0.85, perdaAntes: 0.02, molhado: 0.5 },
+  macio: { nome: "Macio", cor: "#e8202a", pico: 1.38, vida: 2.25, aquece: 1.7, perdaAntes: 0.03, molhado: 0.5 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 4, aquece: 1.1, perdaAntes: 0.03, molhado: 0.5 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.32, vida: 7.35, aquece: 0.85, perdaAntes: 0.02, molhado: 0.5 },
   chuva: { nome: "Chuva", cor: "#1e7fd6", pico: 1.126, vida: 7, aquece: 0.5, perdaAntes: 0.02, molhado: 0.9, derrete: 2.8, esquenta: 0.4 },
 };
 const SECOS = ["macio", "medio", "duro"]; // os compostos de pista seca (a estratégia e a tabela de ritmo só conhecem estes)
@@ -25,13 +25,15 @@ const COMPOSTO_PADRAO = "medio";
 // O desgaste vai de 0 (novo) a 1 (acabado); PENHASCO é o fim da vida. Passou dele o pneu despenca até PERDA_FIM do pico,
 // no resto do caminho até 1 (um quarto da vida do composto), e o carro fica muito ruim: sem aderência, sem tração, sem freio
 // e com um pouco menos de velocidade final.
-const PENHASCO = 0.8, PERDA_FIM = 0.4, FINAL_FIM = 0.08;
+// (2026-11: o penhasco ficou 50% menos punitivo: a perda no fim era 0,4 do pico e 8% da final; as vidas eram 1,5 / 3,8 / 7 voltas)
+const PENHASCO = 0.8, PERDA_FIM = 0.215, FINAL_FIM = 0.04;
 // Pneu frio (saindo do box ou na largada) segura FRIO do normal e fica bom aos poucos: a temperatura vai de TEMP_SAIDA a
 // TEMP_BOA em alguns segundos (mais rápido no macio, mais devagar no duro).
 const TEMP_SAIDA = 0.6, TEMP_BOA = 0.75, FRIO = 0.72, AQUECE = 0.12;
 // O desgaste por escorregão: o piloto ideal (a conta do simulador de stint) gasta o pneu na vida em voltas do composto;
 // quem escorrega de lado, trava a roda ou patina gasta mais (até uns 2×).
-const ESTRESSE_BASE = 0.7, ESTRESSE_LADO = 0.6, ESTRESSE_TRAVA = 0.8, ESTRESSE_PATINA = 0.4, ESTRESSE_NORMAL = 0.76;
+// Passar por cima da zebra (`zebra`, 0 a 1) e o pneu passando da temperatura boa (acima de QUENTE, ao escorregar muito) também gastam.
+const ESTRESSE_BASE = 0.7, ESTRESSE_LADO = 0.6, ESTRESSE_TRAVA = 0.8, ESTRESSE_PATINA = 0.4, ESTRESSE_ZEBRA = 0.5, ESTRESSE_QUENTE = 1.2, QUENTE = 0.95, ESTRESSE_NORMAL = 0.76;
 const limite = (v, a, b) => Math.max(a, Math.min(b, v));
 
 function pneuNovo(composto = COMPOSTO_PADRAO) {
@@ -40,13 +42,15 @@ function pneuNovo(composto = COMPOSTO_PADRAO) {
 // Um passo do pneu. O desgaste anda pela distância em VOLTAS (`volta` é o comprimento de uma volta): o macio dura uma
 // volta e meia em qualquer corrida. Escorregar, travar a roda e patinar gastam mais. A temperatura vai para um alvo pela
 // velocidade e pelo escorregão, mais rápido no macio.
-// d: { dist (andado neste passo), volta (o comprimento de uma volta), slip, travada (0..1), patina (0..1), v, vmax, dt,
+// d: { dist (andado neste passo), volta (o comprimento de uma volta), slip, travada (0..1), patina (0..1), zebra (0..1, opcional), v, vmax, dt,
 //      fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js), agua (opcional: a água na pista, 0 a 1) }
 function gastarPneu(pneu, d) {
   const pn = PNEUS[pneu.composto] || PNEUS[COMPOSTO_PADRAO];
   const escorrega = limite((d.slip || 0) / 60, 0, 1), seca = secaDaPista(d.agua);
   if (d.volta > 0 && d.dist > 0) {
-    const estresse = (ESTRESSE_BASE + ESTRESSE_LADO * escorrega + ESTRESSE_TRAVA * limite(d.travada || 0, 0, 1) + ESTRESSE_PATINA * limite(d.patina || 0, 0, 1)) / ESTRESSE_NORMAL;
+    const quente = pn.esquenta ? 0 : limite(((pneu.temp || 0) - QUENTE) / 0.2, 0, 1); // (o de chuva tem o próprio superaquecimento)
+    const estresse = (ESTRESSE_BASE + ESTRESSE_LADO * escorrega + ESTRESSE_TRAVA * limite(d.travada || 0, 0, 1) + ESTRESSE_PATINA * limite(d.patina || 0, 0, 1)
+      + ESTRESSE_ZEBRA * limite(d.zebra || 0, 0, 1) + ESTRESSE_QUENTE * quente) / ESTRESSE_NORMAL;
     pneu.desgaste = Math.min(1, pneu.desgaste + (d.dist / d.volta) * (PENHASCO / pn.vida) * estresse * (d.fator || 1) * (1 + ((pn.derrete || 1) - 1) * seca));
   }
   const vel = d.vmax > 0 ? limite(Math.abs(d.v || 0) / d.vmax, 0, 1) : 0;
@@ -555,14 +559,16 @@ function efeitoDoDano(dano) {
 // Atrás de outro carro na reta o ar empurra menos: um pouco de velocidade final (bem menos que o DRS, que é o que decide
 // a ultrapassagem) e um pouco de aceleração. Nas curvas é o contrário, o ar sujo: o carro de trás perde aderência e
 // escorrega, e por isso é difícil seguir colado. Sem o "estilingue" do modo arcade. `draft` vai de 0 (longe) a 1 (colado).
-const VACUO_FINAL = 0.03, VACUO_ACEL = 0.15, AR_SUJO = 0.1, AERO_MAX = 0.11;
+// (o DRS aberto: +8% de velocidade final pelo arrasto menor; o ERS em uso: +15% de potência; o vácuo colado: até +5% de final. Antes eram
+// 5%, 9% e 3%, e quase não se sentia; na F1 o DRS dá uns 10 a 15 km/h e o ERS ~120 kW de ~750)
+const VACUO_FINAL = 0.05, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.15, DRS_GANHO = 0.08, ERS_POTENCIA = 0.15;
 function vacuoF1(draft, curva) {
   const d = limite(draft || 0, 0, 1);
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };
 }
 
 const api = { PONTO_VOLTA_RAPIDA, pontosDe, PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
-  zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
+  zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, DRS_GANHO, ERS_POTENCIA, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
   LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, batidaProposital, DSQ_PROPOSITAIS, AVISO_PROPOSITAIS, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, recomendarParada, ESCOLHA_BOX_S, penalidadeUmComposto, acrescimoDeFinal, estrategia, melhoresPlanos,
   CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;

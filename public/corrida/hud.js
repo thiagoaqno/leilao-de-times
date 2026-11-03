@@ -136,6 +136,7 @@ const LOGO_F1 = '<svg class="f1logo" viewBox="0 0 64 26" aria-label="F1"><path d
 const COMPACTA_N = 5;
 const torreCompacta = () => (race.torreCompacta == null ? (race.torreCompacta = store.get("corrida:torre") !== "completa") : race.torreCompacta);
 function alternarTorre() { race.torreCompacta = !torreCompacta(); try { store.set("corrida:torre", race.torreCompacta ? "compacta" : "completa"); } catch (e) {} race.hudF1T = 0; }
+acoes.radioRival = (lado) => { const x = race && race.radioCtx; return x ? radioRivais(x.cors, x.m, x.cron, x.agoraS, lado) : null; }; // (o pedido do MFD: frente ou trás)
 acoes.torreCompacta = () => (race ? torreCompacta() : true); acoes.torreAlternar = () => { if (race) alternarTorre(); };
 // o minimapa da corrida de F1: a pista inteira (padrão) ou perto, girando com o carro no meio (o mesmo da classificação). Muda no MFD
 // (Ajustes → Mapa) ou tocando no mapa; fica guardado em `corrida:mapa`.
@@ -243,7 +244,7 @@ function hudF1(m, st, now) {
   const cors = st.map((r) => {
     const p = r.p, gh = race.ghosts.get(r.id), v = m && r.id === m.id ? Math.abs(race.car.v) : gh && gh.v ? Math.abs(gh.v) : 0;
     vs[r.id] = vs[r.id] == null ? v : vs[r.id] + (v - vs[r.id]) * 0.3;
-    return { id: r.id, prog: r.prog, v: vs[r.id], dnf: !!p.dnf, dsq: !!p.dsq, sg: !!p.stopGo, noBox: !!p.noBox, penal: p.penal || 0, done: r.done, best: p.best, pneu: p.pneuAtual || p.pneu, sigla: T.siglaDe(p), nome: p.name, cor: (eqs[p.equipe] || {}).cor || p.color, bot: p.bot };
+    return { id: r.id, prog: r.prog, v: vs[r.id], dnf: !!p.dnf, dsq: !!p.dsq, sg: !!p.stopGo, noBox: !!p.noBox, penal: p.penal || 0, done: r.done, best: p.best, pneu: p.pneuAtual || p.pneu, sigla: T.siglaDe(p), nome: p.name, cor: (eqs[p.equipe] || {}).cor || p.color, bot: p.bot, nomeRadio: p.nomeCompleto ? String(p.nomeCompleto).split(" ").pop() : p.name, desg: p.desg || 0, paradas: p.paradas || 0 };
   });
   race.hudCors = cors;
   // a cronometragem: cada carro registra (progresso, hora) a cada tick; o intervalo é o tempo medido entre dois carros (hud-torre.js)
@@ -257,7 +258,7 @@ function hudF1(m, st, now) {
   // compacta: o líder e os vizinhos (5 linhas); completa: todos que cabem, sem passar do minimapa e do clima embaixo
   const max = compacta ? COMPACTA_N : Math.max(6, Math.min(22, Math.floor((innerHeight - (peq ? 200 : 250)) / (peq ? 22 : 28)))), eu = linhas.findIndex((l) => l.eu);
   set($("hTorre"), "c", "hud" + (compacta ? " compacta" : " completa")); set($("tAlt"), "aria-pressed", String(!compacta));
-  if (E.S.phase === "race" && eu >= 0 && window.Radio && m && m.started && !m.dnf && m.finish == null) window.Radio.posicao(linhas[eu].pos, String(race.startAt));
+  if (E.S.phase === "race" && eu >= 0 && window.Radio && m && m.started && !m.dnf && m.finish == null) { window.Radio.posicao(linhas[eu].pos, String(race.startAt)); race.radioCtx = { cors, m, cron, agoraS }; radioRivais(cors, m, cron, agoraS); }
   const ver = T.recortar(linhas.length, eu, max), box = $("tLinhas").children;
   for (let k = 0; k < box.length; k++) {
     const d = box[k], l = ver[k] != null ? linhas[ver[k]] : null;
@@ -406,6 +407,29 @@ function danoHud(c, dano, x, y) {
   c.fillStyle = cor; c.fillRect(x, y, w * Math.min(1, dano / 100), 9);
   c.lineWidth = 1; c.strokeStyle = "#ffffff66"; c.strokeRect(x + 0.5, y + 0.5, w - 1, 8);
   c.fillStyle = "#fff"; c.textAlign = "left"; c.textBaseline = "bottom"; c.font = "800 9px Figtree, sans-serif"; c.fillText(`DANO ${dano}%`, x, y - 2);
+}
+// O engenheiro fala de quem está perto (radio.js `frase`, os pedaços de radio/falas.js), de 35 a 70 s, sorteado: o carro da frente (nome,
+// distância e o pneu dele, ou se estamos chegando ou ele está abrindo) ou o de trás (chegando ou com margem). `forcar`: o pedido do MFD.
+export function radioRivais(cors, m, cron, agoraS, pedido = null) {
+  const R = window.Radio, F = window.RadioFalas, HM = window.HudMfd; if (!R || !F || !F.pecaDoGap || !HM || !m) return null;
+  const agora = performance.now();
+  if (!pedido && agora < (race.radioRivT || (race.radioRivT = agora + 25000))) return null;
+  race.radioRivT = agora + 35000 + Math.random() * 35000;
+  const iv = HM.intervalos(cors, m.id, race.hudEsc, 22, cron, agoraS), porId = new Map(cors.map((c) => [c.id, c]));
+  const ant = race.radioGap || (race.radioGap = {}), nome = (c) => F.pecaDoNome(c.nomeRadio || c.nome);
+  const fr = iv.frente && porId.get(iv.frente.id), tr = iv.tras && porId.get(iv.tras.id);
+  const sobre = (c, seg, chave) => { const a = ant[chave]; ant[chave] = { id: c.id, seg }; return a && a.id === c.id ? seg - a.seg : 0; };
+  if (fr && iv.frente.seg != null && (pedido === "frente" || (!pedido && iv.frente.seg < 3.2))) {
+    const d = sobre(fr, iv.frente.seg, "f"), pneu = String(fr.pneu || "medio");
+    const comentario = fr.desg >= 60 ? "rivalgasto" : fr.desg <= 8 && fr.paradas > 0 ? "rivalnovo" : d < -0.3 ? "alcancando" : d > 0.3 ? "afastando" : "rival" + pneu;
+    return R.frase([R.pedaco("frente"), nome(fr), F.pecaDoGap(iv.frente.seg), R.pedaco(comentario)], "rival", { forcar: !!pedido });
+  }
+  if (tr && iv.tras.seg != null && (pedido === "tras" || (!pedido && iv.tras.seg < 1.6))) {
+    const d = sobre(tr, iv.tras.seg, "t");
+    return R.frase([...(fr ? [] : [R.pedaco("lider")]), R.pedaco("tras"), nome(tr), F.pecaDoGap(iv.tras.seg), R.pedaco(d < -0.2 || iv.tras.seg < 0.8 ? "chegando" : "margem")], "rival", { forcar: !!pedido });
+  }
+  if (pedido === "frente" && !fr) return R.frase([R.pedaco("lider"), ...(tr && iv.tras.seg != null ? [R.pedaco("tras"), nome(tr), F.pecaDoGap(iv.tras.seg)] : [])], "rival", { forcar: true });
+  return null;
 }
 // o dano de uma batida nova: aparece na hora, uma vez só
 function avisoDeBatida(m) {

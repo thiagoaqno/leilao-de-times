@@ -5,7 +5,8 @@
 // ELEVENLABS_VOICE_ID é opcional. A chave só é lida do ambiente: nunca é gravada nem impressa. Node 18+.
 const fs = require("fs");
 const path = require("path");
-const { FALAS } = require("../public/corrida/radio/falas.js");
+const F = require("../public/corrida/radio/falas.js");
+const FALAS = F.FALAS.concat(F.PECAS || []); // as falas inteiras e os pedaços que o rádio emenda (nomes, distâncias, comentários)
 
 const PASTA = path.join(__dirname, "..", "public", "corrida", "radio");
 // a voz: --voz <id> (o GERAR-VOZES-CORRIDA.bat passa), senão ELEVENLABS_VOICE_ID, senão a padrão do engenheiro
