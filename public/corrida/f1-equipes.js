@@ -26,7 +26,7 @@ const PECAS = {
 // dependem do `vmax` do carro). `CDA_F1` escala o arrasto de todos (`cda` do spec, dinamica.js): com o vmax alto e o arrasto de
 // antes a potência sairia 2,4× maior e a aceleração em velocidade média viraria a de um foguete; assim o carro chega lá, mas
 // acelera quase como antes (0-100 em ~2 s, 0-200 em ~5 s).
-const VMAX_F1 = 4 / 3, CDA_F1 = 0.35;
+const VMAX_F1 = (4 / 3) * 1.07, CDA_F1 = 0.265; // (2026-11: +7% de velocidade final, ~300 → ~321 km/h, e o arrasto menor para a arrancada ficar igual: 0-200 em ~4,8 s)
 // O pior e o melhor de cada número entre os cinco carros de antes (`CARROS` em pistas.js): a montagem nunca sai daí (a velocidade
 // final, com o `VMAX_F1`).
 const LIMITES = {

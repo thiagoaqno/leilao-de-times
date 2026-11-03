@@ -238,7 +238,7 @@ export function desenhar(forca) {
   try {
     const f = pronto(q);
     atualizarCor(f.grade, agora);
-    if (f.radial) { f.radial.enabled = forca >= 0.03 && !reduz.matches; f.radial.uniforms.forca.value = Math.min(1.4, forca); }
+    if (f.radial) { f.radial.enabled = forca >= 0.03 && !reduz.matches; f.radial.uniforms.forca.value = Math.min(1.7, forca * 1.35); /* (o desfoque de velocidade 35% mais forte que antes) */ }
     f.composer.render();
   } catch (e) { // o pós quebrou neste aparelho (placa sem alvo de 16 bits, por exemplo): fica na Baixa, sem mexer na escolha guardada
     console.warn("Corrida: o pós-processamento falhou, voltando para a qualidade Baixa", e);
