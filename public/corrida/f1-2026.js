@@ -29,7 +29,8 @@ const COR = {
 const SEM_NOME = (m) => m.name.replace(/\.\d+$/, "");
 const DESCARTA = new Set(["sauber_decals", "sauber_number_27", "sw_decals"]); // patrocinadores de verdade e o número 27 do modelo
 const CORPO = new Set(["sauber_paint", "sauber_carbon1", "sauber_carbon3"]);
-const MIUDEZAS = new Set(["glass", "sauber_mirror_right", "chrome", "black_s", "driver_color", "gp21_cinture", "whitelight"]);
+const MIUDEZAS = new Set(["glass", "sauber_mirror_right", "chrome", "black_s", "gp21_cinture", "whitelight"]);
+const PILOTO = new Set(["driver_color"]); // o que o modelo tem do piloto (a faixa da cor dele, em cima da entrada de ar): some na câmera de cockpit (f1.js: k.piloto)
 const VOLANTE_DET = new Set(["chrome_ao", "kers_red", "kers_yellow", "kers_green", "indicator_lights", "vehicle_revs_type2"]);
 export const N_LEDS = 15; // as luzes de troca de marcha em cima do volante (o modelo traz 15, cada uma em dobro: base e lente)
 const RODA = new Set(["tread_medium", "sauber_wheel_hub", "discs"]);
@@ -163,7 +164,7 @@ export function construir2026(raiz, tam, leve) {
   });
 
   if (!leve) {
-    D.miudezas = unir(MIUDEZAS, { cor: true });
+    D.miudezas = unir(MIUDEZAS, { cor: true }); D.piloto = unir(PILOTO, { cor: true });
     // --- o volante (as luzes e os mostradores dele giram junto): o centro é o da malha do volante; vira em torno do eixo z (o rosto olha para trás)
     const vol = de(new Set(["audi_steeringwheel"]));
     if (vol.length) {
