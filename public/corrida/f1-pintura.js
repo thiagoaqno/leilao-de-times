@@ -515,16 +515,19 @@ export const SOL_FRAG_MAIN = `
   diffuseColor.rgb = mix(mk, mix(cor1, cor2, max(faixa, max(asa, ponta))), vMc);
 }`;
 
-// ---------------------------------------------------------------- o verniz da pintura (só de dia)
-// O corpo é um MeshPhysicalMaterial com `clearcoat` 1; quanto vale o verniz é o uniforme compartilhado VERNIZ (0 à noite, 1 de dia; pos.js
-// escreve por quadro, devagar na virada), vezes a parte do ponto que é pintura (o carbono, mcar = 0, fica fosco como estava). De dia a
-// pintura ganha: rugosidade menor (o reflexo do céu da foto, scene.environment, fica mais nítido), a camada de verniz (reflexo do céu mais forte
-// nas bordas, onde o ângulo é raso) e um teto nos brilhos diretos do sol (o carro reflete, não brilha: nada daqui chega ao limiar do bloom).
+// ---------------------------------------------------------------- o acabamento acetinado da pintura (só de dia)
+// O corpo é um MeshPhysicalMaterial com `clearcoat` 1; quanto vale o acabamento é o uniforme compartilhado VERNIZ (0 à noite, 1 de dia; pos.js
+// escreve por quadro, devagar na virada), vezes a parte do ponto que é pintura (o carbono, mcar = 0, fica fosco como estava). De dia a pintura
+// fica semi-fosca, acetinada como as das equipes de hoje: rugosidade média (nada de espelho) e só uma camada leve de verniz, bem difusa, que
+// deixa um brilho suave do céu nas curvas da carenagem (onde o ângulo é raso) e não deixa o painel chapado. Os brilhos diretos do sol têm teto:
+// o carro reflete um pouco, não brilha (nada daqui chega ao limiar do bloom).
 export const VERNIZ = { value: 1 };
 const VERNIZ_DECL = "uniform float uVerniz;\n";
-const VERNIZ_LISO = 0.62;      // a rugosidade da pintura vira esse tanto do que era
-const VERNIZ_CEU = 3.2;        // quanto a camada de verniz amplia o reflexo do céu (o reflexo cru do verniz, 4% de frente, é fraco)
-const VERNIZ_TETO_SOL = 0.35;  // o brilho direto do sol no verniz não passa disso
+const VERNIZ_ASPERO = 0.52;    // a rugosidade da pintura de dia vira (no máximo) isso: acetinado
+const VERNIZ_CAMADA = 0.28;    // a força da camada de verniz (baixa)
+const VERNIZ_CAMADA_ASP = 0.38;// a rugosidade dela: alta, o reflexo do céu sai macio e não espelhado
+const VERNIZ_CEU = 1.8;        // quanto a camada amplia o reflexo do céu
+const VERNIZ_TETO_SOL = 0.22;  // o brilho direto do sol na camada não passa disso
 const VERNIZ_TETO_BASE = 0.85; // e o da tinta por baixo, de dia
 export function aplicarVerniz(sh) {
   sh.uniforms.uVerniz = VERNIZ;
@@ -535,15 +538,15 @@ export function aplicarVerniz(sh) {
 #else
   float vern = uVerniz;
 #endif
-  roughnessFactor *= mix(1.0, ${VERNIZ_LISO.toFixed(2)}, vern);`)
+  roughnessFactor = mix(roughnessFactor, max(roughnessFactor, ${VERNIZ_ASPERO.toFixed(2)}), vern);`)
     .replace("#include <lights_physical_fragment>", `#include <lights_physical_fragment>
 #ifdef USE_CLEARCOAT
-  material.clearcoat *= vern;
-  material.clearcoatRoughness = max(material.clearcoatRoughness, 0.09);
+  material.clearcoat *= vern * ${VERNIZ_CAMADA.toFixed(2)};
+  material.clearcoatRoughness = max(material.clearcoatRoughness, ${VERNIZ_CAMADA_ASP.toFixed(2)});
 #endif`)
     .replace("#include <lights_fragment_end>", `#include <lights_fragment_end>
 #ifdef USE_CLEARCOAT
-  clearcoatSpecularIndirect *= 1.0 + ${(VERNIZ_CEU - 1).toFixed(1)} * vern;
+  clearcoatSpecularIndirect *= ${VERNIZ_CEU.toFixed(1)};
   clearcoatSpecularDirect = min(clearcoatSpecularDirect, vec3(${VERNIZ_TETO_SOL.toFixed(2)}));
 #endif
   reflectedLight.directSpecular = min(reflectedLight.directSpecular, vec3(mix(64.0, ${VERNIZ_TETO_BASE.toFixed(2)}, vern)));`);

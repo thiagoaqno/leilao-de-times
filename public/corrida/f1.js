@@ -42,11 +42,11 @@ export const f1Pronto = Promise.all([carga(atual, false).pronto, carga(atual, tr
 // (o carbono da máscara continua preto) e o número do piloto; a folha é uma só por equipe e vem do cache.
 // `novo` (o carro de 2026, f1-2026.js): `base` é o material do carbono (sem textura) e `numPos` onde ficam os números; sem equipe, a cor principal em tudo
 function pintura(base, cor1, cor2, equipe, numero, fundo = false, novo = false, numPos = null) {
-  // o corpo é físico (MeshPhysicalMaterial) para ter a camada de verniz (clearcoat) de dia; o verniz em si é ligado por aplicarVerniz (f1-pintura.js)
+  // o corpo é físico (MeshPhysicalMaterial) para ter a camada de verniz (clearcoat) de dia; o verniz em si é ligado por aplicarVerniz (acabamento acetinado de dia) (f1-pintura.js)
   let m;
   if (base.isMeshPhysicalMaterial) m = base.clone();
   else { m = new THREE.MeshPhysicalMaterial(); THREE.MeshStandardMaterial.prototype.copy.call(m, base); }
-  m.clearcoat = 1; m.clearcoatRoughness = 0.08;
+  m.clearcoat = 1; m.clearcoatRoughness = 0.38;
   if (!novo) m.color.set(0xffffff);
   const liv = equipe && folhaDaEquipe(equipe);
   m.userData.cores = { cor1: { value: new THREE.Color(cor1) }, cor2: { value: new THREE.Color(cor2) } };
