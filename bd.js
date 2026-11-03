@@ -103,22 +103,23 @@ function registrarRecordeCorrida(pista, tempo, carro, piloto) {
   if (!chave || !Number.isFinite(tempo)) return 0;
   db.exec("BEGIN");
   try {
-    const r = db.prepare(`INSERT INTO corrida_recordes (pista, chave, piloto, tempo, carro, feita_em) VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(pista, chave) DO UPDATE SET piloto=excluded.piloto, tempo=excluded.tempo, carro=excluded.carro, feita_em=excluded.feita_em
-      WHERE excluded.tempo < corrida_recordes.tempo`).run(pista, chave, piloto, tempo, carro, Date.now());
-    // só os 5 primeiros ficam (no empate, quem fez antes fica na frente)
-    db.prepare(`DELETE FROM corrida_recordes WHERE pista = ? AND chave NOT IN
-      (SELECT chave FROM corrida_recordes WHERE pista = ? ORDER BY tempo, feita_em LIMIT ?)`).run(pista, pista, RECORDES_POR_PISTA);
+    // (f1 = 1: volta de corrida com as regras de F1 e robôs, a única que entra no quadro; troca também a antiga, de antes da regra, f1 = 0)
+    const r = db.prepare(`INSERT INTO corrida_recordes (pista, chave, piloto, tempo, carro, feita_em, f1) VALUES (?, ?, ?, ?, ?, ?, 1)
+      ON CONFLICT(pista, chave) DO UPDATE SET piloto=excluded.piloto, tempo=excluded.tempo, carro=excluded.carro, feita_em=excluded.feita_em, f1=1
+      WHERE excluded.tempo < corrida_recordes.tempo OR corrida_recordes.f1 = 0`).run(pista, chave, piloto, tempo, carro, Date.now());
+    // só os 5 primeiros ficam (no empate, quem fez antes fica na frente); as antigas (f1 = 0) não contam nem são apagadas
+    db.prepare(`DELETE FROM corrida_recordes WHERE pista = ? AND f1 = 1 AND chave NOT IN
+      (SELECT chave FROM corrida_recordes WHERE pista = ? AND f1 = 1 ORDER BY tempo, feita_em LIMIT ?)`).run(pista, pista, RECORDES_POR_PISTA);
     db.exec("COMMIT");
     if (!r.changes) return 0;
-    const top = db.prepare("SELECT chave FROM corrida_recordes WHERE pista = ? ORDER BY tempo, feita_em").all(pista);
+    const top = db.prepare("SELECT chave FROM corrida_recordes WHERE pista = ? AND f1 = 1 ORDER BY tempo, feita_em").all(pista);
     return top.findIndex((x) => x.chave === chave) + 1;
   } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
 // o quadro de todas as pistas: { pista: [{ piloto, tempo, carro, em }] }, do mais rápido para o mais lento
 function recordesCorrida() {
   const out = {};
-  for (const r of bd().prepare("SELECT pista, piloto, tempo, carro, feita_em FROM corrida_recordes ORDER BY pista, tempo, feita_em").all())
+  for (const r of bd().prepare("SELECT pista, piloto, tempo, carro, feita_em FROM corrida_recordes WHERE f1 = 1 ORDER BY pista, tempo, feita_em").all())
     (out[r.pista] ||= []).push({ piloto: r.piloto, tempo: r.tempo, carro: r.carro, em: r.feita_em });
   return out;
 }

@@ -385,7 +385,8 @@ module.exports = function attachCorrida(io) {
     const lap = (now - p.lapStart) / 1000;
     if (lap < T.PISTAS[room.config.pista].minLap) return false; // rápido demais: atalho (a volta não conta, mas o setor segue o do navegador, senão a volta seguinte morria)
     p.laps++; p.last = lap; p.best = p.best == null ? lap : Math.min(p.best, lap); p.lapStart = now;
-    if (!p.bot) registrarRecorde(room, p, lap);
+    // o quadro de recordes da Vila só leva volta de corrida com as regras de F1 e com robôs na pista
+    if (!p.bot && room.config.regras === "f1" && room.order.some((id) => room.players[id]?.bot)) registrarRecorde(room, p, lap);
     // stop-and-go pendente: sem voltas para cumprir vira +20 s; passou das 3 voltas sem cumprir, bandeira preta (desclassificado)
     if (room.config.regras === "f1" && Direcao.voltaFechada(room, p, (s) => log(room, s))) {
       if (!room.order.some((id) => { const q = room.players[id]; return q.finish == null && !q.dnf && (q.sockets.size || q.bot); })) endRace(room);
