@@ -31,19 +31,24 @@ function marcasSobre(id, curvas) { // os números nas posições certas; os que 
   }
   return ps;
 }
-const fmtKm = (km) => km.toFixed(3).replace(".", ",");
-function corpo(id, rec = null, tituloId = "sobreTit") {
-  const G = window.GpInfo, g = G.get(id), t = PISTAS[id], mapa = mapaSobre(id), ms = marcasSobre(id, g.curvas), nom = G.curvasNomeadas(id);
-  const chips = (g.km ? chip(`${fmtKm(g.km)} km`) : "") + (g.voltas ? chip(`${plural(g.voltas, "volta")} oficiais`) : "") + (g.curvas.length ? chip(plural(g.curvas.length, "curva")) : "") + (nom ? chip(`${nom} com nome`) : "") + (rec ? chip(`Seu recorde ${fmt(rec.t)}`, "ouro") : "");
-  const lugar = g.real ? `${G.bandeira(id)}<span>${h(g.cidade)} · ${h(g.pais)}</span>` : `<span>Pista da Corrida da Galera</span>`;
+// O desenho do traçado com as curvas numeradas (viewBox 100 × 100); a sala, a ficha de circuitos e o cartão do próximo GP da carreira usam o mesmo.
+function mapaSvg(id, classe = "sn-sobre-svg", g = null, ms = null) {
+  g = g || window.GpInfo.get(id); ms = ms || marcasSobre(id, g.curvas);
+  const t = PISTAS[id], mapa = mapaSobre(id), [lx, ly] = mapa.largada;
   const elos = ms.filter((k) => Math.hypot(k.mx - k.x, k.my - k.y) > 1.2).map((k) => `<line class="elo" x1="${k.x.toFixed(1)}" y1="${k.y.toFixed(1)}" x2="${k.mx.toFixed(1)}" y2="${k.my.toFixed(1)}"/>`).join("");
   const marcas = ms.map((k, i) => `<g class="sn-marca" data-n="${k.n}" style="--i:${i}" transform="translate(${k.mx.toFixed(1)} ${k.my.toFixed(1)})"><circle r="3.5"/><text y="1.4">${k.n}</text></g>`).join("");
-  const [lx, ly] = mapa.largada;
-  const svg = `<svg class="sn-sobre-svg" viewBox="0 0 100 100" role="img" aria-label="Mapa de ${h(t.name)}${g.curvas.length ? ` com as ${g.curvas.length} curvas numeradas` : ""}"><path class="base" d="${mapa.d}"/><path class="fio" d="${mapa.d}"/><rect class="largada" x="${(lx - 1.6).toFixed(1)}" y="${(ly - 1.6).toFixed(1)}" width="3.2" height="3.2"/>${elos}${marcas}</svg>`;
+  return `<svg class="${classe}" viewBox="0 0 100 100" role="img" aria-label="Mapa de ${h(t.name)}${g.curvas.length ? ` com as ${g.curvas.length} curvas numeradas` : ""}"><path class="base" d="${mapa.d}"/><path class="fio" pathLength="1" d="${mapa.d}"/><rect class="largada" x="${(lx - 1.6).toFixed(1)}" y="${(ly - 1.6).toFixed(1)}" width="3.2" height="3.2"/>${elos}${marcas}</svg>`;
+}
+const fmtKm = (km) => km.toFixed(3).replace(".", ",");
+function corpo(id, rec = null, tituloId = "sobreTit") {
+  const G = window.GpInfo, g = G.get(id), t = PISTAS[id], ms = marcasSobre(id, g.curvas), nom = G.curvasNomeadas(id);
+  const chips = (g.km ? chip(`${fmtKm(g.km)} km`) : "") + (g.voltas ? chip(`${plural(g.voltas, "volta")} oficiais`) : "") + (g.curvas.length ? chip(plural(g.curvas.length, "curva")) : "") + (nom ? chip(`${nom} com nome`) : "") + (rec ? chip(`Seu recorde ${fmt(rec.t)}`, "ouro") : "");
+  const lugar = g.real ? `${G.bandeira(id)}<span>${h(g.cidade)} · ${h(g.pais)}</span>` : `<span>Pista da Corrida da Galera</span>`;
+  const svg = mapaSvg(id, "sn-sobre-svg", g, ms);
   const lista = g.curvas.length
     ? `<ol class="sn-sobre-lista" aria-label="Curvas de ${h(g.gp)}">${g.curvas.map((c, i) => `<li style="--i:${i}"><button class="sn-curva ${c.nome ? "" : "sem"}" data-curva="${c.n}" aria-label="Curva ${c.n}${c.nome ? `, ${h(c.nome)}` : ""}"><b>${c.n}</b><span>${c.nome ? h(c.nome) : `Curva ${c.n}`}</span></button></li>`).join("")}</ol>`
     : `<p class="sn-sobre-vazio">${h(t.sub)}</p>`;
   return `<div class="sn-sobre-conteudo"><header class="sn-sobre-cab"><div class="sn-sobre-lugar">${lugar}</div><h2 ${tituloId ? `id="${tituloId}"` : ""}>${h(g.gp)}</h2>${g.real ? `<p class="sn-sobre-circ">${h(g.circuito)}</p>` : ""}<div class="sn-chips">${chips}</div></header><div class="sn-sobre-meio"><figure class="sn-sobre-mapa">${svg}</figure>${lista}</div></div>`;
 }
-root.GpSobre = { corpo };
+root.GpSobre = { corpo, mapaSvg };
 })(window);

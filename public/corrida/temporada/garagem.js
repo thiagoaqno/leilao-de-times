@@ -20,17 +20,13 @@ const IC = {
   confiab: "M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
 };
 const icone = (k) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${IC[k] || IC.reta}"/></svg>`;
-const BAND = {
-  melbourne: '<rect width="24" height="16" fill="#12308f"/><circle cx="7" cy="11" r="2.2" fill="#fff"/><circle cx="17" cy="5" r="1.2" fill="#fff"/><circle cx="19" cy="10" r="1.2" fill="#fff"/><rect width="10" height="6" fill="#0a2275"/>',
-  suzuka: '<rect width="24" height="16" fill="#fff"/><circle cx="12" cy="8" r="4.6" fill="#d8142c"/>',
-  monaco: '<rect width="24" height="8" fill="#d8142c"/><rect y="8" width="24" height="8" fill="#fff"/>',
-  silverstone: '<rect width="24" height="16" fill="#1d3a8a"/><path d="M0 0l24 16M24 0 0 16" stroke="#fff" stroke-width="3"/><path d="M12 0v16M0 8h24" stroke="#fff" stroke-width="5"/><path d="M12 0v16M0 8h24" stroke="#d8142c" stroke-width="2.6"/>',
-  spa: '<rect width="8" height="16" fill="#111"/><rect x="8" width="8" height="16" fill="#f7d417"/><rect x="16" width="8" height="16" fill="#d8142c"/>',
-  monza: '<rect width="8" height="16" fill="#1f9d55"/><rect x="8" width="8" height="16" fill="#fff"/><rect x="16" width="8" height="16" fill="#d8142c"/>',
-  austin: '<rect width="24" height="16" fill="#fff"/><path d="M0 1h24M0 5h24M0 9h24M0 13h24" stroke="#d8142c" stroke-width="2"/><rect width="11" height="9" fill="#26357a"/>',
-  interlagos: '<rect width="24" height="16" fill="#139a43"/><path d="M12 2l9 6-9 6-9-6z" fill="#f7d417"/><circle cx="12" cy="8" r="3.3" fill="#26357a"/>',
-};
-const bandeira = (pista) => `<svg class="bandeira" viewBox="0 0 24 16" width="26" height="17" aria-hidden="true">${BAND[pista] || '<rect width="24" height="16" fill="#555"/><path d="M0 0h12v8H0zM12 8h12v8H12z" fill="#ddd"/>'}</svg>`;
+// As bandeiras vêm de gp-info.js (GpInfo.BANDEIRAS, uma por código de país de cada pista); antes esta tela tinha uma lista própria com 8
+// pistas e as outras caíam no cinza. Sem GpInfo carregado ou sem país conhecido (pistas inventadas), fica a bandeira xadrez.
+const XADREZ = '<rect width="24" height="16" fill="#555"/><path d="M0 0h12v8H0zM12 8h12v8H12z" fill="#ddd"/>';
+function bandeira(pista) {
+  const G = root.GpInfo, info = G && G.REAIS[pista], desenho = info && G.BANDEIRAS[info.pa];
+  return `<svg class="bandeira" viewBox="0 0 24 16" width="26" height="17" aria-hidden="true">${desenho || XADREZ}</svg>`;
+}
 
 // ---------- o painel da equipe: logo, nota do carro e os atributos ----------
 const FICHA = { reta: "Reta", acc: "Aceleração", curva: "Curva", freio: "Freio", resist: "Resistência", confiab: "Confiabilidade" };
@@ -54,16 +50,56 @@ const colunaDireita = ({ titulo, cal, gp, rotuloProx, botao, nota, previsao }) =
 // chuva que cai é a que foi prevista (F1Regras.previsaoDoGP). Sem as regras carregadas, null.
 function previsaoDoGP(semente, ano, gp) { const F = root.F1Regras; return F && F.previsaoDoGP ? F.previsaoDoGP(`${semente}:${ano}:${gp}`) : null; }
 
-// O traçado do próximo GP fica visível na sede antes de abrir a Q1 (solo e grupo), com a previsão do tempo para escolher o pneu.
+// O cartão do próximo GP (solo e grupo): o traçado grande, desenhado a partir de Pistas.PISTAS (o mesmo mapa numerado do "Sobre o GP" da sala),
+// o nome oficial, a bandeira, a cidade, os km, as voltas e as curvas, e a previsão do tempo para escolher o pneu.
 function mapaGP(id, etapa, ativo = false, previsao = null, voltas = 0) {
   const pista = root.Pistas?.PISTAS[id]; if (!pista) return "";
-  const pts = root.Pistas.pontos(pista, 18); if (!pts.length) return "";
-  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
-  const x = Math.min(...xs), y = Math.min(...ys), largura = Math.max(...xs) - x, altura = Math.max(...ys) - y;
-  const margem = 90, caminho = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z";
-  const largada = pts[0], nome = h(pista.name);
-  return `<section class="gp-mapa" aria-label="Mapa do circuito ${nome}"><div class="gp-mapa-info"><span class="gp-mapa-rotulo">Etapa ${etapa} · traçado da pista</span><h2>${nome}</h2><p>${ativo ? "Circuito do GP em andamento." : "Confira o circuito antes de abrir a Q1."}</p>${previsao && root.PrevisaoUI ? `<div class="prev-bloco">${root.PrevisaoUI.html(previsao, { voltas })}</div>` : ""}<span class="gp-mapa-legenda"><i></i>Largada e chegada</span></div>
-    <div class="gp-mapa-desenho"><svg viewBox="${x - margem} ${y - margem} ${largura + margem * 2} ${altura + margem * 2}" role="img" aria-label="Traçado de ${nome}, com largada e chegada marcadas"><path class="gp-mapa-borda" d="${caminho}"/><path class="gp-mapa-linha" d="${caminho}"/><circle class="gp-mapa-marco" cx="${largada.x.toFixed(1)}" cy="${largada.y.toFixed(1)}" r="28"/><circle class="gp-mapa-centro" cx="${largada.x.toFixed(1)}" cy="${largada.y.toFixed(1)}" r="12"/></svg></div></section>`;
+  const G = root.GpInfo, info = G ? G.get(id) : null, real = !!(info && info.real);
+  const oficial = real ? info.gp : pista.name, nome = h(oficial);
+  const traco = root.GpSobre ? root.GpSobre.mapaSvg(id, "gp-traco", info || undefined) : "";
+  const num = (v, dec = 0) => Number(v).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  const dados = [
+    real && info.km ? `<div><dt>Extensão</dt><dd>${num(info.km, 3)}<small> km</small></dd></div>` : "",
+    voltas ? `<div><dt>Voltas no GP</dt><dd>${voltas}${real && info.voltas && info.voltas !== voltas ? `<small> · ${info.voltas} oficiais</small>` : ""}</dd></div>` : "",
+    real && info.curvas.length ? `<div><dt>Curvas</dt><dd>${info.curvas.length}</dd></div>` : "",
+  ].join("");
+  return `<section class="gp-mapa" aria-label="Próximo circuito: ${nome}"><div class="gp-mapa-info"><span class="gp-mapa-rotulo">Etapa ${etapa} · ${ativo ? "GP em andamento" : "próximo GP"}</span>
+    ${real ? `<div class="gp-lugar">${bandeira(id)}<span>${h(info.cidade)} · ${h(info.pais)}</span></div>` : ""}<h2>${nome}</h2>${real ? `<p class="gp-circuito">${h(info.circuito)}</p>` : `<p class="gp-circuito">${h(pista.sub || "")}</p>`}
+    ${dados ? `<dl class="gp-dados">${dados}</dl>` : ""}${previsao && root.PrevisaoUI ? `<div class="prev-bloco">${root.PrevisaoUI.html(previsao, { voltas })}</div>` : ""}<span class="gp-mapa-legenda"><i></i>Largada e chegada</span></div>
+    <div class="gp-mapa-desenho">${traco}</div></section>`;
+}
+
+// O fundo da página vira a foto real do circuito do próximo GP (gp-fotos/<id>.jpg, só Wikimedia Commons com licença livre), com o crédito num
+// canto. Sem foto (ou sem GP a jogar, ou fora da carreira) volta o fundo de sempre. Chamada a cada redesenho: só mexe quando a pista muda.
+let fundoAtual = null;
+function fundoDoGP(id) {
+  const G = root.GpInfo, foto = id && G && G.REAIS[id] ? G.get(id).foto : null, chave = foto ? id : null;
+  if (chave === fundoAtual) return;
+  fundoAtual = chave;
+  let camada = document.getElementById("gpFundo"), credito = document.getElementById("gpCredito");
+  if (!foto) {
+    document.body.classList.remove("com-gp-fundo");
+    if (camada) camada.classList.remove("on");
+    if (credito) credito.hidden = true;
+    return;
+  }
+  if (!camada) {
+    camada = document.createElement("div"); camada.id = "gpFundo"; camada.setAttribute("aria-hidden", "true"); document.body.appendChild(camada);
+    credito = document.createElement("small"); credito.id = "gpCredito"; document.body.appendChild(credito);
+  }
+  const c = G.get(id).credito, texto = G.creditoTxt(id);
+  credito.hidden = !texto;
+  credito.textContent = "";
+  if (c && c.pagina) { const a = document.createElement("a"); a.href = c.pagina; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = texto; credito.appendChild(a); }
+  else credito.textContent = texto;
+  const img = new Image();
+  img.onload = img.onerror = () => {
+    if (fundoAtual !== chave) return; // trocou de pista enquanto a foto carregava
+    if (!img.naturalWidth) { document.body.classList.remove("com-gp-fundo"); camada.classList.remove("on"); credito.hidden = true; return; }
+    camada.style.backgroundImage = `url('${foto}')`;
+    document.body.classList.add("com-gp-fundo"); camada.classList.add("on");
+  };
+  img.src = foto;
 }
 
 // Catálogo das pistas da temporada, compartilhado pela carreira solo e em grupo.
@@ -162,5 +198,5 @@ function cliquePonto(botao, montagem, equipe, bonus = 0) {
   return { ...montagem, [k]: nivel };
 }
 
-root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, circuitosHTML, previsaoDoGP, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
+root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, fundoDoGP, circuitosHTML, previsaoDoGP, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
 })(window);

@@ -8,14 +8,6 @@
 .abas{display:flex;gap:2px;overflow-x:auto;margin:0 0 14px;border-bottom:2px solid var(--f1-lin);scrollbar-width:none}.abas::-webkit-scrollbar{display:none}
 .sede .aba{flex:none;background:transparent;border:0;border-radius:0;padding:11px 18px;font:800 18px/1 var(--display);font-style:italic;text-transform:uppercase;letter-spacing:.05em;color:#aeb8c3;position:relative;box-shadow:none}.sede .aba.on{color:#fff;background:linear-gradient(180deg,transparent,#e1060026)}.sede .aba.on::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:4px;background:var(--f1-vm)}
 /* a garagem: painel da equipe | carro | calendário */
-.gp-mapa{display:grid;grid-template-columns:minmax(220px,330px) minmax(0,1fr);min-height:260px;overflow:hidden;border:1px solid #ffffff3d;border-left:6px solid var(--f1-vm);background:#0c1118}
-.gp-mapa-info{display:flex;flex-direction:column;justify-content:center;padding:25px 30px;background:linear-gradient(110deg,#1e2632,#111821);min-width:0}
-.gp-mapa-rotulo{font:800 14px var(--display);text-transform:uppercase;letter-spacing:.14em;color:#ff7575}
-.gp-mapa h2{font:italic 900 clamp(40px,5vw,70px)/.9 var(--display);text-transform:uppercase;overflow-wrap:anywhere;margin:10px 0 8px}
-.gp-mapa p{font-size:14px;color:#d1dce7;line-height:1.4}
-.gp-mapa-legenda{display:flex;align-items:center;gap:9px;margin-top:20px;font:800 12px var(--display);text-transform:uppercase;letter-spacing:.09em;color:#e2eaf2}.gp-mapa-legenda i{width:14px;height:14px;display:inline-block;border-radius:50%;background:var(--f1-vm);box-shadow:0 0 0 3px #fff}
-.gp-mapa-desenho{min-height:260px;display:grid;place-items:center;background:radial-gradient(circle at 50% 50%,#26384a 0,#111a25 55%,#091018 100%);padding:14px 30px}
-.gp-mapa-desenho svg{display:block;width:100%;height:245px;overflow:visible}.gp-mapa-desenho path{fill:none;stroke-linecap:round;stroke-linejoin:round}.gp-mapa-borda{stroke:#000b;stroke-width:64}.gp-mapa-linha{stroke:#f4f8fc;stroke-width:35}.gp-mapa-marco{fill:var(--f1-vm);stroke:#fff;stroke-width:8}.gp-mapa-centro{fill:#fff}
 .garagem-hero{display:grid;grid-template-columns:minmax(210px,260px) minmax(0,1fr) minmax(250px,320px);gap:14px;align-items:stretch}
 .gp-mapa-info .prev-bloco{margin:14px 0 4px;max-width:440px}
 .cal li b .prev.mini{margin-left:8px}
@@ -52,7 +44,7 @@
 .sede .bloco{border-radius:0;background:#101216ee;border-top:3px solid var(--f1-lin);--corte:12px;clip-path:polygon(0 0,calc(100% - var(--corte)) 0,100% var(--corte),100% 100%,0 100%)}.sede .bloco>header h2{font-size:26px}
 .painel-aba{display:grid;gap:14px}
 @media (max-width:1100px){.garagem-hero{grid-template-columns:minmax(200px,240px) minmax(0,1fr)}.pn-gp{grid-column:1/-1}.cal{max-height:none}.cr-cartoes{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:760px){.gp-mapa{grid-template-columns:1fr}.gp-mapa-info{padding:19px 20px}.gp-mapa h2{font-size:42px}.gp-mapa-legenda{margin-top:10px}.gp-mapa-desenho{min-height:220px;padding:8px 22px}.gp-mapa-desenho svg{height:210px}.garagem-hero{grid-template-columns:1fr}.cr-centro{order:-1;min-height:300px}.pn-gp{order:0}.pn-equipe{order:1}.pc-corpo{grid-template-columns:1fr}.pc-resumo{position:static}.pn-nota strong{font-size:38px}.cr-topo{align-items:flex-start}.sede .aba{padding:10px 13px;font-size:16px}.pc-lista{grid-template-columns:1fr 1fr}.sede .btn-continuar{font-size:23px}}
+@media (max-width:760px){.garagem-hero{grid-template-columns:1fr}.cr-centro{order:-1;min-height:300px}.pn-gp{order:0}.pn-equipe{order:1}.pc-corpo{grid-template-columns:1fr}.pc-resumo{position:static}.pn-nota strong{font-size:38px}.cr-topo{align-items:flex-start}.sede .aba{padding:10px 13px;font-size:16px}.pc-lista{grid-template-columns:1fr 1fr}.sede .btn-continuar{font-size:23px}}
 @media (max-width:620px){.sede{padding-left:16px;padding-right:16px}}
 @media (max-width:420px){.pc-lista{grid-template-columns:1fr}.cr-cartoes{grid-template-columns:1fr 1fr}.cr-caixa{padding:6px 10px}.cr-caixa b{font-size:20px}}
 @media (max-width:420px){.ponto-linha{align-items:flex-start;flex-direction:column;gap:10px}.ponto-controles{align-self:flex-end}}
@@ -66,3 +58,36 @@
 .circuito-fundo .sn-sobre-meio{display:grid;grid-template-columns:minmax(210px,340px) minmax(0,1fr);gap:clamp(20px,3vw,40px);align-items:start}.circuito-fundo .sn-sobre-mapa{margin:0;aspect-ratio:1;width:100%}.circuito-fundo .sn-sobre-svg{display:block;width:100%;height:100%;overflow:visible}.circuito-fundo .sn-sobre-svg .base{fill:none;stroke:#000b;stroke-width:13px;stroke-linejoin:round;vector-effect:non-scaling-stroke}.circuito-fundo .sn-sobre-svg .fio{fill:none;stroke:#f1f3f6;stroke-width:5px;stroke-linejoin:round;vector-effect:non-scaling-stroke}.circuito-fundo .sn-sobre-svg .largada{fill:#fff;stroke:#111;stroke-width:.5}.circuito-fundo .sn-sobre-svg .elo{stroke:#ffffffb0;stroke-width:.35}.circuito-fundo .sn-marca circle{fill:#e10600;stroke:white;stroke-width:.7}.circuito-fundo .sn-marca text{fill:#fff;font:800 3.6px var(--display);text-anchor:middle;pointer-events:none}.circuito-fundo .sn-sobre-svg.tem-hi .sn-marca:not(.hi){opacity:.38}.circuito-fundo .sn-marca.hi circle{fill:#fff;stroke:#ff2a21;stroke-width:1.5}.circuito-fundo .sn-marca.hi text{fill:#e10600}
 .circuito-fundo .sn-sobre-lista{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:6px;max-height:340px;overflow-y:auto}.sede .circuito-fundo .sn-curva{display:flex;align-items:center;gap:9px;width:100%;min-height:42px;padding:5px;border:1px solid #ffffff40;background:#07080ccc;color:#fff;text-align:left;font:700 15px var(--display);cursor:pointer}.circuito-fundo .sn-curva b{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:50%;background:#e10600;color:#fff}.circuito-fundo .sn-curva span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.circuito-fundo .sn-curva.sem span{color:#b8c1ca}.sede .circuito-fundo .sn-curva:hover,.sede .circuito-fundo .sn-curva.hi{background:#9f1c1c;border-color:#fff}.circuito-fundo .sn-curva.hi b{background:#fff;color:#e10600}.sede .circuito-fundo .sn-curva:focus-visible{outline:3px solid #fff;outline-offset:1px}.circuito-fundo .sn-sobre-vazio{color:#e1e6ec;line-height:1.5}.circuito-credito{display:block;margin-top:20px;color:#c4cbd3;font-size:10px;text-align:right}
 @media(max-width:700px){.circuito-fundo .sn-sobre-meio{grid-template-columns:1fr}.circuito-fundo .sn-sobre-mapa{max-width:320px;margin:auto}.circuito-fundo .sn-sobre-lista{max-height:none;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}}
+
+/* O cartão do próximo GP: o traçado grande à direita (o mesmo mapa numerado do "Sobre o GP"), o nome oficial, a bandeira e os números à esquerda. */
+.gp-mapa{display:grid;grid-template-columns:minmax(260px,420px) minmax(0,1fr);min-height:320px;overflow:hidden;border:1px solid #ffffff3d;border-left:6px solid var(--f1-vm);background:#0c1118e6;box-shadow:0 18px 50px #0006}
+.gp-mapa-info{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:clamp(18px,2.6vw,32px);background:linear-gradient(110deg,#1e2632f2,#111821f2);min-width:0}
+.gp-mapa-rotulo{font:800 14px var(--display);text-transform:uppercase;letter-spacing:.14em;color:#ff7575}
+.gp-lugar{display:flex;align-items:center;gap:10px;margin-top:12px;color:#d8e0e8;font:800 14px var(--display);letter-spacing:.08em;text-transform:uppercase}.gp-lugar .bandeira{width:34px;height:22px;border-radius:3px;flex:none;box-shadow:0 0 0 1px #ffffff55,0 4px 12px #0009}.gp-lugar span{min-width:0;overflow-wrap:anywhere}
+.gp-mapa h2{font:italic 900 clamp(30px,3.6vw,52px)/.92 var(--display);text-transform:uppercase;overflow-wrap:anywhere;margin:8px 0 6px}
+.gp-circuito{margin:0;font-size:14px;color:#c4cfda;line-height:1.35}
+.gp-dados{display:flex;flex-wrap:wrap;gap:8px 22px;margin:16px 0 4px;padding:12px 0 0;border-top:1px solid #ffffff26}.gp-dados div{min-width:0}.gp-dados dt{font:800 11px var(--display);text-transform:uppercase;letter-spacing:.12em;color:#9fb0c1}.gp-dados dd{margin:2px 0 0;font:900 30px/1 var(--display);color:#fff}.gp-dados small{font:700 13px var(--display);letter-spacing:.04em;color:#b7c3cf}
+.gp-mapa p{font-size:14px;color:#d1dce7;line-height:1.4}
+.gp-mapa-info .prev-bloco{margin:14px 0 4px;max-width:440px}
+.gp-mapa-legenda{display:flex;align-items:center;gap:9px;margin-top:16px;font:800 12px var(--display);text-transform:uppercase;letter-spacing:.09em;color:#e2eaf2}.gp-mapa-legenda i{width:14px;height:14px;display:inline-block;border-radius:50%;background:var(--f1-vm);box-shadow:0 0 0 3px #fff}
+.gp-mapa-desenho{display:grid;place-items:center;min-width:0;padding:clamp(12px,2.2vw,26px);background:radial-gradient(circle at 50% 50%,#2a3e52e6 0,#111a25e6 58%,#091018f2 100%)}
+.gp-traco{display:block;width:100%;max-width:470px;aspect-ratio:1;height:auto;overflow:visible}
+.gp-traco .base{fill:none;stroke:#000c;stroke-width:2.8;stroke-linejoin:round;stroke-linecap:round}
+.gp-traco .fio{fill:none;stroke:#f4f8fc;stroke-width:1.1;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--eq,#e10600) 80%,transparent));stroke-dasharray:1;stroke-dashoffset:0;animation:gp-traco 1.7s cubic-bezier(.5,0,.2,1) both}
+.gp-traco .largada{fill:#fff;stroke:#111;stroke-width:.5}.gp-traco .elo{stroke:#ffffffb0;stroke-width:.35}
+.gp-traco .sn-marca circle{r:2.5;fill:#e10600;stroke:#fff;stroke-width:.45}.gp-traco .sn-marca text{fill:#fff;font:800 2.7px var(--display);text-anchor:middle;pointer-events:none;transform:translateY(-.25px)}
+.gp-traco .sn-marca{animation:gp-marca .45s ease-out both;animation-delay:calc(.9s + var(--i,0) * 35ms)}
+@keyframes gp-traco{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes gp-marca{from{opacity:0}to{opacity:1}}
+@media (max-width:900px){.gp-mapa{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media (max-width:760px){.gp-mapa{grid-template-columns:minmax(0,1fr);min-height:0}.gp-mapa-desenho{padding:10px 14px 18px}.gp-traco{max-width:420px}.gp-dados dd{font-size:26px}}
+@media (prefers-reduced-motion:reduce){.gp-traco .fio,.gp-traco .sn-marca{animation:none}}
+
+/* O fundo da página com a foto real do circuito do próximo GP (garagem.js, fundoDoGP): degradê escuro por cima para o texto continuar legível. */
+#gpFundo{position:fixed;inset:0;z-index:0;pointer-events:none;background:center 45%/cover no-repeat #080b11;opacity:0;transition:opacity .9s ease;filter:saturate(.92) brightness(.82)}
+#gpFundo.on{opacity:1}
+body.com-gp-fundo::before{opacity:0}
+body.com-gp-fundo::after{background:linear-gradient(180deg,#080b1166 0,#080b11a8 38%,#080b11e6 78%,#080b11 100%),linear-gradient(90deg,#080b11a6,#080b1133 55%,#080b1166)}
+#gpCredito{position:fixed;right:8px;bottom:6px;z-index:2;max-width:calc(100vw - 16px);padding:2px 8px;border-radius:4px;background:#05080dc4;color:#c4ccd5;font-size:10px;line-height:1.5;opacity:.82}
+#gpCredito a{color:inherit;text-decoration:none}#gpCredito a:hover,#gpCredito a:focus-visible{text-decoration:underline;color:#fff}
+@media (prefers-reduced-motion:reduce){#gpFundo{transition:none}}
