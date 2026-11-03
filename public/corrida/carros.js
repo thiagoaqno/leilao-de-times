@@ -91,7 +91,7 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
 // `d`: a distância em unidades do mundo. Só esconde as peças do modelo (pelo nome), sem mexer nos efeitos (luzes, chamas, faíscas).
 const LOD_PERTO = 320, LOD_LONGE = 1000;
 // (os nomes do carro clássico e, depois, os das peças que f1-2026.js monta)
-const LOD1 = new Set(["gear_switch", "interior_details_1", "interior_details_2", "steering_wheel", "back_suspension_2", "car_body_3", "car_body_4", "volante", "volante-det", "miudezas", "luvas", "luvas-aro", "braco", "tronco"]); // (o piloto: as luvas, os braços e os ombros saem de longe)
+const LOD1 = new Set(["gear_switch", "interior_details_1", "interior_details_2", "steering_wheel", "back_suspension_2", "car_body_3", "car_body_4", "volante", "volante-det", "miudezas", "luvas", "luvas-aro", "braco", "antebraco", "tronco"]); // (o piloto: as luvas, os braços e os ombros saem de longe)
 const LOD2 = new Set(["back_suspension_1", "front_suspension", "car_body_2", "McLaren_mp4_5_2", "detalhes", "mecanica", "capacete", "viseira"]); // (e, bem longe, a cabeça)
 export function lodKart(k, d) {
   if (!k || !k.g) return;

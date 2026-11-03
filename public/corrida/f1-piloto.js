@@ -1,5 +1,5 @@
 // Corrida da Galera — o piloto dentro do carro de F1 de 2026: capacete (viseira escura, desenho nas cores da equipe, faixa e o número),
-// ombros, braços e luvas nas cores da equipe. Tudo em poucas malhas por carro (cabeça: capacete e viseira; corpo: ombros e dois braços;
+// macacão (tronco, ombros, braço e antebraço com cotovelo que dobra) e luvas nas cores da equipe. Tudo em poucas malhas por carro (cabeça: capacete e viseira; corpo: tronco e dois braços; antebraços: dois;
 // mãos: uma malha só com as duas luvas) e com geometrias, texturas e materiais reaproveitados por equipe: o que muda de um carro para o
 // outro é só a pose. A pose sai das coordenadas do carro (metros do modelo, a frente é −z) e é calculada a cada quadro por `animarPiloto`.
 //
@@ -8,7 +8,7 @@
 // fases sorteadas para ESTE carro (mais uma modulação lenta) faz a cabeça nunca repetir; de vez em quando, num intervalo sorteado, o
 // piloto dá uma olhada rápida num espelho. O sorteio vem de uma semente por carro (`semente`), então dois carros nunca se mexem juntos.
 // `prefers-reduced-motion`: a cabeça fica parada na posição neutra (as luvas continuam seguindo o volante, que já gira).
-// O corpo (`p.corpo`) some na câmera de cockpit do meu carro (`ocultarPiloto`); as luvas (`p.maos`) ficam. De longe (`lodKart`, carros.js)
+// O corpo (`p.corpo`: cabeça, tronco e braços) some na câmera de cockpit do meu carro (`ocultarPiloto`); os antebraços (`p.antebracos`) e as luvas (`p.maos`) ficam. Os braços são de 2 ossos (ombro → cotovelo → luva no aro): IK simples, o cotovelo abre para fora e para baixo. De longe (`lodKart`, carros.js)
 // as luvas, os braços e os ombros saem e a animação para.
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
@@ -25,7 +25,8 @@ const RC = { x: 0.073, y: 0.081, z: 0.095 }; // os raios do capacete (m)
 const PESCOCO = { x: 0, y: 0.543, z: 0.0 }; // o capacete é uma bola de ~0,26 m 0,14 m acima: o centro dele fica a ~0,683 m, a viseira na altura da borda do cockpit (~0,69) e o topo a ~0,764 m (um pouco abaixo da barra do halo, ~0,776)
 const VOLANTE = { x: 0, y: 0.524, z: -0.32 }; // o centro do volante do Audi R26 (f1-2026.js); com o volante do modelo, usa o dele
 const MAO = { x: 0.108, y: 0, z: 0.085 }; // cada luva em relação ao centro do volante (antes de girar com ele)
-const OMBRO = { x: 0.12, y: 0.52, z: 0.2 };
+const OMBRO = { x: 0.115, y: 0.55, z: 0.2 }; // o ombro (pivô do braço)
+const OSSO = { cima: 0.24, baixo: 0.23 }; // o braço e o antebraço (m): com o ombro a ~0,44 m da luva o cotovelo dobra um pouco
 
 // ---------- o que é dividido entre todos os carros ----------
 const sinal = (v) => (v < 0 ? -1 : 1), passo = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -54,10 +55,11 @@ function geometrias() {
   const viseira = casco(new THREE.SphereGeometry(1, 40, 3, 1.5 * Math.PI - 1.15, 2.3, 1.2, 0.36), 1.012);
   const luva = (s) => { const c = new THREE.CapsuleGeometry(0.034, 0.045, 3, 8); c.translate(s * MAO.x, MAO.y, MAO.z); return c; };
   const luvas = mergeGeometries([luva(-1), luva(1)]);
-  const braco = new THREE.CylinderGeometry(0.03, 0.024, 1, 8, 1); braco.translate(0, 0.5, 0); // do ombro (y = 0) à luva (y = 1); esticado a cada quadro
-  const tronco = new THREE.CapsuleGeometry(0.075, 0.12, 4, 10); tronco.rotateZ(Math.PI / 2); tronco.scale(1, 1, 1.15);
+  const braco = new THREE.CylinderGeometry(0.03, 0.037, 1, 10, 1); braco.translate(0, 0.5, 0); // do ombro (y = 0) ao cotovelo (y = 1); esticado a cada quadro
+  const antebraco = new THREE.CylinderGeometry(0.024, 0.031, 1, 10, 1); antebraco.translate(0, 0.5, 0); // do cotovelo (y = 0) ao pulso (y = 1)
+  const tronco = new THREE.CapsuleGeometry(0.085, 0.13, 4, 12); tronco.scale(1.3, 1, 0.8); // o peito e os ombros (deitado para trás, na malha)
   const aro = new THREE.BoxGeometry(0.235, 0.12, 0.035); // o volante dos carros "leves" (que não trazem o do modelo): só para as mãos terem onde segurar
-  return (G = { capacete, viseira, luvas, braco, tronco, aro });
+  return (G = { capacete, viseira, luvas, braco, antebraco, tronco, aro });
 }
 const VISEIRA = () => (VISEIRA.m ||= new THREE.MeshStandardMaterial({ color: 0x090b10, roughness: 0.1, metalness: 0.4 }));
 const CARBONO = () => (CARBONO.m ||= new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.4, metalness: 0.1 }));
@@ -69,7 +71,19 @@ const tecido = (cor, escurece = 0) => {
   return m;
 };
 // a luva na cor da equipe que se vê: a cor 1, ou a cor 2 se a 1 é escura demais (o preto e o azul-marinho somem contra o carbono do volante)
-function corDaLuva(c1, c2) { const c = new THREE.Color(c1); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b < 0.06 ? c2 : c1; }
+function corDaLuva(c1, c2) { const c = new THREE.Color(c2); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b < 0.06 ? c1 : c2; } // (a cor 2, que se destaca do macacão de cor 1; se ela for escura demais, a 1)
+// o macacão: a cor 1 com uma faixa de cor 2 (em volta do peito, do braço e do antebraço, perto do cotovelo e do punho); um material por equipe
+const TRAJES = new Map();
+function traje(c1, c2) {
+  const k = c1 + "|" + c2; let m = TRAJES.get(k);
+  if (!m) {
+    const cv = document.createElement("canvas"); cv.width = 8; cv.height = 64; const x = cv.getContext("2d");
+    x.fillStyle = c1; x.fillRect(0, 0, 8, 64); x.fillStyle = c2; x.fillRect(0, 18, 8, 9); x.fillRect(0, 50, 8, 4);
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+    m = new THREE.MeshStandardMaterial({ map: t, roughness: 0.75, metalness: 0 }); TRAJES.set(k, m);
+  }
+  return m;
+}
 // a cor da faixa do capacete: branco, ou quase preto se as cores da equipe já são claras
 function corDaFaixa(c1, c2) {
   const lum = (h) => { const c = new THREE.Color(h); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; };
@@ -111,15 +125,18 @@ export function criarPiloto(kt, op) {
   const cab = new THREE.Group(); cab.position.set(PESCOCO.x, PESCOCO.y, PESCOCO.z); cab.rotation.order = "YXZ"; corpo.add(cab);
   const capacete = solta(new THREE.Mesh(g.capacete, materialDoCapacete(cor1, cor2, op.numero, op.sigla ? capacetePorSigla(op.sigla) : null))); capacete.name = "capacete"; capacete.position.y = 0.14; cab.add(capacete);
   const viseira = solta(new THREE.Mesh(g.viseira, VISEIRA())); viseira.name = "viseira"; viseira.position.y = 0.14; cab.add(viseira);
-  const tronco = solta(new THREE.Mesh(g.tronco, tecido(cor1, 0.45))); tronco.name = "tronco"; tronco.position.set(0, 0.49, 0.2); corpo.add(tronco);
-  const bracos = [-1, 1].map((s) => { const b = solta(new THREE.Mesh(g.braco, tecido(cor1, 0.45))); b.name = "braco"; b.position.set(s * OMBRO.x, OMBRO.y, OMBRO.z); corpo.add(b); return b; });
+  const tronco = solta(new THREE.Mesh(g.tronco, traje(cor1, cor2))); tronco.name = "tronco"; tronco.position.set(0, 0.45, 0.16); tronco.rotation.x = 0.6; corpo.add(tronco); // o piloto deitado: o peito inclinado para trás
+  const bracos = [-1, 1].map((l) => { const m = solta(new THREE.Mesh(g.braco, traje(cor1, cor2))); m.name = "braco"; m.position.set(l * OMBRO.x, OMBRO.y, OMBRO.z); corpo.add(m); return m; });
+  // os antebraços ficam fora do corpo: aparecem também na primeira pessoa, junto das luvas
+  const antebracos = new THREE.Group(); antebracos.name = "antebracos"; kt.carro.add(antebracos);
+  const foreBracos = [-1, 1].map(() => { const m = solta(new THREE.Mesh(g.antebraco, traje(cor1, cor2))); m.name = "antebraco"; antebracos.add(m); return m; });
   // as mãos (ficam no volante e aparecem também na primeira pessoa): uma malha só, com as duas luvas, num pivô que gira com o volante
   const maos = new THREE.Group(); maos.name = "maos"; maos.position.copy(centro); kt.carro.add(maos);
   const luvas = solta(new THREE.Mesh(g.luvas, tecido(corDaLuva(cor1, cor2)))); luvas.name = "luvas"; maos.add(luvas);
   let aro = null; if (!kt.volante) { aro = solta(new THREE.Mesh(g.aro, CARBONO())); aro.name = "luvas-aro"; maos.add(aro); }
   const agit = 0.7 + r() * 0.7; // quão mexida é a cabeça deste piloto (uns são mais calmos)
   const p = {
-    kt, corpo, cab, tronco, bracos, maos, aro, centro, rng: r, t: r() * 100, fant: false, escondido: false, neutro: false,
+    kt, corpo, cab, tronco, bracos, antebracos, foreBracos, maos, aro, centro, rng: r, t: r() * 100, fant: false, escondido: false, neutro: false,
     mRoll: { x: 0, v: 0 }, mYaw: { x: 0, v: 0 }, mPitch: { x: 0, v: 0 }, mX: { x: 0, v: 0 }, brk: 0,
     w: { roll: 8 + r() * 3.5, yaw: 6 + r() * 2.5, pitch: 9 + r() * 3.5 }, z: { roll: 0.45 + r() * 0.2, yaw: 0.6 + r() * 0.2, pitch: 0.42 + r() * 0.2 }, // frequência e amortecimento das molas: ~0,5 passa um pouco do ponto
     agit, modula: [0.03 + r() * 0.05, r() * 6.2832], // a respiração lenta do ruído (nunca igual)
@@ -131,27 +148,32 @@ export function criarPiloto(kt, op) {
   vistaNeutra(p);
   return p;
 }
-function visivel(p) { p.corpo.visible = !p.fant && !p.escondido; p.maos.visible = !p.fant; }
-// na primeira pessoa (câmera de cockpit do meu carro): o capacete e o corpo somem; as luvas ficam
+function visivel(p) { p.corpo.visible = !p.fant && !p.escondido; p.antebracos.visible = p.maos.visible = !p.fant; }
+// na primeira pessoa (câmera de cockpit do meu carro): o capacete, o tronco e os braços somem; os antebraços e as luvas ficam
 export function ocultarPiloto(k, sim) { const p = k?.pil; if (!p || p.escondido === !!sim) return; p.escondido = !!sim; visivel(p); }
-export function soltarPiloto(k) { const p = k?.pil; if (!p) return; p.corpo.removeFromParent(); p.maos.removeFromParent(); k.pil = null; } // (geometrias, texturas e materiais são de todos: nada a descartar)
+export function soltarPiloto(k) { const p = k?.pil; if (!p) return; p.corpo.removeFromParent(); p.antebracos.removeFromParent(); p.maos.removeFromParent(); k.pil = null; } // (geometrias, texturas e materiais são de todos: nada a descartar)
 
 // a pose parada: a cabeça no centro, os braços no volante reto
 function vistaNeutra(p) { p.cab.rotation.set(0, 0, 0); p.cab.position.set(PESCOCO.x, PESCOCO.y, PESCOCO.z); p.tronco.rotation.z = 0; posicionarMaos(p, 0); p.neutro = true; }
 
-const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion(), _y = new THREE.Vector3(0, 1, 0);
-// as luvas giram com o volante; cada braço vai do ombro até a luva (esticado, sem cotovelo: o cockpit esconde o meio)
+const _s = new THREE.Vector3(), _h = new THREE.Vector3(), _e = new THREE.Vector3(), _d = new THREE.Vector3(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _y = new THREE.Vector3(0, 1, 0);
+// um osso (cilindro de comprimento 1 ao longo de y) do ponto `de` ao ponto `ate`
+function osso(m, de, ate) { _d.subVectors(ate, de); const len = _d.length() || 1e-4; m.position.copy(de); m.quaternion.copy(_q.setFromUnitVectors(_y, _d.divideScalar(len))); m.scale.set(1, len, 1); }
+// as luvas giram com o volante; cada braço é de 2 ossos (ombro → cotovelo → luva): IK simples, o cotovelo abre para fora e para baixo (o "polo")
 function posicionarMaos(p, ang, tremX = 0, tremY = 0) {
   p.maos.position.set(p.centro.x + tremX, p.centro.y + tremY, p.centro.z); p.maos.rotation.z = ang;
-  if (!p.corpo.visible) return;
-  const c = Math.cos(ang), s = Math.sin(ang);
-  p.bracos.forEach((b, i) => {
+  const c = Math.cos(ang), s = Math.sin(ang), L1 = OSSO.cima, L2 = OSSO.baixo;
+  for (let i = 0; i < 2; i++) {
     const lado = i ? 1 : -1, hx = lado * MAO.x, hy = MAO.y; // a luva no quadro do volante → no quadro do carro (gira em z)
-    _b.set(p.centro.x + tremX + hx * c - hy * s, p.centro.y + tremY + hx * s + hy * c, p.centro.z + MAO.z + 0.01);
-    _a.set(lado * OMBRO.x, OMBRO.y, OMBRO.z);
-    _b.sub(_a); const len = _b.length(); _b.divideScalar(len || 1);
-    b.quaternion.copy(_q.setFromUnitVectors(_y, _b)); b.scale.set(1, Math.max(0.01, len - 0.045), 1);
-  });
+    _h.set(p.centro.x + tremX + hx * c - hy * s, p.centro.y + tremY + hx * s + hy * c, p.centro.z + MAO.z);
+    _s.set(lado * OMBRO.x, OMBRO.y, OMBRO.z);
+    _d.subVectors(_h, _s); const dist = _d.length() || 1e-4; _d.divideScalar(dist);
+    const alcance = Math.min(dist, (L1 + L2) * 0.999), a = (L1 * L1 - L2 * L2 + alcance * alcance) / (2 * alcance), alt = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+    _p.set(lado * 0.9, -0.35, 0.25); _p.addScaledVector(_d, -_p.dot(_d)); if (_p.lengthSq() < 1e-6) _p.set(lado, 0, 0); _p.normalize();
+    _e.copy(_s).addScaledVector(_d, a).addScaledVector(_p, alt); // o cotovelo
+    if (p.corpo.visible) osso(p.bracos[i], _s, _e);
+    osso(p.foreBracos[i], _e, _h);
+  }
 }
 
 // a cada quadro, depois de animarF1 (o volante já girou). e: { dt, v, steer (−1 a 1; positivo = direita), dec (desaceleração, u/s²; negativa = acelerando), lod, vitrine }
