@@ -6,7 +6,7 @@ import { textoJogos } from "./box.js";
 import { lapDone, deltaBest, myProg } from "./fantasma.js";
 import { drawItemHud } from "./itens.js";
 import { clima } from "./clima.js";
-import { set, montarCentro, atualizarCentro, montarTempo, atualizarTempo, estrategia, minimapaF1, desenharBanner, montarCrono, desenharCrono } from "./hud-painel.js";
+import { set, montarCentro, atualizarCentro, montarTempo, atualizarTempo, estrategia, minimapaF1, minimapaPertoF1, desenharBanner, montarCrono, desenharCrono } from "./hud-painel.js";
 import { montarMfd, atualizarMfd, acoes } from "./mfd.js";
 import { atualizarMenuBox } from "./box-menu.js";
 
@@ -351,7 +351,8 @@ export function renderQuali() {
 }
 // minimapa redondo que gira com o carro (a frente é para cima): a pista em cinza e o caminho à frente em azul-claro
 function minimapa(st, m) {
-  if (race.hudF1 && !mapaPerto) return minimapaF1(st, m); // nas regras de F1 o minimapa é o do traçado inteiro (hud-painel.js), se não pediu o de perto
+  $("mini")?.classList.toggle("perto", !!(race.hudF1 && mapaPerto));
+  if (race.hudF1) return mapaPerto ? minimapaPertoF1(st, m) : minimapaF1(st, m); // nas regras de F1: o traçado inteiro ou o de perto (hud-painel.js)
   const cv = $("mini"), c = cv.getContext("2d"), S = cv.width, tr = race.tr, eu = m ? race.car : (st[0] && race.ghosts.get(st[0].id)) || race.car;
   const esc = S / 2 / 900, idx = m ? race.idx : eu.idx || 0;
   c.clearRect(0, 0, S, S); c.save();

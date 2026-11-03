@@ -149,6 +149,32 @@ function baseDoMapa(tr, S) {
   const [lx, ly] = tela(tr.pts[0]); c.fillStyle = "#fff"; c.fillRect(lx - 4, ly - 4, 8, 8); c.fillStyle = "#0a0c12"; c.fillRect(lx - 4, ly - 4, 4, 4); c.fillRect(lx, ly, 4, 4);
   return { cv, esc, ox, oy };
 }
+// O mapa de PERTO (opção do MFD / tocar no mapa), como o do jogo da F1: o trecho em volta do carro, no mesmo norte do mapa inteiro (não
+// gira), o traçado branco grosso com contorno, a linha de chegada, os outros carros e a seta na cor da equipe no meio. Sem fundo.
+const PERTO_ZOOM = 3.4;
+export function minimapaPertoF1(st, m) {
+  const cv = $("mini"), c = cv.getContext("2d"), S = cv.width, tr = race.tr;
+  if (!race.miniF1) race.miniF1 = baseDoMapa(tr, S);
+  const B = race.miniF1, esc = B.esc * PERTO_ZOOM, cors = race.hudCors || [], cor = new Map(cors.map((k) => [k.id, k.cor]));
+  const eu = m ? race.car : (st[0] && race.ghosts.get(st[0].id)) || race.car;
+  const ox = S / 2 - eu.x * esc, oy = S / 2 - eu.y * esc, pt = (x, y) => [x * esc + ox, y * esc + oy];
+  c.clearRect(0, 0, S, S); c.lineCap = c.lineJoin = "round";
+  c.beginPath(); for (let i = 0; i <= tr.n; i += 2) { const [x, y] = pt(tr.pts[i % tr.n].x, tr.pts[i % tr.n].y); i ? c.lineTo(x, y) : c.moveTo(x, y); }
+  c.closePath(); c.strokeStyle = "#000d"; c.lineWidth = 15; c.stroke(); c.strokeStyle = "#f2f4f8"; c.lineWidth = 8; c.stroke();
+  { // a linha de chegada: um xadrez atravessado na pista
+    const p = tr.pts[0], [x, y] = pt(p.x, p.y); c.save(); c.translate(x, y); c.rotate(Math.atan2(p.ny, p.nx));
+    for (let k = -2; k < 2; k++) for (let j = 0; j < 2; j++) { c.fillStyle = (k + j) & 1 ? "#0a0c12" : "#fff"; c.fillRect(k * 4, -4 + j * 4, 4, 4); }
+    c.restore();
+  }
+  for (const r of st) {
+    if (m && r.id === m.id) continue; const gh = race.ghosts.get(r.id); if (!gh) continue;
+    const [x, y] = pt(gh.x, gh.y); if (x < -10 || y < -10 || x > S + 10 || y > S + 10) continue;
+    c.beginPath(); c.arc(x, y, 6, 0, 7); c.fillStyle = cor.get(r.id) || r.p.color; c.fill(); c.lineWidth = 1.8; c.strokeStyle = "#000c"; c.stroke();
+  }
+  c.save(); c.translate(S / 2, S / 2); c.rotate(eu.a + Math.PI / 2); // eu: a seta no meio, apontando para onde o carro vai
+  c.beginPath(); c.moveTo(0, -12); c.lineTo(9, 9); c.lineTo(0, 4.5); c.lineTo(-9, 9); c.closePath();
+  c.fillStyle = (m && cor.get(m.id)) || (m && m.color) || "#ff8a00"; c.fill(); c.lineWidth = 2.2; c.strokeStyle = "#fff"; c.stroke(); c.restore();
+}
 export function minimapaF1(st, m) {
   const cv = $("mini"), c = cv.getContext("2d"), S = cv.width, tr = race.tr;
   if (!race.miniF1) race.miniF1 = baseDoMapa(tr, S);

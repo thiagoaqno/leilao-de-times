@@ -56,7 +56,8 @@
 /* o minimapa do traçado inteiro (hud-painel.js desenha) no canto inferior esquerdo */
 #race.f1hud .hud.bl{left:10px;bottom:10px}
 #race.f1hud #mini{width:150px;height:150px;border-radius:6px;background:#0a0c12a8;box-shadow:0 6px 16px #000a;filter:none}
-#race.f1hud #mini{pointer-events:auto;cursor:pointer} /* tocar no mapa troca entre a pista inteira e o de perto (hud.js) */
+#race.f1hud #mini{pointer-events:auto;cursor:pointer}
+#race.f1hud #mini.perto{background:transparent;box-shadow:none} /* o mapa de perto, como o do jogo da F1: só o traçado, sem caixa */ /* tocar no mapa troca entre a pista inteira e o de perto (hud.js) */
 @media (max-width:700px){
   #hTorre{width:176px;left:6px;top:6px}
   .tt-topo{height:30px;gap:5px;padding-left:5px}.f1logo{width:40px;height:16px}.tt-modo{font-size:16px}.tt-alt{width:24px;height:24px}.tt-alt svg{width:13px;height:13px}
