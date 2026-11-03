@@ -6,6 +6,14 @@ const KMH_POR_U = 0.75; // o velocímetro mostra v * 0.75 km/h: com essa mesma e
 const V_MIN = 22; // abaixo disso (unidades/s) o tempo explode: mostra a distância em metros
 const mDe = (u) => (u * KMH_POR_U) / 3.6;
 
+// A sigla de 3 letras do piloto (como na TV): a do piloto de 2026 se ele tem; o humano não tem, então saem as 3 primeiras letras do nome,
+// em maiúsculas e sem acento (só letras e números: "João Pedro" vira JOA; "Zé" vira ZE; nome sem letra vira ???).
+function siglaDe(p) {
+  if (p && p.sigla) return String(p.sigla).toUpperCase();
+  const nome = String((p && (p.name || p.nomeCompleto)) || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]/g, "");
+  return nome.slice(0, 3).toUpperCase() || "???";
+}
+
 function tempoCurto(s) { return s < 60 ? s.toFixed(1) : `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`; }
 
 // A diferença para o líder de um carro: `dist` em unidades da pista (>= 0), `v` a velocidade dele (suavizada), `voltas` as voltas
@@ -80,7 +88,7 @@ function recortar(total, eu, max) {
   return out;
 }
 
-const api = { criarCronometragem, LETRA, KMH_POR_U, V_MIN, mDe, tempoCurto, diferenca, torre, recortar };
+const api = { siglaDe, criarCronometragem, LETRA, KMH_POR_U, V_MIN, mDe, tempoCurto, diferenca, torre, recortar };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.HudTorre = api;
 })(typeof self !== "undefined" ? self : this);

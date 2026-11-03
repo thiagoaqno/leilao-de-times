@@ -15,7 +15,8 @@ import { camMode, pollPad, pad } from "./controles.js";
 import { quadroCamera, somDaCamera, camEstado } from "./cameras.js";
 import { physics, quadroDeFisica, quadroParado, criarRede, PASSO } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
-import { standings, hud } from "./hud.js";
+import { standings, hud, renderResults } from "./hud.js";
+import { estadoDeExemplo } from "./resultado-gp.js";
 import { f1Pronto } from "./f1.js";
 import { propsPronto } from "./props.js";
 import { startItems, stopItems, stepItems } from "./itens.js";
@@ -316,4 +317,12 @@ export function adiantarLargada(st) {
   return true;
 }
 addEventListener("keydown", (ev) => { if (ev.key === "Escape") pularTV(); });
-if (location.hash === "#debug") window.__corrida = { get race() { return race; }, get S() { return E.S; }, keys, physics, groundH, inclinacao, buildTrack, act, renderer, scene, cam };
+if (location.hash === "#debug") window.__corrida = { get race() { return race; }, get S() { return E.S; }, keys, physics, groundH, inclinacao, buildTrack, act, renderer, scene, cam, resultadoFalso };
+// #debug: abre a tela de resultado do GP com dados de exemplo, sem correr (ex.: __corrida.resultadoFalso({ euPos: 1, equipe: "ferrari" }))
+async function resultadoFalso(op) {
+  await f1Pronto;
+  E.S = estadoDeExemplo(op); E.ME = { id: "eu" };
+  for (const id of ["home", "lobby"]) $(id).classList.add("hidden");
+  $("race").classList.remove("hidden"); $("bar").classList.add("hidden");
+  renderResults();
+}

@@ -9,6 +9,7 @@ import { clima } from "./clima.js";
 import { set, montarCentro, atualizarCentro, montarTempo, atualizarTempo, estrategia, minimapaF1, minimapaPertoF1, desenharBanner, montarCrono, desenharCrono } from "./hud-painel.js";
 import { montarMfd, atualizarMfd, acoes } from "./mfd.js";
 import { atualizarMenuBox } from "./box-menu.js";
+import { htmlResultado, aposResultado, resultadoMudou, limparResultado } from "./resultado-gp.js";
 
 // o cartão do rádio do engenheiro (como na TV: "SOBRENOME RADIO", o número e a equipe), por cima do velocímetro enquanto ele fala
 window.addEventListener("radio:fala", (ev) => {
@@ -242,7 +243,7 @@ function hudF1(m, st, now) {
   const cors = st.map((r) => {
     const p = r.p, gh = race.ghosts.get(r.id), v = m && r.id === m.id ? Math.abs(race.car.v) : gh && gh.v ? Math.abs(gh.v) : 0;
     vs[r.id] = vs[r.id] == null ? v : vs[r.id] + (v - vs[r.id]) * 0.3;
-    return { id: r.id, prog: r.prog, v: vs[r.id], dnf: !!p.dnf, dsq: !!p.dsq, sg: !!p.stopGo, noBox: !!p.noBox, penal: p.penal || 0, done: r.done, best: p.best, pneu: p.pneuAtual || p.pneu, sigla: p.sigla || String(p.name || "???").slice(0, 3).toUpperCase(), nome: p.name, cor: (eqs[p.equipe] || {}).cor || p.color, bot: p.bot };
+    return { id: r.id, prog: r.prog, v: vs[r.id], dnf: !!p.dnf, dsq: !!p.dsq, sg: !!p.stopGo, noBox: !!p.noBox, penal: p.penal || 0, done: r.done, best: p.best, pneu: p.pneuAtual || p.pneu, sigla: T.siglaDe(p), nome: p.name, cor: (eqs[p.equipe] || {}).cor || p.color, bot: p.bot };
   });
   race.hudCors = cors;
   // a cronometragem: cada carro registra (progresso, hora) a cada tick; o intervalo é o tempo medido entre dois carros (hud-torre.js)
@@ -339,7 +340,7 @@ export function renderQuali() {
     ${ultima && m ? `<div class="pneus-largada" role="group" aria-label="Pneu da largada">${Object.entries(window.F1Regras.PNEUS).map(([id, pneu]) => `<button type="button" data-pneu-largada="${id}" class="${(m.pneu || "medio") === id ? "on" : ""}" ${confirmado ? "disabled" : ""}><i class="bola-pneu" style="--c:${pneu.cor}"></i>${pneu.nome}</button>`).join("")}</div>` : ""}
     ${montagem ? `<details class="acerto-grid" ${!confirmado ? "open" : ""}><summary>Acerto do carro · ${window.F1Equipes.custoDaMontagem(montagem)} pontos usados</summary>${window.F1Garagem.pontosHTML({ equipe: m.equipe, montagem, bonus: S.bonusMontagem[m.equipe] || 0, pode: !confirmado, motivo: "Largada já confirmada." })}</details>` : ""}
     ${ultima && m ? `<button type="button" id="confirmarLargada" class="confirmar-largada" ${confirmado ? "disabled" : ""}>${confirmado ? "✓ Largada confirmada" : "Confirmar largada"}</button>` : ""}
-    <table class="qtab">${linhas.map((r, i) => { const p = P(r.id), t = tempos[r.id]; return `<tr class="${r.fora ? "fora" : ""} ${m && r.id === m.id ? "eu" : ""}"><td>${i + 1}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(pilotoNome(p))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}</td><td class="num">${t == null ? "sem tempo" : tempo3(t)}</td><td class="num muted">${t != null && i > 0 && pole != null && (!ultima || naUltima.has(r.id)) ? "+" + (t - pole).toFixed(3) : ""}</td></tr>`; }).join("")}</table></div></div>`;
+    <table class="qtab">${linhas.map((r, i) => { const p = P(r.id), t = tempos[r.id]; return `<tr class="${r.fora ? "fora" : ""} ${m && r.id === m.id ? "eu" : ""}"><td>${i + 1}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(pilotoNome(p))}</b>${p ? ` <small class="muted">${h(window.HudTorre.siglaDe(p))}</small>` : ""}</td><td class="num">${t == null ? "sem tempo" : tempo3(t)}</td><td class="num muted">${t != null && i > 0 && pole != null && (!ultima || naUltima.has(r.id)) ? "+" + (t - pole).toFixed(3) : ""}</td></tr>`; }).join("")}</table></div></div>`;
   if (montagem && !confirmado) el.querySelectorAll("[data-ponto], [data-ponto-zerar]").forEach((botao) => { botao.onclick = () => {
       const nova = window.F1Garagem.cliquePonto(botao, montagem, m.equipe, S.bonusMontagem[m.equipe] || 0);
       if (nova) act("montagemGrid", { montagem: nova });
@@ -434,24 +435,19 @@ export function checkMyLap(old) {
 // a tela do GP (regras de F1): o pódio, e a tabela com tempo ou diferença, grid, paradas, penalidades e os pontos oficiais
 function resultadoGP(el, m, isHost) {
   { const R0 = E.S.resultado, meu = m && R0.find((r) => r.id === m.id); if (meu && window.Radio) window.Radio.uma("fim:" + E.S.startAt, () => window.Radio.fim(meu.pos, meu.pontos || 0, !!(meu.dnf || meu.nc))); }
-  const S = E.S, R = S.resultado, F = window.F1Regras, vencedor = R[0], nome = (id) => pilotoNome(P(id));
-  const pneus = (r) => (r.paradas ? `${r.paradas}P ` : "0P ") + (r.compostos || []).map((c) => `<u class="pn" style="--c:${F.PNEUS[c] ? F.PNEUS[c].cor : "#999"}"></u>`).join("");
-  const final = (r) => r.dsq ? "DSQ" : r.dnf ? "DNF" : r.nc ? "NC" : r.tempo == null ? `+${Math.max(1, S.config.voltas - r.voltas)} volta${S.config.voltas - r.voltas > 1 ? "s" : ""}` : r === vencedor ? fmt(r.tempo) : `+${(r.tempo - vencedor.tempo).toFixed(3)} s`;
-  const podio = [1, 0, 2].filter((i) => R[i]).map((i) => { const r = R[i], p = P(r.id); return `<div class="pod pod${i + 1}"><span class="pn-eq" style="background:${p ? p.color : "#999"}"></span><b>${h(nome(r.id))}</b><small>${h(p && p.equipe ? p.sigla : "")} ${r.tempo != null ? (r === vencedor ? fmt(r.tempo) : "+" + (r.tempo - vencedor.tempo).toFixed(3)) : ""}</small><div class="bloco">${i + 1}</div></div>`; }).join("");
+  const S = E.S, R = S.resultado;
   const punidos = S.players.filter((p) => (p.acrescimo || 0) > 0).length;
+  if (!resultadoMudou(el, S, m, isHost)) { el.classList.remove("hidden"); return; } // o servidor manda o estado várias vezes por segundo: não refaz a tela (nem o carro girando) sem mudança
   el.classList.remove("hidden");
-  el.innerHTML = `<div class="placa gp"><div class="chk"></div><div class="in"><div class="av-item av-fixo" style="--fundo:#f2f2f5;--txt:#0a0c12;--bloco:#0a0c12">${htmlAviso("chegada", R.some((r) => r.estimado) ? "Resultado do GP com tempos estimados para os robôs" : punidos ? `Resultado do GP, com acréscimos de tempo para ${punidos} piloto${punidos > 1 ? "s" : ""}` : "Resultado oficial do GP")}</div><h2 style="font-size:26px;margin:10px 0 6px">🏆 GP · ${h(PISTAS[S.config.pista].name)}</h2>
-    <div class="podio">${podio}</div>
-    <table class="gptab"><thead><tr><th></th><th>Piloto</th><th class="num">Tempo</th><th>Grid</th><th>Paradas</th><th class="num">Melhor</th><th class="num">Pts</th></tr></thead><tbody>${R.map((r) => { const p = P(r.id), g = r.grid + 1, d = g - r.pos;
-      return `<tr class="${m && r.id === m.id ? "eu" : ""} ${r.nc || r.dnf ? "nc" : ""}"><td>${r.nc || r.dnf ? "—" : r.pos + "º"}</td><td><i class="faixa-eq" style="background:${p ? p.color : "#999"}"></i><b>${h(nome(r.id))}</b>${p && p.sigla ? ` <small class="muted">${h(p.sigla)}</small>` : ""}${r.voltaRapida ? ` <i class="vr-roxo" title="Volta mais rápida: +1 ponto" style="color:#b14cff;font-style:normal">◆</i>` : ""}</td><td class="num">${final(r)}${r.estimado ? ` <small class="muted">(estimado)</small>` : ""}${r.penal ? ` <small class="muted">(+${r.penal} s)</small>` : ""}${r.sg ? ` <small class="muted">· stop-and-go cumprido</small>` : ""}${r.dsq ? ` <small class="muted">· bandeira preta</small>` : ""}${r.dano ? ` <small class="muted">· dano ${Math.round(r.dano)}%</small>` : ""}</td><td class="muted">${g}º ${d ? `<small class="${d > 0 ? "sobe" : "desce"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</small>` : ""}</td><td class="muted">${pneus(r)}</td><td class="num muted">${r.melhor != null ? fmt(r.melhor) : ""}</td><td class="num"><b>${r.pontos || ""}</b></td></tr>`; }).join("")}</tbody></table>
-    <div class="row" style="margin-top:14px;justify-content:center">${S.temporada ? `<button class="primary" id="rSede">← Voltar à sede</button>` : isHost ? `<button class="primary" id="rAgain">🏁 Novo GP</button><button id="rLobby">Trocar pista</button>` : `<span class="muted">Esperando o organizador…</span>`}${S.temporada ? "" : `<button class="ghost" onclick="location.href='/'">🏠 Vila</button>`}</div></div></div>`;
+  el.innerHTML = htmlResultado(S, m, isHost, htmlAviso("chegada", R.some((r) => r.estimado) ? "Resultado do GP com tempos estimados para os robôs" : punidos ? `Resultado do GP, com acréscimos de tempo para ${punidos} piloto${punidos > 1 ? "s" : ""}` : "Resultado oficial do GP"));
   if ($("rSede")) $("rSede").onclick = () => { location.href = "/corrida/temporada/" + (S.salaTemporada ? "?sala=" + S.salaTemporada : ""); };
   if ($("rAgain")) $("rAgain").onclick = () => act("start");
   if ($("rLobby")) $("rLobby").onclick = () => act("lobby");
+  aposResultado(el, S, m);
 }
 export function renderResults() {
   const el = $("results");
-  if (!E.S || E.S.phase !== "results") { el.classList.add("hidden"); return; }
+  if (!E.S || E.S.phase !== "results") { el.classList.add("hidden"); limparResultado(); return; }
   const m = me(), isHost = m && E.S.host === m.id, rows = standings();
   if (E.S.config.regras === "f1" && E.S.resultado) return resultadoGP(el, m, isHost);
   el.classList.remove("hidden");

@@ -1,0 +1,130 @@
+/* Corrida da Galera — a tela de resultado do GP (resultado-gp.js): o pódio com o carro girando, os degraus na cor de cada equipe e a
+   tabela no estilo da transmissão (faixa em degradê da equipe, logo, sigla, ícones e chips). Cada equipe entra por variáveis na linha:
+   --eq (a cor), --eq6 / --eq3 / --eq1 (a mesma cor com 65%, 30% e 12% de opacidade). "Reduzir movimento" desliga toda animação. */
+.results .placa.gp.rg-placa{width:min(1040px,100%);max-height:100%;overflow:auto;overflow-x:hidden}
+.rg-placa .in{padding:clamp(10px,2vw,22px)}
+.rg-placa .av-item{max-width:100%}
+.rg-titulo{display:flex;align-items:center;gap:10px;margin:10px 0 8px!important;font:800 clamp(20px,3.4vw,30px)/1.05 var(--display,"Barlow Condensed",sans-serif);text-transform:uppercase;letter-spacing:.02em}
+.rg-titulo svg{width:1.05em;height:1.05em;color:#ffd23f;flex:none}
+
+/* ---------- o pódio ---------- */
+.rg-podio{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:12px;margin:6px 0 14px;align-items:stretch}
+.rg-palco{position:relative;min-height:270px;overflow:hidden;border:1px solid var(--eq3);border-top:3px solid var(--eq);background:radial-gradient(120% 85% at 50% 105%,var(--eq3),transparent 62%),linear-gradient(180deg,#10151d,#06080c)}
+.rg-carro{position:absolute;inset:0}
+.rg-carro .sn-palco3d{position:absolute;inset:0;width:100%;height:100%;display:block}
+.rg-logo-grande{position:absolute;inset:0;display:grid;place-items:center;transition:opacity .3s}
+.rg-logo-grande .equipe-marca{width:clamp(110px,22vw,170px);height:clamp(110px,22vw,170px);filter:drop-shadow(0 8px 22px #000b)}
+.rg-logo-grande .equipe-marca .sigla{font-size:34px}
+.rg-carro.tem-3d .rg-logo-grande{opacity:0;pointer-events:none}
+.rg-palco-txt{position:absolute;left:12px;bottom:10px;z-index:2;display:flex;flex-direction:column;text-shadow:0 2px 8px #000}
+.rg-palco-txt small{font:700 11px Manrope,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#cfd6e2}
+.rg-palco-txt b{font:800 clamp(22px,3.6vw,32px)/1 var(--display,"Barlow Condensed",sans-serif);font-style:italic;text-transform:uppercase;color:#fff;border-left:4px solid var(--eq);padding-left:8px;margin-top:3px}
+.rg-vitoria{position:absolute;left:0;right:0;top:9%;z-index:3;display:flex;flex-direction:column;align-items:center;pointer-events:none;text-shadow:0 4px 18px #000c}
+.rg-vitoria b{font:900 clamp(40px,7.2vw,72px)/.95 var(--display,"Barlow Condensed",sans-serif);font-style:italic;letter-spacing:.04em;color:#fff;background:linear-gradient(180deg,#fff 20%,#ffd23f 60%,#ff9f1a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 3px 0 #0009)}
+.rg-vitoria small{margin-top:4px;font:800 12px Manrope,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:var(--eq);padding:3px 10px}
+
+.rg-degraus{display:flex;align-items:flex-end;justify-content:center;gap:6px;min-width:0}
+.rg-deg{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:stretch}
+.rg-deg.d1{flex-grow:1.3;order:2}.rg-deg.d2{order:1}.rg-deg.d3{order:3}
+.rg-deg-info{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;padding:0 2px 8px;min-width:0}
+.rg-deg-info .rg-marca{width:clamp(34px,5vw,48px);height:clamp(34px,5vw,48px);margin-bottom:3px}
+.rg-deg.d1 .rg-deg-info .rg-marca{width:clamp(48px,7vw,70px);height:clamp(48px,7vw,70px)}
+.rg-copa{width:28px;height:28px;color:#ffd23f;filter:drop-shadow(0 0 8px #ffd23f99)}.rg-copa svg{width:100%;height:100%;display:block}
+.rg-deg-nome{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 clamp(14px,1.9vw,18px)/1.1 var(--display,"Barlow Condensed",sans-serif);text-transform:uppercase;letter-spacing:.02em;color:#fff}
+.rg-deg.d1 .rg-deg-nome{font-size:clamp(18px,2.8vw,26px)}
+.rg-deg-eq{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px Manrope,sans-serif;color:#b9c4d0}
+.rg-deg-tempo{font:800 14px Manrope,sans-serif;font-variant-numeric:tabular-nums;color:#fff}
+.rg-deg.d1 .rg-deg-tempo{font-size:17px;color:#ffe36a}
+.rg-deg-pts{font:800 11px Manrope,sans-serif;color:#0b1016;background:#ffffffd9;padding:1px 7px;border-radius:9px}
+.rg-sigla{font-weight:800;letter-spacing:.06em;color:#e6ebf2}
+.rg-bloco{height:56px;display:grid;place-items:center;position:relative;transform-origin:bottom;background:linear-gradient(180deg,var(--eq6),var(--eq3) 70%,var(--eq1));border-top:3px solid var(--eq);box-shadow:inset 0 1px 0 #ffffff33}
+.rg-bloco span{font:900 clamp(30px,5vw,46px)/1 var(--display,"Barlow Condensed",sans-serif);font-style:italic;color:#fff;text-shadow:0 2px 10px #0009}
+.rg-deg.d1 .rg-bloco{height:104px;box-shadow:0 0 36px var(--eq3),inset 0 1px 0 #ffffff55}
+.rg-deg.d2 .rg-bloco{height:78px}
+.rg-deg.eu .rg-deg-nome::after{content:"  ·  você";font-size:.7em;color:#ffd23f}
+
+/* ---------- a tabela ---------- */
+.rg-cab,.rg-linha{display:grid;grid-template-columns:34px minmax(0,2.3fr) minmax(0,1.6fr) minmax(0,2.1fr) 48px;align-items:center;column-gap:8px}
+.rg-cab{padding:0 8px;margin-bottom:4px;font:700 10px Manrope,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted,#9aa1ad)}
+.rg-cab .rg-extra,.rg-linha .rg-extra{display:grid;grid-template-columns:.8fr 1.2fr 1fr;column-gap:8px;align-items:center}
+.rg-cab>span:last-child,.rg-pts{text-align:right}
+.rg-tab{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.rg-linha{position:relative;min-height:46px;padding:4px 8px 4px 0;border-left:4px solid var(--eq);background:linear-gradient(90deg,var(--eq6) 0,var(--eq3) 22%,#0c1118e6 64%,#0a0e14f2 100%);font-size:13px;color:#e8edf4}
+.rg-linha.eu{outline:2px solid #ffd23f;outline-offset:-2px;background:linear-gradient(90deg,var(--eq6) 0,var(--eq3) 26%,#1b1f12e6 70%,#14160cf2 100%)}
+.rg-linha.nc{opacity:.6;filter:saturate(.55)}
+.rg-pos{justify-self:center;font:900 20px/1 var(--display,"Barlow Condensed",sans-serif);font-style:italic;color:#fff;text-shadow:0 1px 6px #0008}
+.rg-linha.p1 .rg-pos{color:#ffd23f}.rg-linha.p2 .rg-pos{color:#dfe6ee}.rg-linha.p3 .rg-pos{color:#e0a46a}
+.rg-piloto{display:flex;align-items:center;gap:9px;min-width:0}
+.rg-marca{flex:none;width:34px;height:34px}
+.rg-marca.rg-sem{display:block;background:#ffffff1f;border-radius:50%}
+.rg-piloto .equipe-marca img{filter:drop-shadow(0 1px 3px #000a)}
+.rg-nomes{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.rg-l1{display:flex;align-items:center;gap:6px;min-width:0}
+.rg-l1 b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 16px/1.1 var(--display,"Barlow Condensed",sans-serif);text-transform:uppercase;letter-spacing:.02em;color:#fff}
+.rg-nomes small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px Manrope,sans-serif;color:#b9c4d0}
+.rg-voce{flex:none;font:800 9px Manrope,sans-serif;font-style:normal;letter-spacing:.1em;text-transform:uppercase;background:#ffd23f;color:#1a1400;padding:1px 5px}
+.rg-vr{flex:none;display:inline-flex;width:13px;height:13px;color:#b14cff}.rg-vr svg{width:100%;height:100%}
+.rg-alerta{flex:none;position:relative;display:inline-flex;width:18px;height:18px;cursor:help;outline-offset:2px}
+.rg-alerta svg{width:100%;height:100%;filter:drop-shadow(0 1px 2px #000a)}
+.rg-alerta::after{content:attr(data-dica);position:absolute;left:-6px;bottom:calc(100% + 6px);z-index:20;width:max-content;max-width:min(260px,70vw);padding:6px 9px;background:#07090d;border:1px solid #ffd23f;color:#fff;font:600 11px/1.3 Manrope,sans-serif;text-transform:none;letter-spacing:0;white-space:normal;opacity:0;pointer-events:none;transition:opacity .15s}
+.rg-alerta:hover::after,.rg-alerta:focus::after{opacity:1}
+.rg-tempo{display:flex;flex-direction:column;gap:3px;align-items:flex-start;min-width:0}
+.rg-t1{display:flex;align-items:baseline;gap:6px}.rg-t1>b{font:800 15px/1 Manrope,sans-serif;font-variant-numeric:tabular-nums;color:#fff}
+.rg-est{font:700 9px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8d97a6;text-decoration:none;border-bottom:1px dotted #8d97a6;cursor:help}
+.rg-chips{display:flex;flex-wrap:wrap;gap:4px}
+.rg-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 6px 1px 4px;font:800 10px/1.4 Manrope,sans-serif;background:#0008;border:1px solid #ffffff33;color:#dbe2ec}
+.rg-chip svg{width:11px;height:11px;flex:none}
+.rg-chip.pen{background:#ffd23f;border-color:#ffd23f;color:#201700;padding-left:6px}
+.rg-chip.sg{color:#ffd23f;border-color:#ffd23f88}
+.rg-chip.preta{background:#000;border-color:#fff;color:#fff}
+.rg-chip.dano.baixo{color:#4de4a0;border-color:#4de4a066}.rg-chip.dano.medio{color:#ffb02e;border-color:#ffb02e77}.rg-chip.dano.alto{color:#ff5d7e;border-color:#ff5d7e88}
+.rg-extra{color:#c7d0dc;font-size:12px;font-variant-numeric:tabular-nums;min-width:0}
+.rg-extra small.sobe{color:#4de4a0}.rg-extra small.desce{color:#ff8a8a}
+.rg-extra u.pn{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);vertical-align:-1px;margin-right:2px;text-decoration:none}
+.rg-pts{font:800 15px Manrope,sans-serif;color:#fff}
+.rg-botoes{margin-top:14px;justify-content:center;flex-wrap:wrap}
+
+/* ---------- entrada animada ---------- */
+@keyframes rg-sobe{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes rg-surge{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes rg-entra{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+@keyframes rg-carimbo{0%{opacity:0;transform:scale(2.4) rotate(-4deg)}60%{opacity:1;transform:scale(.94) rotate(-1deg)}100%{opacity:1;transform:scale(1) rotate(-1deg)}}
+@keyframes rg-brilho{0%,100%{box-shadow:0 0 22px var(--eq3),inset 0 1px 0 #ffffff55}50%{box-shadow:0 0 52px var(--eq6),inset 0 1px 0 #ffffff88}}
+@keyframes rg-cai{to{transform:translateY(112vh) rotate(720deg)}}
+.rg-bloco{animation:rg-sobe .7s cubic-bezier(.2,.9,.25,1) both}
+.rg-deg.d3 .rg-bloco{animation-delay:.1s}.rg-deg.d2 .rg-bloco{animation-delay:.4s}.rg-deg.d1 .rg-bloco{animation-delay:.75s,1.6s;animation-name:rg-sobe,rg-brilho;animation-duration:.7s,2.6s;animation-iteration-count:1,infinite}
+.rg-deg-info{animation:rg-surge .5s ease both}
+.rg-deg.d3 .rg-deg-info{animation-delay:.6s}.rg-deg.d2 .rg-deg-info{animation-delay:.9s}.rg-deg.d1 .rg-deg-info{animation-delay:1.3s}
+.rg-palco{animation:rg-surge .6s ease both}
+.rg-vitoria b{animation:rg-carimbo .7s cubic-bezier(.2,.9,.3,1.2) .5s both}.rg-vitoria small{animation:rg-surge .5s ease 1s both}
+.rg-linha{animation:rg-entra .4s ease both;animation-delay:calc(1.1s + var(--i,0) * 45ms)}
+.confetti{position:fixed;top:-14px;width:9px;height:14px;z-index:65;pointer-events:none;border-radius:2px;animation:rg-cai linear forwards}
+@media (prefers-reduced-motion:reduce){
+  .rg-bloco,.rg-deg-info,.rg-palco,.rg-vitoria b,.rg-vitoria small,.rg-linha,.rg-logo-grande{animation:none!important;transition:none!important}
+  .rg-deg.d1 .rg-bloco{box-shadow:0 0 36px var(--eq3),inset 0 1px 0 #ffffff55}
+  .rg-vitoria b{transform:rotate(-1deg)}
+  .confetti{display:none}
+}
+
+/* ---------- celular: nada de rolagem para o lado ---------- */
+@media (max-width:760px){
+  .rg-podio{grid-template-columns:minmax(0,1fr)}
+  .rg-palco{min-height:210px}
+  .rg-deg.d1 .rg-bloco{height:78px}.rg-deg.d2 .rg-bloco{height:58px}.rg-bloco{height:42px}
+  .rg-cab{display:none}
+  .rg-linha{grid-template-columns:30px minmax(0,1fr) auto;grid-template-areas:"pos piloto tempo" "pos extra pts";row-gap:3px;padding:5px 8px 5px 0}
+  .rg-linha .rg-pos{grid-area:pos}.rg-linha .rg-piloto{grid-area:piloto}.rg-linha .rg-tempo{grid-area:tempo;align-items:flex-end;text-align:right}
+  .rg-linha .rg-chips{justify-content:flex-end}
+  .rg-linha .rg-extra{grid-area:extra;display:flex;gap:10px;flex-wrap:wrap;font-size:11px}
+  .rg-linha .rg-extra>span:empty{display:none}
+  .rg-linha .rg-extra>span::before{content:attr(data-r) " ";font:700 9px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8d97a6}
+  .rg-linha .rg-pts{grid-area:pts;align-self:end;font-size:13px}
+  .rg-l1 b{font-size:15px}
+  .rg-marca{width:30px;height:30px}
+  .rg-alerta::after{left:auto;right:-30px}
+}
+@media (max-width:420px){
+  .rg-deg-info .rg-marca{width:30px;height:30px}.rg-deg.d1 .rg-deg-info .rg-marca{width:42px;height:42px}
+  .rg-deg-tempo{font-size:12px}.rg-deg.d1 .rg-deg-tempo{font-size:14px}
+  .rg-deg-eq{display:none}
+}
