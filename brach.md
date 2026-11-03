@@ -1,12 +1,12 @@
-# Bots: trajetória mais precisa em Mônaco e desvio de emergência
+# Bots contornam carros lentos
 
-Em Mônaco, os bots variam menos em torno da linha e podem usar mais 10 cm de pista na escala do jogo, mantendo o limite dos muros por trecho. A folga dos outros carros e as manobras de trânsito continuam ativas. A física dos freios permanece igual para bots e humanos.
+Quando o pelotão alcançava um carro muito lento, os bots podiam ficar presos atrás dele: a decisão de ultrapassar exigia que o próprio bot ainda estivesse rápido, e a frenagem seguia limitada pelo outro carro mesmo após a mudança de faixa.
 
-Quando um bot alcança rapidamente um carro e precisa de mais espaço para frear, ele pode desviar para uma faixa livre sem soltar a freada, desde que haja tempo e espaço também à frente. Se a pista estreitar, permanece atrás; o ERS não é acionado no desvio de emergência.
+Os bots agora podem iniciar o desvio mesmo se já reduziram a velocidade. Em Mônaco, uma passagem lenta pode usar a margem próxima ao muro, mantendo espaço físico; a aceleração só é liberada depois de existir separação lateral suficiente. Outros carros e bandeiras continuam limitando a manobra.
 
 ## Verificação
 
 - Sintaxe e `git diff --check`; nenhum teste novo criado.
-- Simulações de pelotão em Mônaco e Interlagos, com comparação das batidas e dos tempos.
-- Cenário de aproximação rápida conferido com pista livre e com estreitamento adiante.
-- Falta conferir visualmente as disputas contra humanos no jogo.
+- Simulação de bot atrás de humano lento em Mônaco: ultrapassagem concluída sem contato; com os dois lados ocupados, permanece atrás.
+- Três simulações de 19 bots em Mônaco e comparação em Interlagos; todos terminaram e os contatos foram iguais aos das simulações anteriores.
+- Falta conferir visualmente em partidas com humanos.
