@@ -153,8 +153,10 @@ function telaDaTemporada() {
   GA.encaixar(meuTime);
 }
 function desenhar(erro) {
-  if (!S) return telaDoConvite(erro);
+  if (!S) { window.F1Garagem.fundoDoGP(null); return telaDoConvite(erro); }
   document.title = `Temporada F1 · sala ${S.codigo}`;
+  // a foto do circuito do próximo GP no fundo, só enquanto há GP a jogar
+  window.F1Garagem.fundoDoGP(S.fase !== "sala" && S.gp < S.opcoes.tamanho ? S.calendario[S.gp]?.pista : null);
   if (S.fase === "sala") telaDaSala(); else telaDaTemporada();
 }
 

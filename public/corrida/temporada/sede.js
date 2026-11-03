@@ -26,6 +26,7 @@ function guardar(r) {
 }
 function marca(id) { return `<img src="/api/corrida/logo/${encodeURIComponent(id)}" alt="" onerror="this.style.display='none'">`; }
 function telaInicial() {
+  window.F1Garagem?.fundoDoGP(null);
   const opcoes = Object.entries(Pilotos.EQUIPES).map(([id, e]) => `<option value="${h(id)}">${h(e.nome)}</option>`).join("");
   app.innerHTML = `<div class="abertura"><section><div class="taglinha">Corrida da Galera · 2026</div><h1>Sua equipe.<span>Sua temporada.</span></h1><p class="explica">Assuma uma equipe real, monte o carro e dispute GPs contra o grid de 2026. A classificação, a corrida e cada ponto contam para dois campeonatos.</p></section>
     <section class="folha"><h2>Abrir temporada</h2><form id="nova"><label for="nome">Seu nome no grid</label><input id="nome" name="nome" maxlength="40" required autocomplete="name" placeholder="Seu nome">
@@ -55,6 +56,7 @@ function renderizar() {
     <article><small>NOTÍCIAS DO PADDOCK</small><p>${eu ? `${h(s.nome)} ${resultadoTexto} no GP de ${h(s.calendario[ultimo.gp]?.nome || ultimo.pista)}.${rival ? ` A disputa com ${h(rival.nome)} segue em destaque.` : " A temporada começa a ganhar forma."}` : "O grid se prepara para a primeira etapa da temporada."}</p></article>
     <article><small>RIVAL DA TEMPORADA</small><p>${rival ? `<b>${h(rival.nome)}</b> · ${im.rival.encontros} disputa${im.rival.encontros === 1 ? "" : "s"} próxima${im.rival.encontros === 1 ? "" : "s"} na chegada. Você terminou à frente ${im.rival.venceu} vez${im.rival.venceu === 1 ? "" : "es"} e atrás ${im.rival.perdeu}.` : "Seu rival aparecerá depois de disputas próximas na chegada."}</p></article></div></section>`;
   document.documentElement.style.setProperty("--eq", eq.cor);
+  G.fundoDoGP(terminou ? null : prox.pista); // a foto real do circuito do próximo GP no fundo da página
   const campeao = terminou ? `<div class="campeao"><b>🏆 Temporada ${s.ano} encerrada</b><p>Campeão de pilotos: ${h(t.pilotos[0].nome)} · Construtores: ${h(t.equipes[0].nome)}. O caixa e o carro seguem para o próximo ano.</p></div>` : "";
   const pilotosMercado = Pilotos.PILOTOS.filter((p) => p.id !== s.piloto2 && !(p.equipe === s.equipe && p.id === Pilotos.PILOTOS.filter((x) => x.equipe === s.equipe)[1].id)).map((p) => `<option value="${h(p.id)}">${h(p.nome)} · ${h(equipe(p.equipe).nome)} · ${dinheiro(Math.max(5, Math.round((p.ritmo - 70) * .7)))}</option>`).join("");
   const botao = `<button class="primary grande btn-continuar" id="gp">${terminou ? "Próximo ano" : ativo ? "Voltar ao GP" : "Continuar"}</button>`;
