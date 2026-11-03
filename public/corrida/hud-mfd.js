@@ -25,8 +25,10 @@ function vizinha(lista, atual, d) {
 
 const limite = (v, a, b) => Math.max(a, Math.min(b, v));
 
-// O V10 do jogo (motor-v10.js): o `rpm` do câmbio (0 a 1) vira o número que o som usa. Parado, a marcha lenta.
-const RPM_LENTA = 4000, RPM_MIN = 6500, RPM_CORTE = 19000;
+// O motor do jogo: o `rpm` do câmbio (0 a 1) vira o número que o som usa. Parado, a marcha lenta. O padrão é o V6 turbo de hoje
+// (motor-v6.js: troca de marcha a ~12.500 rpm); com `?motor=v10` na página, o V10 dos anos 2000 (motor-v10.js, até 19.000 rpm).
+const V10 = (() => { try { return new URLSearchParams(location.search).get("motor") === "v10"; } catch (e) { return false; } })();
+const RPM_LENTA = 4000, RPM_MIN = V10 ? 6500 : 6000, RPM_CORTE = V10 ? 19000 : 12500;
 const rpmReal = (rpm01, kmh) => (kmh < 3 ? RPM_LENTA : Math.round(RPM_MIN + (RPM_CORTE - RPM_MIN) * limite(rpm01 || 0, 0, 1)));
 
 // "1:23.456" (ou "—:--.---" sem tempo)
