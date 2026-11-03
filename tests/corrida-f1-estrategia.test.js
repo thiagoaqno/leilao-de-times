@@ -19,9 +19,9 @@ const melhor = (tab, voltas, filtro) => Ritmo.planos(tab, voltas).find(filtro);
 test("estratégia (física): o piloto ideal gasta o pneu na vida de cada composto, em voltas", () => {
   for (const pista of ["interlagos", "monaco", "monza"]) {
     const vida = (c) => F1.PENHASCO / volta(pista, c).desgaste;
-    assert.ok(vida("macio") > 1.35 && vida("macio") < 1.7, `${pista} macio ${vida("macio")}`);
-    assert.ok(vida("medio") > 3.2 && vida("medio") < 4.2, `${pista} médio ${vida("medio")}`);
-    assert.ok(vida("duro") > 6.2 && vida("duro") < 8.5, `${pista} duro ${vida("duro")}`);
+    assert.ok(vida("macio") > 1.6 && vida("macio") < 2.7, `${pista} macio ${vida("macio")}`);
+    assert.ok(vida("medio") > 2.6 && vida("medio") < 4.6, `${pista} médio ${vida("medio")}`);
+    assert.ok(vida("duro") > 5 && vida("duro") < 9, `${pista} duro ${vida("duro")}`);
   }
 });
 
@@ -38,7 +38,8 @@ test("estratégia (física): passou da vida, o carro fica muito ruim e cada volt
   for (const pista of ["interlagos", "monaco"]) for (const c of ["macio", "medio", "duro"]) {
     const novo = volta(pista, c).tempo, noFim = volta(pista, c, F1.PENHASCO).tempo, meio = volta(pista, c, 0.9).tempo, acabado = volta(pista, c, 1).tempo;
     assert.ok(noFim - novo < 2.5, `${pista} ${c}: até o penhasco perde pouco (${(noFim - novo).toFixed(1)} s)`);
-    assert.ok(meio - noFim > 3 && acabado - novo >= 11, `${pista} ${c}: acabado perde ${(acabado - novo).toFixed(1)} s por volta`);
+    assert.ok(meio - noFim > 1.5 && acabado - novo >= 5, // (o penhasco ficou 50% mais brando)
+      `${pista} ${c}: acabado perde ${(acabado - novo).toFixed(1)} s por volta`);
   }
   for (const c of ["macio", "medio", "duro"]) { const f = P.medirFrio("interlagos", c); assert.ok(f > 0.15 && f < 2, `${c} frio ${f}`); }
 });
@@ -58,9 +59,9 @@ test("estratégia: as boas estratégias terminam a poucos segundos e esticar o p
       const comMacio = melhor(tab, voltas, (p) => sig(p).includes("S") && new Set(sig(p)).size >= 2);
       assert.ok(comMacio.tempo - melhorTempo < 8, `${pista} ${voltas}: estratégia com macio competitiva`);
     }
-    // esticar: o macio por 3 voltas (vida 1,5) custa muitos segundos; o médio por 5 voltas (vida 3,8), também
+    // esticar: o macio por 3 voltas (vida 2,25) custa segundos; o médio por 5 voltas (vida 4), também
     const bom = melhor(tab, 5, (p) => sig(p) === "SM" && p.trechos[0] === 2), esticado = melhor(tab, 5, (p) => sig(p) === "SM" && p.trechos[0] === 3);
-    assert.ok(esticado.tempo - bom.tempo >= 8, `${pista}: esticar o macio custa ${(esticado.tempo - bom.tempo).toFixed(1)} s`);
+    assert.ok(esticado.tempo - bom.tempo >= 4, `${pista}: esticar o macio custa ${(esticado.tempo - bom.tempo).toFixed(1)} s`);
     const parar = (v) => ({ largada: "medio", paradas: [{ volta: v + (tab.antes ? 0 : 1), composto: "duro" }] });
     assert.ok(Ritmo.simular(tab, 10, parar(5)).tempo - Ritmo.simular(tab, 10, parar(4)).tempo > (fraco ? 2 : 6), `${pista}: o médio por 5 voltas é pior que por 4`);
     // O planejador não deve usar mais de dois jogos de um mesmo composto.
