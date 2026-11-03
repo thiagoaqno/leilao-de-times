@@ -13,7 +13,7 @@ export const CHAVE = "corrida:camera";
 export const EDITAVEIS = ["cockpit", "onboard", "bico", "perto", "longe"];
 export const PADROES = {
   cockpit: { fov: 64, y: 0, z: 0, incl: 0, trem: 100 },
-  onboard: { fov: 62, y: 0, z: 0, incl: 0, trem: 100 },
+  onboard: { fov: 62, y: 0, z: 0, incl: -7, trem: 100 }, // (a T-cam olha para baixo: o halo, o bico e as rodas da frente entram no quadro)
   bico: { fov: 70, y: 0, z: 0, incl: 0, trem: 100 },
   perto: { fov: 60, y: 0, z: 0, incl: 0, trem: 100 },
   longe: { fov: 54, y: 0, z: 0, incl: 0, trem: 100 },
