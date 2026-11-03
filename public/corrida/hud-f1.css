@@ -154,3 +154,15 @@
 @media (prefers-reduced-motion:reduce){#hRadioEng,#hRadioEng .rr-onda s{transition:none;animation:none}}
 @media (pointer:coarse){#hRadioEng{bottom:232px}}
 @media (max-width:700px){#hRadioEng{width:180px;bottom:224px;right:8px}#hRadioEng .rr-linha em{font-size:28px}}
+/* a animação de ultrapassagem (hud.js `ultrapassagem`): o cartão entra pela direita da torre, a posição pulsa e sai sozinho */
+#hUltra{display:none;position:absolute;left:256px;top:118px;z-index:4;align-items:center;gap:10px;padding:8px 16px 8px 12px;font-family:var(--f1-fonte,"Titillium Web",system-ui,sans-serif);color:#fff;background:linear-gradient(90deg,#0a0c12f2,#0a0c12c0);border-left:4px solid #2ecc71;box-shadow:0 6px 18px #0009;pointer-events:none;text-shadow:none}
+#hUltra.desce{border-left-color:#e10600}
+#hUltra.on{display:flex;animation:huEntra 2.6s cubic-bezier(.2,.8,.2,1) both}
+#hUltra .hu-seta{font-size:22px;color:#2ecc71}#hUltra.desce .hu-seta{color:#ff3d3d}
+#hUltra .hu-pos{font:900 italic 34px/1 var(--f1-fonte,"Titillium Web",system-ui,sans-serif);animation:huPulso .45s .15s ease-out both}
+#hUltra .hu-txt{display:flex;flex-direction:column;line-height:1.05}#hUltra .hu-txt em{font-style:normal;font-weight:800;font-size:16px;color:#2ecc71}#hUltra.desce .hu-txt em{color:#ff3d3d}
+#hUltra .hu-txt small{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#ffffffb8}
+@keyframes huEntra{0%{opacity:0;transform:translateX(-24px)}8%{opacity:1;transform:none}85%{opacity:1;transform:none}100%{opacity:0;transform:translateX(-12px)}}
+@keyframes huPulso{0%{transform:scale(1.5)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){#hUltra.on,#hUltra .hu-pos{animation:none}}
+@media (max-width:700px){#hUltra{left:8px;top:auto;bottom:250px}#hUltra .hu-pos{font-size:26px}}
