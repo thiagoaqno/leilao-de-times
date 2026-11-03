@@ -366,8 +366,11 @@ function largar(room) {
     if (plano && aguaLargada > 0 && F1.compostoPorAgua(room.config.pista, Math.max(0, Math.min(1, aguaLargada + vies)), [...F1.SECOS, "chuva"], plano.largada) === "chuva") { plano.largada = "chuva"; plano.paradas = []; } // larga molhado: sai de chuva
     if (plano) Object.assign(p, { pneu: plano.largada, pneuAtual: plano.largada, compostos: [plano.largada], paradas: [], acrescimo: 0, box: null });
     const rng = F1.sorteio(`estilo:${room.semente}:${id}`); // regras de F1: cada robô tem o seu jeito (sorteado pela semente do GP)
+    // o jeito de cada robô com o box (sorteado pela semente do GP): segue o plano, faz o undercut (para uma volta antes quando está colado no
+    // da frente), o overcut (estica uma volta em ar limpo) ou é oportunista (aproveita o safety car para parar mais cedo)
+    const estiloBox = ESTILOS_BOX[Math.floor(F1.sorteio(`box:${room.semente}:${id}`)() * ESTILOS_BOX.length)];
     // Cada corrida conserva seus perfis: aprender uma volta invalida o cache global só para as próximas largadas.
-    p.ia = { perfil: pf, s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: pil ? rnd(-1, 1) * (2 + (100 - pil.constancia) * 0.3) : rnd(-7, 7), tracadoId, reacao: pil ? Math.max(150, Math.min(400, Pilotos.reacaoNaLargada(pil.largada) + rnd(-25, 25))) : rnd(150, 400), usaEm: 0,
+    p.ia = { estiloBox, perfil: pf, s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: pil ? rnd(-1, 1) * (2 + (100 - pil.constancia) * 0.3) : rnd(-7, 7), tracadoId, reacao: pil ? Math.max(150, Math.min(400, Pilotos.reacaoNaLargada(pil.largada) + rnd(-25, 25))) : rnd(150, 400), usaEm: 0,
       pneu: f1 ? F1.pneuNovo(p.pneu) : null, ers: f1 ? F1.ersNovo() : null, plano, box: null,
       estilo: f1 ? estiloDe(room, p, rng) : null, vies, erro: null, erroLivre: 0, ult: null };
     if (f1) {
@@ -718,6 +721,7 @@ function encalhou(room, ia, car, now, dt, atras = false) {
 // corrida? Se sim, não para (só pela regra dos dois compostos, na última chance). Se não, para na volta do plano, ou antes se
 // a próxima volta já passaria do penhasco, ou de graça sob safety car se o pneu já está pela metade.
 // Depois da parada o composto é o que aguenta o resto da corrida (o mais rápido que aguenta), não o que o plano previa.
+const ESTILOS_BOX = ["plano", "plano", "undercut", "overcut", "oportunista"];
 const MARGEM_PNEU = 1.12; // o desgaste real passa um pouco do teórico (tráfego, largada, escorregão)
 const taxaDoPneu = (composto, fator) => (F1.PENHASCO / F1.vidaEmVoltas(composto, 1)) * (fator || 1) * MARGEM_PNEU; // desgaste por volta
 function escolherComposto(restam, usados, fator, p) {
@@ -750,9 +754,18 @@ function decidirParada(room, p, ia, car, spec, cl) {
   if (chuvoso && cl) { const pelaAgua = trocaPeloClima(room, p, ia, pneu, cl, restam, usados, fator); if (pelaAgua) return pelaAgua; if (pneu.composto === "chuva" && cl.agua + (ia.vies || 0) > 0.3) return null; }
   const chega = pneu.desgaste + taxa * (restam + 0.35) <= F1.PENHASCO; // o resto da corrida e o começo da volta de chegada
   const passaNaProxima = pneu.desgaste + taxa > F1.PENHASCO; // a volta que vem já passaria do penhasco
+  // a volta planejada, ajustada pelo jeito: o undercut para uma volta antes se está colado no da frente; o overcut estica uma volta em
+  // ar limpo (se o pneu aguenta essa volta a mais)
+  const estilo = ia.estiloBox || "plano", voltaPlano = planejada ? planejada.volta + (estilo === "undercut" && ia.colado ? -1 : estilo === "overcut" && ia.arLimpo && !passaNaProxima && pneu.desgaste + taxa * 2 <= F1.PENHASCO ? 1 : 0) : Infinity;
+  const noPlano = !!planejada && feitas + 1 >= voltaPlano;
+  // o plano vale mesmo quando o pneu chegaria ao fim: antes o robô só parava na última chance (a regra dos dois compostos) e quase todos
+  // paravam juntos, na penúltima volta. Só não para pelo plano se o composto previsto não aguenta o resto.
+  const planoAguenta = !!planejada && F1.vidaEmVoltas(planejada.composto, fator * MARGEM_PNEU) >= restam - 0.5;
+  const scLimite = estilo === "oportunista" ? 0.15 : 0.3;
   let para = false;
-  if (!chega) para = passaNaProxima || (planejada && feitas + 1 >= planejada.volta) || (room.direcao?.safety && pneu.desgaste > 0.3);
-  if (!chuvoso && usados.size < 2 && restam <= 1) para = true; // a última chance de cumprir a regra dos dois compostos
+  if (!chega) para = passaNaProxima || noPlano || (room.direcao?.safety && pneu.desgaste > scLimite);
+  else if (noPlano && planoAguenta && estilo !== "overcut") para = true; // (o overcut, com o pneu aguentando até o fim, estica sem parar)
+  else if (estilo === "oportunista" && room.direcao?.safety && pneu.desgaste > 0.45 && restam >= 3) para = true; // parada barata sob SC, com pneu já gasto
   if (!para) return null;
   const aguentaPlano = planejada && planejada.composto !== pneu.composto && F1.podeUsar(p, planejada.composto) && F1.vidaEmVoltas(planejada.composto, fator * MARGEM_PNEU) >= restam;
   return aguentaPlano ? planejada.composto : escolherComposto(restam, usados, fator, p);
@@ -808,6 +821,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   // o plano da frente para o trânsito: a que distância é a próxima freada e qual é o lado de dentro da próxima curva
   const tf = transito(room, p, ia, pf, i, baseLat, maxLatDisputa, vLivre, { dFreio: distanciaDaFreada(fis, n, i, car.v), dentro: ladoDeDentro(pf, i), maxLatLento, linhaEm: (k) => linhaEm(k, car.prog + (k - i + n) % n), aderenciaFreio: cl.agua > 0 ? { freio: pneu.freio * dano.freio, grip: pneu.grip * dano.grip } : undefined });
   ia.desvio += (tf.desvio - ia.desvio) * Math.min(1, dt * 1.8);
+  ia.colado = (tf.atras ?? Infinity) < L_CARRO * 2.2; ia.arLimpo = !tf.encontrou; // (para o undercut e o overcut, em decidirParada)
   // a folga lateral de quem está ao lado: o robô fica entre os limites (e se está mais perto que a folga, se afasta)
   const limiteAtual = ia.ult?.lento && (room.config.pista === "monaco" || ia.ult.parado) ? maxLatLento : ia.ult ? maxLatDisputa : maxLat;
   const entre = (l, limite) => { let lo = Math.max(-limite, tf.limMin), hi = Math.min(limite, tf.limMax); if (lo > hi) lo = hi = Math.max(-limite, Math.min(limite, (lo + hi) / 2)); l = Math.max(lo, Math.min(hi, l)); if (tf.bloqPos) l = Math.min(l, Math.max(ia.lat, lo)); if (tf.bloqNeg) l = Math.max(l, Math.min(ia.lat, hi)); return l; };

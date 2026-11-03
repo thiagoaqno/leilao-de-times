@@ -75,7 +75,7 @@ test("robôs: a estratégia sai da conta do simulador, perto do melhor plano, co
     const limite = { facil: 6, medio: 3.5, dificil: 2 }[nivel], visto = new Set();
     for (let semente = 1; semente <= 40; semente++) {
       const e = F1.estrategia(voltas, nivel, semente, "interlagos"), compostos = [e.largada, ...e.paradas.map((q) => q.composto)];
-      assert.ok(new Set(compostos).size >= 2, compostos.join());
+      void compostos; // (sem a regra dos dois compostos)
       e.paradas.forEach((q, k) => { assert.ok(q.volta >= 1 && q.volta <= voltas - 1); if (k) assert.ok(q.volta > e.paradas[k - 1].volta); });
       const t = Ritmo.simular(tab, voltas, e).tempo;
       assert.ok(t - melhorTempo(voltas) <= limite + 0.01, `${voltas}/${nivel}/${semente}: +${(t - melhorTempo(voltas)).toFixed(1)}`);
@@ -84,7 +84,7 @@ test("robôs: a estratégia sai da conta do simulador, perto do melhor plano, co
     if (voltas >= 5 && nivel !== "dificil") assert.ok(visto.size >= 3, `${voltas}/${nivel}: ${visto.size} estratégias`);
   }
   assert.deepEqual(F1.estrategia(5, "medio", 9, "monza"), F1.estrategia(5, "medio", 9, "monza"));
-  const e = F1.estrategia(5, "medio", 9, "pista-que-nao-existe"); assert.ok(e.paradas.length >= 1); // sem tabela, usa a de Interlagos
+  const e = F1.estrategia(5, "medio", 9, "pista-que-nao-existe"); assert.ok(F1.PNEUS[e.largada]); // sem tabela, usa a de Interlagos
 });
 
 test("robôs: o pneu que acaba antes do plano faz o robô parar antes, na volta certa", { timeout: 60000 }, () => {

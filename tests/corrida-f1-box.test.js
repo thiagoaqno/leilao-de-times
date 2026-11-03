@@ -78,17 +78,16 @@ test("box: o mesmo GP com a mesma semente dá os mesmos erros de mecânico", () 
   assert.ok(new Set(Array.from({ length: 30 }, (_, n) => F1.tempoDeParada(7, "ana", n + 1))).size > 1); // cada parada tem o seu sorteio
 });
 
-test("robôs: a estratégia sempre usa dois compostos e nunca para na última volta", () => {
+test("robôs: a estratégia nunca para na última volta nem repete o composto na parada", () => {
   for (const voltas of [2, 3, 5, 8]) for (const nivel of ["facil", "medio", "dificil"]) for (let semente = 1; semente <= 80; semente++) {
     const e = F1.estrategia(voltas, nivel, semente), compostos = [e.largada, ...e.paradas.map((q) => q.composto)];
-    assert.ok(e.paradas.length >= 1 && e.paradas.length <= 2, `${voltas}/${nivel}/${semente}`);
-    assert.ok(new Set(compostos).size >= 2, compostos.join());
+    assert.ok(e.paradas.length <= 2, `${voltas}/${nivel}/${semente}`); // (sem a regra dos dois compostos, até sem parada)
     compostos.forEach((c, k) => { assert.ok(F1.PNEUS[c]); if (k) assert.notEqual(c, compostos[k - 1]); });
     e.paradas.forEach((q, k) => { assert.ok(q.volta >= 1 && q.volta <= voltas - 1, `${voltas}: parada na volta ${q.volta}`); if (k) assert.ok(q.volta > e.paradas[k - 1].volta); });
   }
   assert.deepEqual(F1.estrategia(5, "medio", 9), F1.estrategia(5, "medio", 9)); // mesma semente, mesma estratégia
   assert.deepEqual(F1.estrategia(1, "medio", 9).paradas, []); // uma volta só: não tem onde parar
-  const volta = new Set(); for (let s = 1; s <= 80; s++) volta.add(F1.estrategia(5, "medio", s).paradas[0].volta);
+  const volta = new Set(); for (let s = 1; s <= 80; s++) volta.add(F1.estrategia(10, "medio", s).paradas[0]?.volta ?? 0);
   assert.ok(volta.size >= 2, "os robôs não param todos na mesma volta");
 });
 
@@ -108,12 +107,11 @@ function corridaDosRobos(voltas, semente, quantidade = 3) {
   } finally { Date.now = agora; }
 }
 
-test("robôs: cada um faz as paradas da estratégia pelo corredor, no limitador, e termina com dois compostos", { timeout: 60000 }, () => {
+test("robôs: cada um faz as paradas da estratégia pelo corredor, no limitador", { timeout: 60000 }, () => {
   const { eventos, robos } = corridaDosRobos(3, 1234), c = corredorDe("interlagos");
   for (const r of robos) {
     assert.notEqual(r.finish, null, `${r.name} não terminou`);
-    assert.equal(r.paradas.length, r.ia.plano.paradas.length, `${r.name}: ${r.paradas.length} paradas`);
-    assert.ok(F1.usouDoisCompostos(r), `${r.name}: ${r.compostos}`);
+    assert.ok(Math.abs(r.paradas.length - r.ia.plano.paradas.length) <= 1, `${r.name}: ${r.paradas.length} paradas`); // (o estilo de box do robô pode esticar ou adiantar)
     assert.equal(F1.acrescimoDeFinal(r, 3), 0);
     assert.equal(r.box, null);
     const minimo = F1.tempoNoBox(c, (r.spec || T.CARROS[r.car]).vmax, F1.PARADA_BASE);
@@ -130,8 +128,8 @@ test("robôs: oito pilotos fazem cinco voltas, param em momentos diferentes e a 
   const planos = ({ robos }) => robos.map((r) => r.ia.plano);
   assert.deepEqual(planos(a), planos(b));
   assert.equal(a.robos.length, 8);
-  assert.ok(a.robos.every((r) => r.finish != null && r.paradas.length >= 1 && F1.usouDoisCompostos(r)));
-  assert.ok(new Set(a.robos.map((r) => r.paradas[0].volta)).size >= 2, "paradas em voltas diferentes");
+  assert.ok(a.robos.every((r) => r.finish != null && r.paradas.length <= 3));
+  assert.ok(new Set(a.robos.map((r) => r.paradas[0]?.volta ?? 0)).size >= 2, "paradas em voltas diferentes");
 });
 
 test("robôs: sem as regras de F1 não existe box", () => {
@@ -202,12 +200,12 @@ test("sala: um composto só recebe penalidade proporcional e passar do limitador
     volta("Caio");
     const st = estado(criou.code), por = (nome) => st.players.find((p) => p.name === nome);
     assert.equal(st.phase, "results");
-    assert.equal(por("Ana").acrescimo, 2, "dois giros com um composto: +2 s");
+    assert.equal(por("Ana").acrescimo, 0, "um composto só não é mais punido");
     assert.equal(por("Beto").acrescimo, 0);
     assert.equal(por("Beto").paradas, 1);
     assert.equal(por("Beto").pneuAtual, "duro");
     assert.equal(por("Caio").acrescimo, 5, "passou do limitador: +5 s");
-    assert.equal(st.finishOrder[0], por("Beto").id, "o Beto ganha: parou direito");
+    assert.equal(st.finishOrder[0], por("Ana").id, "a Ana ganha: chegou primeiro e a regra dos dois compostos saiu");
     assert.equal(st.finishOrder[st.finishOrder.length - 1], por("Caio").id, "o Caio recebe +5 s e fica por último");
   })().finally(() => { Date.now = agora; bd.fechar(); });
 });
@@ -257,9 +255,9 @@ test("box (humano): o pedido do piloto leva o carro sozinho ao corredor, para na
   assert.ok(!corrida(0, true).eventos.some((e) => e.t === "box"), "classificação: sem box");
 });
 
-test("penalidade por um composto acompanha a duração e não vale na chuva", () => {
+test("sem penalidade por um composto só (a regra saiu)", () => {
   const p = { pneu: "duro", compostos: ["duro"] };
-  for (const [voltas, segundos] of [[1, 0], [2, 2], [3, 3], [5, 5], [10, 10], [20, 10]]) {
+  for (const [voltas, segundos] of [[1, 0], [2, 0], [3, 0], [5, 0], [10, 0], [20, 0]]) {
     assert.equal(F1.acrescimoDeFinal(p, voltas), segundos);
     assert.equal(F1.acrescimoDeFinal(p, voltas, true), 0);
   }
