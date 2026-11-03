@@ -13,6 +13,7 @@ import { renderer, scene, cam, sun, V3 } from "./cena.js";
 import { CARS3, KS, makeKart, poseKart, fantasmaVisual, lodKart, dropKart, puff, stepPuffs, amostraDeFumaca } from "./carros.js";
 import { camMode, pollPad, pad } from "./controles.js";
 import { quadroCamera, somDaCamera, camEstado } from "./cameras.js";
+import { quadroEspelhos } from "./espelhos.js";
 import { physics, quadroDeFisica, quadroParado, criarRede, PASSO } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud, renderResults } from "./hud.js";
@@ -302,6 +303,7 @@ function draw(dt) {
   abrirTV(tr, dt, motionPreference.matches);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
   passoClima(dt, race, cam, modoClima, src, c); // o visual do clima: céu, luz, neblina, chuva, asfalto molhado, borrifo, som e HUD (clima-visual.js)
+  quadroEspelhos(race.kart, mode); // os retrovisores do meu carro (só no cockpit e na T-cam, e não na qualidade Baixa), depois de tudo posto e antes de desenhar a cena
   // desfoque de velocidade, pela fração da velocidade final do carro (vale igual para os cinco): começa em 40% (uns 90 km/h
   // no equilibrado), fica inteiro a 90% e o turbo e o estilingue borram ainda mais
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));

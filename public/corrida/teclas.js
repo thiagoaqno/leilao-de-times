@@ -22,6 +22,7 @@ export const ACOES = [
   { id: "respawn", g: "Pilotagem", nome: "Voltar para a pista", k: ["KeyR"], p: [8] },
   { id: "camera", g: "Câmera", nome: "Trocar a câmera", k: ["KeyC"], p: [3] },
   { id: "olharTras", g: "Câmera", nome: "Olhar para trás (segurar)", k: ["KeyV"], p: [10] },
+  { id: "cameraAjuste", g: "Câmera", nome: "Ajustar a câmera (abre e fecha a tela)", k: ["KeyH"], p: [] },
   { id: "box", g: "Box", nome: "Box (abre o MFD; de novo pede, sem cancelar)", k: ["KeyB"], p: [] },
   { id: "pneu1", g: "Box", nome: "Pneu macio (escolhe e pede)", k: ["Digit1", "Numpad1"], p: [] },
   { id: "pneu2", g: "Box", nome: "Pneu médio (escolhe e pede)", k: ["Digit2", "Numpad2"], p: [] },
@@ -38,7 +39,7 @@ export const ACOES = [
   { id: "confirmar", g: "MFD", nome: "Confirmar no MFD", k: ["Enter", "NumpadEnter"], p: [0], ctx: "mfd", comp: ["gas"] },
 ];
 export const porId = Object.fromEntries(ACOES.map((a) => [a.id, a]));
-export const ui = { aberto: false, capturando: false }; // a tela de teclas aberta: a pilotagem e o MFD ficam quietos
+export const ui = { aberto: false, capturando: false, camera: false }; // a tela de teclas aberta: a pilotagem e o MFD ficam quietos; `camera`: a tela de ajuste da câmera (só o MFD fica quieto, dá para pilotar)
 
 let custom = {}, idxK = null;
 try { const v = store.get(CHAVE); if (v && typeof v === "object" && !Array.isArray(v)) custom = v; } catch (e) { custom = {}; }

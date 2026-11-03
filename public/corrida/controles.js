@@ -11,6 +11,7 @@ import { menuBoxTecla, menuBoxPad } from "./box-menu.js";
 import { mfd, mfdTecla, mfdPad, mfdAtivo, acoes, teclaBox, digitoPneu, cancelarBoxTecla } from "./mfd.js";
 import { acoesDaTecla, botoesDe, ui, volante } from "./teclas.js";
 import "./teclas-ui.js";
+import { abrirCamera, fecharCamera, cameraAberta } from "./camera-ui.js";
 
 // câmbio manual: Shift sobe, Ctrl direito desce (redução que estouraria o giro não entra)
 export function trocarMarcha(d) {
@@ -42,6 +43,7 @@ document.addEventListener("keydown", (e) => {
     else if (id === "cancelarBox") cancelarBoxTecla();
     else if (PNEUS[id]) { if (!digitoPneu(PNEUS[id])) escolherComposto(PNEUS[id]); }
     else if (id === "camera") nextCam();
+    else if (id === "cameraAjuste") { e.preventDefault(); cameraAberta() ? fecharCamera() : abrirCamera(); }
     else if (id === "ers") { if (E.S?.config.regras === "f1") { keys.ers = true; e.preventDefault(); } else { e.preventDefault(); useItem(keys.brake); } }
     else if (id === "item") { e.preventDefault(); useItem(keys.brake); }
   }
@@ -53,11 +55,18 @@ function nextCam(d = 1) {
   // segue a partir da câmera que se vê (quem só assiste ou já recebeu a bandeirada está na TV sem ter escolhido), pulando as que quem só assiste não tem
   let i = ORDEM.indexOf(camEstado.modo || camMode);
   for (let k = 0; k < ORDEM.length; k++) { i = (i + (d < 0 ? ORDEM.length - 1 : 1)) % ORDEM.length; if (usavel(ORDEM[i], camEstado.assistindo)) break; }
-  camMode = ORDEM[i]; camEstado.modo = camMode;
+  irParaCamera(ORDEM[i]);
+}
+// põe a câmera `id` (o ciclo C e a tela de ajuste da câmera usam)
+function irParaCamera(id) {
+  if (!ORDEM.includes(id)) return;
+  camMode = id; camEstado.modo = camMode;
   try { store.set("corrida:cam", camMode); } catch (e) {}
   if (race) { race.cam.pos = null; race.cam.tvI = null; race.camTv = false; }
   toast("🎥 " + NOMES[camMode], 1600);
 }
+acoes.cameraIr = irParaCamera;
+acoes.cameraAjuste = () => (cameraAberta() ? fecharCamera() : abrirCamera());
 acoes.camera = (d) => nextCam(d); acoes.camNome = () => NOMES[camEstado.modo || camMode] || "";
 document.addEventListener("keyup", (e) => {
   for (const id of acoesDaTecla(e.code)) { if (PILOTO[id]) keys[PILOTO[id]] = false; if (id === "ers") keys.ers = false; if (id === "olharTras") keys.olharTras = false; }
@@ -81,7 +90,7 @@ export function pollPad() {
   const um = (id) => botoesDe(id).some(b), bate = (id) => botoesDe(id).some(hit); // botões de cada ação (teclas.js: padrão ou remapeados)
   if (ui.aberto) { pad.prev = gp.buttons.map((_, i) => b(i)); return; } // a tela de Controles está aberta: o controle só serve para remapear
   const noMenu = menuBoxPad(hit); // o menu do box (D-pad e A) manda enquanto está aberto
-  if (!noMenu) mfdPad(bate); // o MFD: páginas, linhas, valor, abrir e confirmar
+  if (!noMenu && !ui.camera) mfdPad(bate); // o MFD: páginas, linhas, valor, abrir e confirmar
   let x = gp.axes[0] || 0; if (um("esq")) x = -1; if (um("dir")) x = 1;
   x = window.Volante.analogico(x, volante.zona, volante.p); // a zona morta e o ganho do analógico (tela Controles)
   const gas = botoesDe("gas").some(i => b(i) && !(i === 0 && mfdAtivo() && mfd.aberto)), brake = um("freio");
@@ -89,7 +98,7 @@ export function pollPad() {
   if (gas || brake || x || pad.on) { pad.on = true; pad.steer = x; keys.gas = gas; keys.brake = brake && !gas; }
   if (bate("camera")) nextCam();
   if (bate("respawn")) respawn();
-  if (!mfdAtivo() && bate("item")) useItem(brake);
+  if (!mfdAtivo() && !ui.camera && bate("item")) useItem(brake);
   if (E.S && E.S.config.cambio === "manual") { if (bate("marchaMais")) trocarMarcha(1); if (bate("marchaMenos") && !b(6)) trocarMarcha(-1); } // manual: X sobe, B desce
   if (um("ers") && E.S?.config.regras === "f1") keys.ers = true; else if (pad.ersPad) keys.ers = false;
   pad.ersPad = um("ers");

@@ -1,11 +1,13 @@
 // Corrida da Galera — as câmeras da corrida (o laço de jogo.js chama `quadroCamera` uma vez por quadro).
 // Ciclo (tecla C, botão 🎥 e Y do controle): cockpit → onboard → bico → perseguição próxima → perseguição afastada →
 // aérea → TV. Os ids "perto", "longe", "cockpit" e "cima" são os de sempre (a escolha guardada e o som do motor usam).
-//  - cockpit: primeira pessoa, atrás do volante (a de sempre).
-//  - onboard: a câmera T (T-cam), em cima da entrada de ar, na altura do capacete; o bico aparece embaixo.
-//  - bico: baixa, em cima do nariz, um pouco atrás do eixo da frente: as rodas da frente ficam nas bordas.
-//  - perto / longe: atrás do carro, com a guinada atrasada, o FOV crescendo com a velocidade e a câmera descendo na
-//    frenagem e subindo na aceleração.
+//  - cockpit: primeira pessoa, no capacete (como no F1 24/25): o halo e o pilar central aparecem e o volante fica embaixo. O
+//    piloto do modelo (`kart.roof`) some só nesta câmera.
+//  - onboard: a T-cam, em cima da entrada de ar, atrás da cabeça: o bico, o halo e as rodas da frente aparecem embaixo.
+//  - bico: baixa, na ponta do nariz, com a asa dianteira nas bordas.
+//  - perto / longe: atrás do carro (5,2 m e 9,8 m, a 1,5 m e 2,9 m do chão), com a guinada atrasada, o FOV crescendo com a
+//    velocidade e a câmera descendo na frenagem e subindo na aceleração.
+// Cada câmera tem o ajuste do jogador (camera-ajuste.js, tela "Câmera"): FOV, altura, avanço/distância, inclinação e tremor.
 //  - cima: a aérea, um helicóptero de TV (camera-aerea.js): alto, atrás do carro numa mola amortecida, olhando um ponto
 //    à frente na pista, desviando de cenário alto.
 //  - tv: câmeras fixas na beira da pista; troca para a mais perto do carro seguido e o zoom acompanha. Quem só assiste
@@ -20,6 +22,7 @@ import { ocupado } from "./kit/comum.js";
 import { toast } from "./estado.js";
 import { aereaHeli } from "./camera-aerea.js";
 import { transicaoF1 } from "./transicao-f1.js";
+import { ajusteDe } from "./camera-ajuste.js";
 
 export const ORDEM = ["cockpit", "onboard", "bico", "perto", "longe", "cima", "tv"];
 export const NOMES = {
@@ -38,7 +41,7 @@ const lim = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- as medidas do carro, tiradas da malha ----------
 // Padrão: o modelo F1 de agora (metros do modelo; f = para a frente a partir do meio do carro, y = acima do chão).
-const PADRAO = { tcam: { f: -0.3, y: 1.18 }, bico: { f: 0.92, y: 0.64 } };
+const PADRAO = { tcam: { f: -0.3, y: 1.1 }, bico: { f: 1.75, y: 0.52 } };
 function medidas(kart) {
   if (kart.medidas) return kart.medidas;
   const kt = kart.kt;
@@ -60,8 +63,10 @@ function medidas(kart) {
     let alto = 0; for (let f = -1.2; f <= 0.1; f += B) alto = Math.max(alto, em(f));
     let soma = 0, n = 0; for (let f = -1.2; f <= 0.1; f += B) if (em(f) >= alto - 0.03) { soma += f; n++; }
     const eixo = kt.rodas.find((q) => q.esterca), fEixo = eixo ? -eixo.esterca.position.z : 1.2;
-    const fBico = fEixo - 0.28;
-    r = { tcam: { f: lim(n ? soma / n : -0.3, -0.9, 0.1), y: lim(alto + 0.22, 0.7, 1.6) }, bico: { f: fBico, y: lim(em(fBico) + 0.08, 0.3, 0.9) } };
+    // a ponta do nariz: o último trecho com malha na frente; o bico fica logo atrás dela, bem em cima do nariz (a asa dianteira aparece nas bordas)
+    let ponta = fEixo + 0.9; for (let b = NB - 1; b >= 0; b--) if (topo[b] > 0) { ponta = F0 + (b + 1) * B; break; }
+    const fBico = lim(Math.min(fEixo + 0.5, ponta - 0.35), 0.6, 2.6);
+    r = { tcam: { f: lim(n ? soma / n : -0.3, -0.9, 0.1), y: lim(alto + 0.14, 0.7, 1.6) }, bico: { f: fBico, y: lim(em(fBico) + 0.07, 0.3, 0.9) } };
   } catch (e) { r = PADRAO; }
   return (kart.medidas = r);
 }
@@ -114,18 +119,19 @@ export function quadroCamera(R, o) {
   C.surge = (C.surge || 0) + ((rm ? 0 : surge) - (C.surge || 0)) * (1 - Math.exp(-dt * 5));
   C.acel = (C.acel || 0) + ((rm ? 0 : lim(acelRaw / 170, -1, 1)) - (C.acel || 0)) * (1 - Math.exp(-dt * 3)); // -1 frenando forte ... 1 acelerando forte
   const fovStep = 1 - Math.exp(-dt * 5), ctx = { ...o, C, R, speedK, fovStep, mode };
-  if (kart) { const fora = !DE_DENTRO.has(mode); kart.roof.visible = kart.cabin.visible = fora; for (const b of kart.roofBits) b.visible = fora; } // de dentro, cabine, teto e faixa do teto tapariam a vista
+  // de dentro, cabine, teto e faixa do teto tapariam a vista; o piloto (capacete) só some na primeira pessoa e aparece na T-cam e nas de fora
+  if (kart) { const fora = !DE_DENTRO.has(mode); kart.roof.visible = mode !== "cockpit"; kart.cabin.visible = fora; for (const b of kart.roofBits) b.visible = fora; }
   if (mode !== "perto" && mode !== "longe") guinada(C, src, dt, 5);
   if (mode === "cima") aereaHeli(ctx);
   else if (mode === "cockpit") {
     const eyeU = kart.eye.u, eyeH = kart.eye.h, spec = o.spec;
-    pov(ctx, { fo: (eyeU - spec.L / 2) * KS, eh: eyeH * KS, lift: 1.5, mira: 0.5, baixo: kart.kt?.olhoBaixo || 0, fov: 72, fovV: 22, rolar: 0.035, trem: 1, tremOff: 0.7, tremBatida: 1.6 });
+    pov(ctx, { fo: (eyeU - spec.L / 2) * KS, eh: eyeH * KS, lift: 1.5, mira: 0.5, baixo: kart.kt?.olhoBaixo || 0, fovV: 14, rolar: 0.035, trem: 1, tremOff: 0.7, tremBatida: 1.6 });
   } else if (mode === "onboard") {
     const M = medidas(kart).tcam, esc = kart.sc * KS;
-    pov(ctx, { fo: M.f * esc, eh: M.y * esc, lift: 0, mira: 0.42, fov: 76, fovV: 18, rolar: 0.025, trem: 0.9, tremOff: 0.6, tremBatida: 1.3 });
+    pov(ctx, { fo: M.f * esc, eh: M.y * esc, lift: 0, mira: 0.42, fovV: 12, rolar: 0.025, trem: 0.9, tremOff: 0.6, tremBatida: 1.3 });
   } else if (mode === "bico") {
     const M = medidas(kart).bico, esc = kart.sc * KS;
-    pov(ctx, { fo: M.f * esc, eh: M.y * esc, lift: 0, mira: 0.6, fov: 82, fovV: 14, rolar: 0.02, trem: 1.25, tremOff: 0.9, tremBatida: 1.4 });
+    pov(ctx, { fo: M.f * esc, eh: M.y * esc, lift: 0, mira: 0.6, fovV: 12, rolar: 0.02, trem: 1.25, tremOff: 0.9, tremBatida: 1.4 });
   } else if (mode === "tv") tv(ctx);
   else perseguicao(ctx);
   if (o.olharTras && src) {
@@ -136,48 +142,54 @@ export function quadroCamera(R, o) {
   return mode;
 }
 
+// o quanto do tremor de velocidade vale (0 a 1): abaixo de 250 km/h quase nada, só uma vibração bem leve; acima, sobe até o de antes, que só aparece bem rápido
+// (em 300 km/h). A velocidade em km/h é `v * 0.75` (v em u/s). Batidas (`R.shake`) e fora da pista não passam por aqui.
+const tremorDaVelocidade = (v) => { const kmh = Math.abs(v || 0) * 0.75, b = Math.min(kmh, 250) / 250, leve = 0.06 * b * b, t = lim((kmh - 250) / 50, 0, 1); return leve + (1 - leve) * t * t; };
+
 // dentro do carro (cockpit, onboard e bico): a câmera anda com o carro; na subida a vista levanta e na descida abaixa
 function pov(x, p) {
   const { R, C, dt, tr, c, rm, speedK, fovStep, nearest } = x;
-  const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = p.fo, eh = p.eh;
+  const A = ajusteDe(x.mode), kt = A.trem / 100; // o ajuste do jogador: avanço (z) e altura (y) em metros, inclinação em graus, tremor em %, FOV de base
+  const fx = Math.cos(c.a), fy = Math.sin(c.a), fo = p.fo + A.z * KS, eh = p.eh + A.y * KS;
   let ahead = c.air ? c.z : groundH(tr, c.x + fx * 70, c.y + fy * 70, nearest(tr, c.x + fx * 70, c.y + fy * 70, R.idx));
   if (!(Math.abs(ahead - c.z) < 30)) ahead = c.z; // (o ponto à frente caiu noutro trecho da pista, como em cima do túnel de Mônaco: não deixa a vista mirar o teto)
   C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));
   C.pitch = (C.pitch || 0) + ((R.pitch || 0) - (C.pitch || 0)) * (1 - Math.exp(-dt * 8));
   cam.position.set(c.x + fx * fo, c.z + eh + p.lift + Math.sin(C.pitch) * fo * 0.5, c.y + fy * fo); C.pos = null;
-  cam.lookAt(c.x + fx * (fo + 70), Math.max(C.lookY, c.z + Math.tan(C.pitch) * 70 - 6) + eh * p.mira - (p.baixo || 0) * 70, c.y + fy * (fo + 70)); // (baixo: o olhar inclinado para o volante)
+  cam.lookAt(c.x + fx * (fo + 70), Math.max(C.lookY, c.z + Math.tan(C.pitch) * 70 - 6) + p.eh * p.mira - (p.baixo || 0) * 70 + Math.tan(A.incl * Math.PI / 180) * 70, c.y + fy * (fo + 70)); // (baixo: o olhar inclinado para o volante)
   if (!rm) { // a vibração cresce com a velocidade e o volante inclina um pouco a cabeça
-    const trem = (speedK * speedK * 0.35 + (R.offroad ? p.tremOff : 0)) * p.trem;
+    const trem = (speedK * speedK * 0.35 * tremorDaVelocidade(x.src.v) + (R.offroad ? p.tremOff : 0)) * p.trem * kt;
     cam.position.y += (Math.random() - 0.5) * trem; cam.position.x += (Math.random() - 0.5) * trem * 0.5;
     cam.rotateZ(-c.steer * p.rolar * Math.min(1, speedK * 1.5));
   }
-  if (R.shake > 0) { R.shake -= dt; if (!rm) cam.position.y += (Math.random() - 0.5) * p.tremBatida; }
-  cam.fov += ((p.fov + speedK * (rm ? 6 : p.fovV) + C.surge * 4) - cam.fov) * fovStep; cam.updateProjectionMatrix();
+  if (R.shake > 0) { R.shake -= dt; if (!rm) cam.position.y += (Math.random() - 0.5) * p.tremBatida * kt; }
+  cam.fov += ((A.fov + speedK * (rm ? 6 : p.fovV) + C.surge * 4) - cam.fov) * fovStep; cam.updateProjectionMatrix();
 }
 
 // atrás do carro: perto (como nos jogos de F1: logo atrás da asa) ou longe
 function perseguicao(x) {
-  const { R, C, dt, tr, src, rm, speedK, fovStep, mode, nearest } = x, near = mode === "perto";
+  const { R, C, dt, tr, src, rm, speedK, fovStep, mode, nearest } = x, near = mode === "perto", A = ajusteDe(mode), kt = A.trem / 100;
   // a guinada atrasa um pouco (a de longe, mais): na curva o carro aparece de três quartos, sem a câmera chicotear
   guinada(C, src, dt, near ? 6.5 : 4.5);
   const fx = Math.cos(C.a), fy = Math.sin(C.a), a = rm ? 0 : C.acel;
   // acelerando, a câmera sobe e se afasta; freando, desce e chega mais perto
-  const back = (near ? 58 + speedK * (rm ? 4 : 14) + a * 5 : 118 + speedK * (rm ? 8 : 26) + a * 9) + C.surge * 6;
-  const up = near ? 17 + speedK * 1.5 + a * 3.2 : 38 + speedK * 4 + a * 7;
+  // (como no jogo de F1: a próxima fica a uns 5,2 m do carro e 1,5 m acima; a afastada, a uns 9,8 m e 2,9 m; o ajuste do jogador soma metros)
+  const back = Math.max(12, (near ? 52 + speedK * (rm ? 4 : 12) + a * 5 : 98 + speedK * (rm ? 8 : 22) + a * 9) + C.surge * 6 + A.z * KS);
+  const up = (near ? 14.5 + speedK * 1.5 + a * 3.2 : 29 + speedK * 4 + a * 7) + A.y * KS;
   const wx = src.x - fx * back, wz = src.y - fy * back;
   const y = Math.max((src.z || 0) + up, groundH(tr, wx, wz, nearest(tr, wx, wz, R.idx)) + (near ? 8 : 6));
   if (!C.pos) C.pos = V3(wx, y, wz); else { C.pos.x = wx; C.pos.z = wz; C.pos.y += (y - C.pos.y) * (1 - Math.exp(-dt * 9)); }
   // No túnel de Mônaco, a câmera externa fica abaixo do teto opaco.
   if (tr.coberto?.(R.idx)) C.pos.y = Math.min(C.pos.y, (src.z || 0) + 23);
   cam.position.copy(C.pos);
-  if (R.shake > 0) { R.shake -= dt; if (!rm) { cam.position.x += (Math.random() - 0.5) * 3; cam.position.y += (Math.random() - 0.5) * 3; } }
-  if (R.offroad && !rm) cam.position.y += (Math.random() - 0.5) * 1.2;
-  if (!rm && speedK > 0.75) cam.position.y += (Math.random() - 0.5) * (speedK - 0.75) * 1.4; // tremidinha no fim de reta
+  if (R.shake > 0) { R.shake -= dt; if (!rm) { cam.position.x += (Math.random() - 0.5) * 3 * kt; cam.position.y += (Math.random() - 0.5) * 3 * kt; } }
+  if (R.offroad && !rm) cam.position.y += (Math.random() - 0.5) * 1.2 * kt;
+  if (!rm) cam.position.y += (Math.random() - 0.5) * (Math.max(0, speedK - 0.75) * 1.4 * tremorDaVelocidade(src.v) + speedK * 0.05) * kt; // (a tremidinha do fim de reta: só bem rápido) // tremidinha no fim de reta
   // olha para o chão lá na frente: na subida a câmera levanta o olhar, na descida abaixa
   const la = near ? 60 : 85, lx = src.x + fx * la, ly = src.y + fy * la, chao = groundH(tr, lx, ly, nearest(tr, lx, ly, R.idx));
   C.lookH = C.lookH == null ? chao : C.lookH + (chao - C.lookH) * (1 - Math.exp(-dt * 5));
-  cam.lookAt(lx, Math.max((src.z || 0) + 4 + (C.lookH - (src.z || 0)) * 0.6, C.lookH + 2), ly);
-  cam.fov += ((near ? 62 : 56) + speedK * (rm ? 4 : near ? 20 : 17) + C.surge * 5 - cam.fov) * fovStep; cam.updateProjectionMatrix();
+  cam.lookAt(lx, Math.max((src.z || 0) + 4 + (C.lookH - (src.z || 0)) * 0.6, C.lookH + 2) + Math.tan(A.incl * Math.PI / 180) * la, ly);
+  cam.fov += (A.fov + speedK * (rm ? 4 : near ? 16 : 14) + C.surge * 5 - cam.fov) * fovStep; cam.updateProjectionMatrix();
 }
 
 // a guinada suavizada de C.a: as câmeras que não a usam a mantêm em dia, para a troca para a perseguição não girar de repente
