@@ -29,7 +29,9 @@ const VOLANTE = { x: 0, y: 0.524, z: -0.32 }; // o centro do volante do Audi R26
 const MAO = { x: 0.118, y: 0, z: 0.035 }; // o punho fechado de cada luva em relação ao centro do volante (antes de girar com ele): na pegada lateral do aro
 // A mão fechada (f1/piloto/mao.glb, ver LICENCA.txt): o modelo vem com a laçada dos dedos na origem, a frente em −z, as costas da mão para +x (a mão direita) e o pulso em +z.
 const GRIP = { x: 0.114, y: 0, z: 0.02 }; // onde fica a laçada dos dedos (o eixo da pegada lateral do aro) no quadro do volante, antes de girar com ele; a esquerda é o espelho
-const PULSO = { x: 0, y: 0.01, z: 0.17 }; // onde o antebraço entra no punho da luva, em relação à laçada (dentro do punho escuro)
+const ESC_MAO = 0.82; // a mão do modelo (a laçada dos dedos de ~6 cm) encolhe para a de um adulto na escala do carro: menos da metade da largura do volante
+const GIRO_VOLANTE = 0.5; // quanto o volante (e as mãos nele) gira no esterço máximo, rad (~29°): com os 0,9 de antes, a mão de dentro subia até a câmera e a de fora saía de vista
+const PULSO = { x: 0, y: 0.008, z: 0.14 }; // onde o antebraço entra no punho da luva, em relação à laçada (dentro do punho escuro)
 const PUNHO = 0.075; // do punho fechado até o pulso (onde o antebraço entra no punho escuro da luva), para trás (+z)
 const OMBRO = { x: 0.115, y: 0.55, z: 0.2 }; // o ombro (pivô do braço)
 const OSSO = { cima: 0.23, baixo: 0.22 }; // o braço e o antebraço (m): com o ombro a ~0,41 m do pulso o cotovelo dobra um pouco
@@ -110,14 +112,14 @@ function maosDe(cLuva, cPainel) {
     const P = new Float32Array(pos.length), N = new Float32Array(nor.length), C = new Float32Array(pos.length);
     for (let i = 0; i < n; i++) {
       const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2], nx = nor[i * 3], c = nx > 0.45 && z > 0.012 && z < 0.12 ? painel : luva; // o painel: a face de fora (as costas) entre os nós dos dedos e o pulso
-      P[i * 3] = l * x + l * GRIP.x; P[i * 3 + 1] = y + GRIP.y; P[i * 3 + 2] = z + GRIP.z; N[i * 3] = l * nx; N[i * 3 + 1] = nor[i * 3 + 1]; N[i * 3 + 2] = nor[i * 3 + 2];
+      P[i * 3] = l * x * ESC_MAO + l * GRIP.x; P[i * 3 + 1] = y * ESC_MAO + GRIP.y; P[i * 3 + 2] = z * ESC_MAO + GRIP.z; N[i * 3] = l * nx; N[i * 3 + 1] = nor[i * 3 + 1]; N[i * 3 + 2] = nor[i * 3 + 2];
       C[i * 3] = c.r; C[i * 3 + 1] = c.g; C[i * 3 + 2] = c.b;
     }
     const m = new THREE.BufferGeometry(); m.setAttribute("position", new THREE.BufferAttribute(P, 3)); m.setAttribute("normal", new THREE.BufferAttribute(N, 3)); m.setAttribute("color", new THREE.BufferAttribute(C, 3));
     const I = Uint32Array.from(idx); if (l < 0) for (let t = 0; t < I.length; t += 3) { const a = I[t + 1]; I[t + 1] = I[t + 2]; I[t + 2] = a; } // (o espelho vira as faces do avesso)
     m.setIndex(new THREE.BufferAttribute(I, 1)); partes.push(m);
     const pinta = (geo, k2) => { const nn = geo.attributes.position.count, a = new Float32Array(nn * 3); for (let i = 0; i < nn; i++) { a[i * 3] = k2.r; a[i * 3 + 1] = k2.g; a[i * 3 + 2] = k2.b; } geo.setAttribute("color", new THREE.BufferAttribute(a, 3)); geo.deleteAttribute("uv"); return geo; };
-    const tubo = (r0, r1, h, zc, cor) => { const t = new THREE.CylinderGeometry(r1, r0, h, 18, 1, true); t.rotateX(Math.PI / 2); t.scale(1, 0.82, 1); t.translate(l * (GRIP.x + PULSO.x), GRIP.y + PULSO.y, GRIP.z + zc); return pinta(t, cor); }; // (do lado do pulso, +z, o raio é r1; o eixo do pulso é um pouco achatado)
+    const tubo = (r0, r1, h, zc, cor) => { r0 *= ESC_MAO; r1 *= ESC_MAO; h *= ESC_MAO; zc *= ESC_MAO; const t = new THREE.CylinderGeometry(r1, r0, h, 18, 1, true); t.rotateX(Math.PI / 2); t.scale(1, 0.82, 1); t.translate(l * (GRIP.x + PULSO.x), GRIP.y + PULSO.y, GRIP.z + zc); return pinta(t, cor); }; // (do lado do pulso, +z, o raio é r1; o eixo do pulso é um pouco achatado)
     partes.push(tubo(0.034, 0.027, 0.085, 0.1575, esc), tubo(0.0338, 0.0338, 0.02, 0.145, velcro)); // o punho escuro e a tira de velcro em volta dele
   }
   g = mergeGeometries(partes); MAOS.set(k, g); return g;
@@ -244,7 +246,7 @@ function posicionarMaos(p, ang, tremX = 0, tremY = 0) {
 export function animarPiloto(p, e) {
   if (!p) return;
   const dt = Math.min(0.05, Math.max(0, e.dt || 0)); if (!(dt > 0)) return;
-  const ang = p.kt.volante ? p.kt.volante.rotation.z : -(e.steer || 0) * 0.9; p.ang = ang;
+  const ang = -lim(e.steer || 0, -1, 1) * GIRO_VOLANTE; p.ang = ang; if (p.kt.volante) p.kt.volante.rotation.z = ang; // (o volante e as mãos giram juntos, por um ângulo menor que o de animarF1, que veio antes)
   if (e.lod >= 1) return; // de longe: sem animação (e sem luvas nem ombros: lodKart)
   if (p.escondido) { posicionarMaos(p, ang); return; } // na primeira pessoa só as luvas contam: a cabeça e os braços nem se calculam
   const rm = menosMovimento.matches;
