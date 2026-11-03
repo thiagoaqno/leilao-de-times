@@ -149,7 +149,9 @@ export function construir2026(raiz, tam, leve) {
   const flapFontes = [], restoFontes = [], aroFontes = [];
   for (let f of de(CORPO)) {
     if (!leve && f.nome === "sauber_carbon3") { const [aro, resto] = fatiar(f, noAro); if (aro.idx.length) { aro.rgb = "#101216"; aroFontes.push(aro); } f = resto; }
-    const [dentro, fora] = fatiar(f, asaTeste); if (dentro.idx.length) flapFontes.push(dentro); restoFontes.push(fora);
+    // (o carbono do arquivo, `sauber_carbon1/3`, fica preto: só o que é `sauber_paint` leva a cor da equipe; o rgb vira a cor do vértice e entra na máscara)
+    const tinta = f.nome === "sauber_paint" ? "#ffffff" : "#000000";
+    const [dentro, fora] = fatiar(f, asaTeste); dentro.rgb = fora.rgb = tinta; if (dentro.idx.length) flapFontes.push(dentro); restoFontes.push(fora);
   }
   // para a pintura (f1-pintura.js): `pcar` = (x, y, s) com s = distância desde a ponta do bico, `ncar` = a normal e `mcar` = quanto vale a pintura
   // (0 = carbono: a barriga e o assoalho)
@@ -158,20 +160,22 @@ export function construir2026(raiz, tam, leve) {
   const vA = F(-0.16, 0.5, 0.44), vB = F(0.16, 0.7, 0.64), vMin = vA.map((v, i) => Math.min(v, vB[i])), vMax = vA.map((v, i) => Math.max(v, vB[i]));
   const noVolante = (x, y, z) => x > vMin[0] && x < vMax[0] && y > vMin[1] && y < vMax[1] && z > vMin[2] && z < vMax[2];
   const comPintura = (g) => {
-    const p = g.attributes.position, n = g.attributes.normal, N = p.count, P = new Float32Array(N * 3), M = new Float32Array(N), NN = new Float32Array(N * 3);
+    const p = g.attributes.position, n = g.attributes.normal, tinta = g.attributes.color, N = p.count, P = new Float32Array(N * 3), M = new Float32Array(N), NN = new Float32Array(N * 3);
     for (let i = 0; i < N; i++) {
       const y = p.getY(i), ny = n.getY(i), sv = p.getZ(i) - zNariz;
       P[i * 3] = p.getX(i); P[i * 3 + 1] = y; P[i * 3 + 2] = sv; NN[i * 3] = n.getX(i); NN[i * 3 + 1] = ny; NN[i * 3 + 2] = n.getZ(i);
       let m = Math.min(1, Math.max(0, (ny + 0.45) / 0.3)); // de baixo para cima: a barriga é de carbono
       if (y < 0.1 && sv > 1.15 && sv < 4.05) m = 0;         // o assoalho, entre os eixos
       if (noVolante(p.getX(i), y, p.getZ(i))) m = 0;
+      if (tinta) m *= tinta.getX(i); // o carbono do arquivo
       M[i] = m;
     }
+    if (tinta) g.deleteAttribute("color");
     g.setAttribute("pcar", new THREE.BufferAttribute(P, 3)); g.setAttribute("ncar", new THREE.BufferAttribute(NN, 3)); g.setAttribute("mcar", new THREE.BufferAttribute(M, 1)); return g;
   };
-  D.corpo = comPintura(juntar(restoFontes));
+  D.corpo = comPintura(juntar(restoFontes, { cor: true }));
   if (flapFontes.length) {
-    const g = comPintura(juntar(flapFontes)), p = g.attributes.position, b = new THREE.Box3().setFromBufferAttribute(p), ys = [];
+    const g = comPintura(juntar(flapFontes, { cor: true })), p = g.attributes.position, b = new THREE.Box3().setFromBufferAttribute(p), ys = [];
     for (let i = 0; i < p.count; i++) if (p.getZ(i) < b.min.z + 0.04) ys.push(p.getY(i));
     const pos = new THREE.Vector3(0, ys.reduce((a, c) => a + c, 0) / Math.max(1, ys.length), b.min.z); // a dobradiça: a borda da frente do flap
     D.flap = { geo: centrar(g, pos), pos };
