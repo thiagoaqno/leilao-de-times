@@ -1,11 +1,9 @@
-# Las Vegas: asfalto iluminado e grid desencontrado
+# Corrige o brilho dos carros na corrida
 
-O asfalto de Las Vegas recebe iluminação uniforme à noite sobre a própria textura, sem planos sobre a pista que atravessem os carros. O efeito desliga durante o dia e funciona também nos gráficos baixos.
-
-Na F1, as posições das duas colunas do grid ficam intercaladas; carros, robôs e marcas no asfalto usam a mesma posição. O grid do modo comum permanece igual.
+Nas qualidades Média e Alta, limita a luz refletida pelos materiais dos carros antes do bloom. O limite considera a soma dos reflexos e da iluminação, inclusive durante o dia, para evitar os pontos brancos que cintilavam. As emissões continuam livres para as lanternas e outras luzes; na qualidade Baixa, o limite fica desligado.
 
 ## Verificação
 
-- Testes de grid, largada e iluminação noturna passaram.
-- Corrida de Las Vegas com 20 carros e gráficos baixos conferida visualmente no navegador.
-- Os testes de tráfego e robôs passaram, salvo um teste de freio que também falha na main; o teste de turbo passou ao repetir.
+- Sintaxe dos arquivos alterados e `git diff --check`.
+- Conferência do shader e da preservação do hook anterior de materiais.
+- Verificação visual em corrida ainda necessária.

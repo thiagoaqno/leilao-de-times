@@ -30,7 +30,7 @@ import { renderer, scene, cam, sun } from "./cena.js";
 import { clima } from "./clima.js";
 import { varrerLuzPostes, LUZ } from "./kit/luz-postes.js";
 import { E, toast } from "./estado.js";
-import { VERNIZ } from "./f1-pintura.js";
+import { VERNIZ, TETO_CARRO } from "./f1-pintura.js";
 import { qualidade, aoMudar, pixelRatioDe, rebaixar, restaurar } from "./qualidade.js";
 
 // ---------- os ajustes de cada qualidade (mexa aqui para afinar) ----------
@@ -171,7 +171,7 @@ const lim = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
 const luma = (c) => c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722;
 const GANHO_LUZ = { value: 0 }; // 0 sem pós, 1 com pós (compartilhado por todos os materiais marcados)
 const TETO_LUZ = 0.95; // com o pós, o que é iluminado (luz dos postes, sol) não passa disso (abaixo do menor limiar do bloom): só as lâmpadas, os faróis e o neon brilham
-const ligarGanho = (v) => { GANHO_LUZ.value = v; LUZ.uLuzTeto.value = v ? TETO_LUZ : 0; };
+const ligarGanho = (v) => { GANHO_LUZ.value = v; LUZ.uLuzTeto.value = v ? TETO_LUZ : 0; TETO_CARRO.value = v ? 0.98 : 0; };
 const vistos = new WeakSet();
 function preparar(m) {
   if (!m || vistos.has(m)) return; vistos.add(m);
