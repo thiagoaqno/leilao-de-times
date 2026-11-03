@@ -198,9 +198,10 @@ function perfilF1(pf, f) {
       for (let i = 0; i < n; i++) {
         if (pf.teto[i] < lim) v[i] = Math.min(v[i], vmax * (0.14 + 0.5 * Math.max(0, pf.teto[i]) / lim));
         // Nas sequências de Mônaco o volante ainda está mudando de direção quando chega ao próximo muro.
-        // Limitar essas curvas no perfil também antecipa a freada, sem tirar velocidade das retas.
+        // A primeira aceita mais velocidade; a segunda precisa de mais margem. O perfil antecipa a freada.
         const f = i / n;
-        if (pf.pista === "monaco" && ((f > 0.60 && f < 0.66) || (f > 0.75 && f < 0.86))) v[i] *= 0.84;
+        if (pf.pista === "monaco" && f > 0.60 && f < 0.66) v[i] *= 0.90;
+        if (pf.pista === "monaco" && f > 0.75 && f < 0.86) v[i] *= 0.84;
       }
       for (let volta = 0; volta < 2; volta++) for (let i = n - 1; i >= 0; i--) v[i] = Math.min(v[i], Math.sqrt(v[(i + 1) % n] ** 2 + 2 * pf.c.brake * 0.72 * STEP));
     }
