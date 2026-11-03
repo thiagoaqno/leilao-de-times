@@ -527,8 +527,10 @@ const VERNIZ_ASPERO = 0.52;    // a rugosidade da pintura de dia vira (no máxim
 const VERNIZ_CAMADA = 0.28;    // a força da camada de verniz (baixa)
 const VERNIZ_CAMADA_ASP = 0.38;// a rugosidade dela: alta, o reflexo do céu sai macio e não espelhado
 const VERNIZ_CEU = 1.8;        // quanto a camada amplia o reflexo do céu
-const VERNIZ_TETO_SOL = 0.22;  // o brilho direto do sol na camada não passa disso
-const VERNIZ_TETO_BASE = 0.85; // e o da tinta por baixo, de dia
+// (os tetos ficam bem abaixo do limiar do bloom: com 0,22 + 0,85 os pontinhos de brilho do sol passavam dele e o bloom os espalhava em
+// "estrelas" piscando nos carros)
+const VERNIZ_TETO_SOL = 0.06;  // o brilho direto do sol na camada não passa disso
+const VERNIZ_TETO_BASE = 0.3;  // e o da tinta por baixo, de dia
 export function aplicarVerniz(sh) {
   sh.uniforms.uVerniz = VERNIZ;
   sh.fragmentShader = VERNIZ_DECL + sh.fragmentShader
