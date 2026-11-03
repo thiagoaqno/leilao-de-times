@@ -130,8 +130,10 @@ function montarCorpoNovo(k) {
   if (D.flap) { const piv = new THREE.Group(); piv.position.copy(D.flap.pos); k.carro.add(piv); peca("flap", D.flap.geo, mat.corpo(), piv); k.flap = piv; k.drsA = 0; k.drsMax = D.drs; }
   // as rodas: cada uma inteira (pneu, aro e disco); "gira" roda pela distância andada e, nas da frente, "esterca" vira com o volante
   for (const r of D.rodas) {
+    // o pivô fica no centro do cubo: `esterca` (só as da frente: vira em torno do eixo vertical) > `camber` (a inclinação fixa da roda no carro) > `gira` (rola em torno do eixo X da roda)
     const esterca = new THREE.Group(); esterca.position.copy(r.centro); k.carro.add(esterca);
-    const gira = new THREE.Group(); esterca.add(gira); peca("roda", r.geo, mat.roda(), gira);
+    const camber = new THREE.Group(); if (r.camber) camber.quaternion.copy(r.camber); esterca.add(camber);
+    const gira = new THREE.Group(); camber.add(gira); peca("roda", r.geo, mat.roda(), gira);
     k.rodas.push({ gira, esterca: r.frente ? esterca : null, r: r.r });
   }
   // o volante (com as luzes e os mostradores): vira em torno do eixo z

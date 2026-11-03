@@ -87,6 +87,40 @@ function juntar(lista, { uv = false, cor = false } = {}) {
 const caixaDe = (lista) => { const b = new THREE.Box3(), v = new THREE.Vector3(); for (const f of lista) for (let i = 0; i < f.pos.length; i += 3) b.expandByPoint(v.set(f.pos[i], f.pos[i + 1], f.pos[i + 2])); return b; };
 const centrar = (g, c) => { g.translate(-c.x, -c.y, -c.z); g.computeBoundingSphere(); return g; };
 
+// o quaternion que leva o eixo da roda (o menor autovetor da dispersão dos pontos do pneu, sinal com x > 0) para o X do carro: desfaz a cambagem
+function quaternioDoEixo(lista, centro) {
+  const m = new THREE.Vector3(), v = new THREE.Vector3(); let n = 0;
+  for (const f of lista) for (let i = 0; i < f.pos.length; i += 3) { m.add(v.set(f.pos[i], f.pos[i + 1], f.pos[i + 2])); n++; }
+  m.multiplyScalar(1 / Math.max(1, n)); const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (const f of lista) for (let i = 0; i < f.pos.length; i += 3) { const d = [f.pos[i] - m.x, f.pos[i + 1] - m.y, f.pos[i + 2] - m.z]; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) C[a][b] += d[a] * d[b] / n; }
+  const tr = C[0][0] + C[1][1] + C[2][2], e = new THREE.Vector3(1, 0.3, 0.2).normalize(); // (a potência de tr·I − C acha o menor autovetor: o pneu é largo e fino, o eixo é o lado curto)
+  for (let k = 0; k < 120; k++) e.set(tr * e.x - (C[0][0] * e.x + C[0][1] * e.y + C[0][2] * e.z), tr * e.y - (C[1][0] * e.x + C[1][1] * e.y + C[1][2] * e.z), tr * e.z - (C[2][0] * e.x + C[2][1] * e.y + C[2][2] * e.z)).normalize();
+  if (e.x < 0) e.negate();
+  return new THREE.Quaternion().setFromUnitVectors(e, new THREE.Vector3(1, 0, 0));
+}
+// a face de trás de um espelho (a face grande da carcaça, que olha para o piloto): o centro, a normal (para trás), os eixos e o tamanho dela, no quadro do carro
+function faceDoEspelho(f) {
+  const P = f.pos, I = f.idx, a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), nm = new THREE.Vector3(), tris = [], baldes = new Map();
+  for (let t = 0; t < I.length; t += 3) {
+    a.fromArray(P, I[t] * 3); b.fromArray(P, I[t + 1] * 3); c.fromArray(P, I[t + 2] * 3);
+    nm.crossVectors(b.clone().sub(a), c.clone().sub(a)); const area = nm.length() / 2; if (area < 1e-9) continue; nm.normalize();
+    if (nm.x * f.nor[I[t] * 3] + nm.y * f.nor[I[t] * 3 + 1] + nm.z * f.nor[I[t] * 3 + 2] < 0) nm.negate(); // (o sentido de fora pelas normais do vértice)
+    if (nm.z <= 0.3) continue; // só o que olha para trás
+    const t3 = { n: nm.clone(), area, c: a.clone().add(b).add(c).multiplyScalar(1 / 3), ia: I[t], ib: I[t + 1], ic: I[t + 2] }; tris.push(t3);
+    const k = [nm.x, nm.y, nm.z].map((x) => Math.round(x * 5)).join(","); baldes.set(k, (baldes.get(k) || 0) + area);
+  }
+  if (!tris.length) return null;
+  const melhor = [...baldes.entries()].sort((x, y) => y[1] - x[1])[0][0].split(",").map((x) => +x / 5), alvo = new THREE.Vector3(...melhor).normalize();
+  const dom = new THREE.Vector3(); for (const t of tris) if (t.n.dot(alvo) > 0.9) dom.addScaledVector(t.n, t.area); dom.normalize();
+  const face = tris.filter((t) => t.n.dot(dom) > 0.95); if (!face.length) return null;
+  const cen = new THREE.Vector3(); let at = 0; for (const t of face) { cen.addScaledVector(t.c, t.area); at += t.area; } cen.multiplyScalar(1 / at);
+  const cima = new THREE.Vector3(0, 1, 0).addScaledVector(dom, -dom.y).normalize(), dir = new THREE.Vector3().crossVectors(cima, dom).normalize();
+  let r0 = 1e9, r1 = -1e9, u0 = 1e9, u1 = -1e9, w = new THREE.Vector3();
+  for (const t of face) for (const i of [t.ia, t.ib, t.ic]) { w.fromArray(P, i * 3).sub(cen); const rr = w.dot(dir), uu = w.dot(cima); r0 = Math.min(r0, rr); r1 = Math.max(r1, rr); u0 = Math.min(u0, uu); u1 = Math.max(u1, uu); }
+  const centro = cen.clone().addScaledVector(dir, (r0 + r1) / 2).addScaledVector(cima, (u0 + u1) / 2);
+  return { centro: centro.toArray(), n: dom.toArray(), r: dir.toArray(), u: cima.toArray(), w: r1 - r0, h: u1 - u0 };
+}
+
 // ---------- o carro: tudo o que f1.js precisa, pronto e no quadro do carro ----------
 // `raiz`: a cena do arquivo; `tam`: o comprimento do carro (m); `leve`: o modelo dos outros carros (sem o cockpit)
 export function construir2026(raiz, tam, leve) {
@@ -164,15 +198,20 @@ export function construir2026(raiz, tam, leve) {
   rodas.forEach((lista, q) => {
     if (!lista.length) return;
     const bp = caixaDe(pneuQ[q].length ? pneuQ[q] : lista), centro = bp.getCenter(new THREE.Vector3()), r = (bp.max.y - bp.min.y) / 2;
-    const g = centrar(juntar(lista, { cor: true }), centro), a = aroDaRoda(g.attributes.position, g.index.array);
+    // o eixo REAL da roda: as da frente do modelo têm cambagem (~3°), então girar em torno do X do carro as faria balançar. A malha é desinclinada (o eixo vai para o X)
+    // e a inclinação volta no pivô (`camber`, f1.js), FORA do giro: a roda gira em torno do próprio eixo, que passa pelo centro do cubo, e parada fica como no modelo.
+    const discos = lista.filter((f) => f.nome === "discs"); // (o disco é uma chapa fina: a normal dela dá o eixo com limpeza; sem ele, vale o pneu)
+    const Q = quaternioDoEixo(discos.length ? discos : pneuQ[q].length ? pneuQ[q] : lista, centro);
+    const g = centrar(juntar(lista, { cor: true }), centro); g.applyQuaternion(Q); g.computeBoundingSphere();
+    const a = aroDaRoda(g.attributes.position, g.index.array);
     g.setAttribute("aro", a.aro); g.setAttribute("pneuLat", a.lat);
-    D.rodas.push({ geo: g, centro, r, frente: q >= 2, lado: q % 2 ? 1 : -1 });
+    D.rodas.push({ geo: g, centro, r, frente: q >= 2, lado: q % 2 ? 1 : -1, camber: Q.clone().invert() });
   });
 
   if (!leve) {
     D.miudezas = unir(MIUDEZAS, { cor: true }); D.piloto = unir(PILOTO, { cor: true });
     // os retrovisores (espelhos.js): onde fica a face de trás de cada um, no quadro do carro (z maior = mais para trás) e a largura da peça
-    D.espelhos = de(new Set(["sauber_mirror_right"])).map((f) => { const b = caixaDe([f]), c = b.getCenter(new THREE.Vector3()); return { x: c.x, y: c.y, z: b.max.z, w: b.max.x - b.min.x }; });
+    D.espelhos = de(new Set(["sauber_mirror_right"])).map(faceDoEspelho).filter(Boolean);
     // --- o volante (as luzes e os mostradores dele giram junto): o centro é o da malha do volante; vira em torno do eixo z (o rosto olha para trás)
     const vol = de(new Set(["audi_steeringwheel"]));
     if (vol.length) {
