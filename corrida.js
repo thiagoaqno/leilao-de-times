@@ -384,6 +384,9 @@ module.exports = function attachCorrida(io) {
     if (!p.started) { p.started = true; p.lapStart = room.startAt; return true; }
     const lap = (now - p.lapStart) / 1000;
     if (lap < T.PISTAS[room.config.pista].minLap) return false; // rápido demais: atalho (a volta não conta, mas o setor segue o do navegador, senão a volta seguinte morria)
+    // a volta é "suja" se o carro bateu (no muro ou em outro carro: `p.batidas`, corrida-f1-direcao.js) ou ficou fantasma nela (batida,
+    // muro ou recolocado na pista: `p.fantAte`): essa não ensina os robôs (o "volta" abaixo recusa)
+    p.voltaSuja = (p.batidas || 0) > (p.batidasNaVolta || 0) || (p.fantAte || 0) > p.lapStart; p.batidasNaVolta = p.batidas || 0;
     p.laps++; p.last = lap; p.best = p.best == null ? lap : Math.min(p.best, lap); p.lapStart = now;
     if (!p.bot) registrarRecorde(room, p, lap);
     // stop-and-go pendente: sem voltas para cumprir vira +20 s; passou das 3 voltas sem cumprir, bandeira preta (desclassificado)
@@ -707,10 +710,11 @@ module.exports = function attachCorrida(io) {
     });
 
     // a volta que acabei de fazer (amostras a cada 0,1 s): até cinco pilotos ensinam linhas diferentes.
-    // Só vale se bate com o tempo que o servidor mediu e se é uma volta só (uma por volta, de quem está correndo).
+    // Só vale se bate com o tempo que o servidor mediu, se é uma volta só (uma por volta, de quem está correndo) e se é limpa (sem batida).
     socket.on("volta", (d = {}) => {
       const { room, me } = ctx();
       if (!room || !me || me.bot || !Number.isFinite(me.last) || me.voltaEnviada === me.laps) return;
+      if (me.voltaSuja) return; // volta com batida ou fantasma: não vira traçado nem ritmo dos robôs
       const s = d.s, pista = room.config.pista, t = T.PISTAS[pista];
       if (!Array.isArray(s) || s.length < 100 || s.length > 4000 || me.last < t.minLap) return;
       if (!s.every((a) => Array.isArray(a) && a.length === 6 && a.every(Number.isFinite) && a[1] >= 0 && a[2] >= 0 && a[1] <= t.world && a[2] <= t.world)) return;
