@@ -1,7 +1,12 @@
 import { criarReverberacao } from "./reverberacao.js";
-// Corrida da Galera — sons sintetizados (kart e F1, derrapagem, batidas e largada). O motor de F1 (V10) fica em motor-v10.js.
+// Corrida da Galera — sons sintetizados (kart e F1, derrapagem, batidas e largada). O motor de F1 é o V6 turbo híbrido de hoje (motor-v6.js); o V10 dos anos 2000 (motor-v10.js) segue como alternativa com `?motor=v10`.
 import { $, store } from "./estado.js";
-import { criarMotorF1 } from "./motor-v10.js";
+import { criarMotorF1 as criarMotorV10 } from "./motor-v10.js";
+import { criarMotorF1 as criarMotorV6 } from "./motor-v6.js";
+
+// qual motor de F1 soa: o V6 é o padrão; `?motor=v10` na página traz o V10 de volta
+const motorEscolhido = (() => { try { return new URLSearchParams(location.search).get("motor") === "v10" ? "v10" : "v6"; } catch { return "v6"; } })();
+const criarMotorF1 = motorEscolhido === "v10" ? criarMotorV10 : criarMotorV6;
 
 // ---------- sons ----------
 export const Sound = (() => {
@@ -21,7 +26,7 @@ export const Sound = (() => {
   // o som ambiente das pistas (pista-som.js) passa por um barramento que abre e fecha junto com o motor (só na corrida);
   // o eco do túnel é um envio do motor para uma reverberação (reflexões curtas e discretas)
   let ambBus = null, ecoG = null;
-  let motorF1 = null; // o motor de F1 (motor-v10.js), criado na primeira vez que as regras de F1 pedem
+  let motorF1 = null; // o motor de F1 (motor-v6.js, ou motor-v10.js com ?motor=v10), criado na primeira vez que as regras de F1 pedem
   let motorBus = null; // os motores de F1 (o meu e os dos outros) passam por aqui: abaixam enquanto o engenheiro fala
   function barramento() { const c = ctx(); if (!c) return null; if (!ambBus) { ambBus = c.createGain(); ambBus.gain.value = 0; ambBus.connect(master); } return ambBus; }
   function reverb(c) {
@@ -49,7 +54,7 @@ export const Sound = (() => {
     eng.f.frequency.setTargetAtTime(500 + rpm * 1400 + v * 2, t, 0.06);
     eng.g.gain.setTargetAtTime(on && racing && !f1 ? (0.035 + rpm * 0.02) * (troca > 0 ? 0.3 : 1) : 0, t, 0.05);
     eng.wg.gain.setTargetAtTime(on && racing ? Math.min(0.05, v * 0.00011) : 0, t, 0.1);
-    if (f1) { if (!motorF1) { motorBus = c.createGain(); motorBus.connect(master); motorF1 = criarMotorF1(c, motorBus, reverbExistente); } motorF1.atualizar(t, { gas, rpm: rpmF1, marcha: marchaF1 || 1, ativo: on && racing, cam: f1.cam, lim: f1.lim || 0 }); } else if (motorF1) motorF1.silenciar(t);
+    if (f1) { if (!motorF1) { motorBus = c.createGain(); motorBus.connect(master); motorF1 = criarMotorF1(c, motorBus, reverbExistente); } motorF1.atualizar(t, { gas, rpm: rpmF1, marcha: marchaF1 || 1, ativo: on && racing, cam: f1.cam, lim: f1.lim || 0, ers: !!f1.ers, freio: !!f1.freio }); } else if (motorF1) motorF1.silenciar(t);
     if (ambBus) ambBus.gain.setTargetAtTime(on && racing ? 1 : 0, t, 0.4);
     if (!racing && ecoG) ecoG.gain.setTargetAtTime(0, t, 0.1);
   }

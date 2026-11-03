@@ -212,8 +212,8 @@ function loop(t) {
   updateGhosts(dt, race.net ? Math.min(1, race.acc / PASSO) : 1); // (os outros carros na hora do meu desenho: rede.js)
   recordLap();
   if (me() && ativo() && !race.net && performance.now() - race.lastSent > 100) { race.lastSent = performance.now(); socket.emit("pos", { x: race.car.x, y: race.car.y, z: race.car.z, a: race.car.a, v: race.car.v, prog: myProg() }); }
-  const somF1 = E.S?.config.regras === "f1"; // regras de F1: o motor V10 (motor-v10.js), com o limitador e os carros dos outros
-  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, somF1 ? { cam: somDaCamera(camEstado.modo || camMode), lim: race.box?.fase === "entra" ? 0.45 : keys.gas && (race.rpm || 0) >= 0.985 ? 1 : 0 } : null);
+  const somF1 = E.S?.config.regras === "f1"; // regras de F1: o motor V6 turbo (motor-v6.js; ?motor=v10 traz o V10), com o limitador e os carros dos outros
+  Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, somF1 ? { cam: somDaCamera(camEstado.modo || camMode), lim: race.box?.fase === "entra" ? 0.45 : keys.gas && (race.rpm || 0) >= 0.985 ? 1 : 0, ers: !!race.ersAtivo, freio: !!keys.brake } : null);
   Sound.outros(OUTROS_SOM, somF1 && me() && !(race.tvAte && sNow() < race.tvAte) ? outrosParaSom() : 0); // (na transmissão de TV o grid parado em marcha lenta soava como uma buzina)
   Sound.skid(me() && ativo() && race.car.slip > 45 ? race.car.slip : 0);
   draw(dt);
