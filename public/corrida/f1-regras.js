@@ -136,7 +136,8 @@ const usarErsAuto = (carga, velocidade, vmax, reta, perto) => carga > (perto ? E
 // pneus e volta para a pista. A parada leva um de três tempos (PARADAS): 2,0 s (perfeita), 2,7 s (normal) ou 3,3 s (ruim),
 // sorteado com a semente do GP (recarregar a página nunca muda o resultado), com chance maior de ser normal. Quem termina a corrida sem ter usado dois
 // compostos leva até UM_COMPOSTO s no resultado; passar do limitador leva RAPIDO s.
-const LIMITADOR = 0.40, PARADA_BASE = 2.0, PARADA_ERRO = 1.3, UM_COMPOSTO = 10, RAPIDO = 5;
+// (2026-11: a regra dos dois compostos saiu, a pedido do Thiago: terminar com um composto só não custa nada; UM_COMPOSTO = 0)
+const LIMITADOR = 0.40, PARADA_BASE = 2.0, PARADA_ERRO = 1.3, UM_COMPOSTO = 0, RAPIDO = 5;
 const RAMPA = 14, LARGURA_CORREDOR = 54, FOLGA_CORREDOR = 12, GARAGENS = 10; // duas faixas de 27 unidades; a rampa é em pontos da pista (6 unidades cada)
 const hashTexto = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 // gerador com semente (mulberry32): a mesma semente dá sempre a mesma sequência
@@ -231,7 +232,7 @@ function compostoParaParada(p, pedido) {
 const usouDoisCompostos = (p) => new Set(p.compostos || [p.pneu || COMPOSTO_PADRAO]).size >= 2;
 // (numa corrida com chuva a regra não vale, como na F1: `chuvoso` é o roteiro da corrida ter chuva)
 // A penalidade escala com a corrida: 2 s em duas voltas, 5 s em cinco e no máximo 10 s.
-const penalidadeUmComposto = (voltas) => voltas >= 2 ? Math.min(UM_COMPOSTO, voltas) : 0;
+const penalidadeUmComposto = (voltas) => voltas >= 2 ? Math.min(UM_COMPOSTO, voltas) : 0; // (0: a regra saiu)
 const acrescimoDeFinal = (p, voltas, chuvoso = false) => (!chuvoso && !usouDoisCompostos(p) ? penalidadeUmComposto(voltas) : 0);
 // A estratégia de um robô: o composto da largada e as paradas { volta, composto } (`volta` = a volta, de 1 a voltas − 1, em
 // que ele entra no corredor, no fim dela se a entrada fica antes da linha de chegada: nunca na última). Vem da conta do
@@ -251,7 +252,7 @@ function melhoresPlanos(voltas, pista, nivel = "medio", fator = 1) {
   fator = Math.round((fator || 1) * 20) / 20; // (o gasto de pneu do carro, de 0,05 em 0,05: a conta é guardada)
   const { janela } = NIVEIS_DE_PLANO[nivel] || NIVEIS_DE_PLANO.medio, chave = `${R.tabelaDe(pista) ? pista : "interlagos"}:${voltas}:${janela}:${fator}`;
   let l = CACHE_PLANOS.get(chave);
-  if (!l) { l = R.planos(tab, voltas, { janela, max: 400, fator, exigirDois: true }).filter((p) => voltas < 2 || new Set([p.largada, ...p.paradas.map((q) => q.composto)]).size >= 2).slice(0, 80); /* o robô sempre cumpre a regra dos dois compostos */ if (CACHE_PLANOS.size > 200) CACHE_PLANOS.clear(); CACHE_PLANOS.set(chave, l); }
+  if (!l) { l = R.planos(tab, voltas, { janela, max: 400, fator }).slice(0, 80); /* (sem a regra dos dois compostos: vale também o plano de um composto só, até sem parada) */ /* o robô sempre cumpre a regra dos dois compostos */ if (CACHE_PLANOS.size > 200) CACHE_PLANOS.clear(); CACHE_PLANOS.set(chave, l); }
   return l;
 }
 function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 1) {

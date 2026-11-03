@@ -13,7 +13,7 @@
 (function (root) {
 
 const GRADE = [0, 0.2, 0.4, 0.6, 0.8, 0.85, 0.9, 0.95, 1]; // os desgastes em que a tabela mede o tempo da volta
-const UM_COMPOSTO = 10;                                      // teto da penalidade por terminar com um composto só
+const UM_COMPOSTO = 0;  // (a regra dos dois compostos saiu: f1-regras.js)                                      // teto da penalidade por terminar com um composto só
 const penalidadeUmComposto = (voltas) => voltas >= 2 ? Math.min(UM_COMPOSTO, voltas) : 0;
 let TABELAS = null;
 try { TABELAS = (root.F1PneusTabela || require("./f1-pneus-tabela.js")).TABELAS; } catch (e) { TABELAS = {}; }

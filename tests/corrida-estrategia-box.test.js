@@ -47,7 +47,7 @@ test("o composto escolhido aguenta as voltas que faltam", () => {
 test("a janela de box do MFD e a sugestão combinam", () => {
   const j = H.janelaDeBox({ voltaAtual: 5, voltas: 20, voltasDePneu: 2.4, compostosUsados: 1, chuva: false });
   const s = E.sugerirBox(base({ voltaAtual: 5, janela: j, pneu: { composto: "medio", desgaste: 0.5 } }));
-  assert.ok(s && s.razao === "dois");
+  assert.equal(j.obrigatoria, false); assert.ok(!s || s.razao !== "dois"); // a regra dos dois compostos saiu
 });
 test("gerirSugestao: 10 s, some, e só volta depois de uma volta ou se a situação mudar", () => {
   const sug = { chave: "dois:duro", composto: "duro" };
