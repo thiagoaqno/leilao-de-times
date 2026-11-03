@@ -15,7 +15,7 @@ import { clima } from "./clima.js";
 const M = () => window.HudMfd, F = () => window.F1Regras;
 export const mfd = { aberto: true, pagina: "pneus", lista: [], linha: {}, ultimo: 0, entrada: "teclado" };
 // o que controles.js registra (a câmera e a torre são dele e do hud.js): { camera(d), torre(): alterna compacta/completa }
-export const acoes = { camera: null, camNome: () => "", torreCompacta: () => true, torreAlternar: null, mapaPerto: () => false, mapaAlternar: null };
+export const acoes = { camera: null, camNome: () => "", radioRival: null, torreCompacta: () => true, torreAlternar: null, mapaPerto: () => false, mapaAlternar: null };
 const LEITURA = {}; // os últimos dados que o hud passou (as linhas do painel leem daqui)
 let raiz = null, refs = {}, abas = "", paginaVista = null;
 
@@ -87,6 +87,8 @@ const LINHAS = {
     { rot: "Diagnóstico do carro", valor: () => "Pedir", mudar: () => pedirRadio("carro") },
     { rot: "Estado dos pneus", valor: () => "Pedir", mudar: () => pedirRadio("pneus") },
     { rot: "Situação da corrida", valor: () => "Pedir", mudar: () => pedirRadio("corrida") },
+    { rot: "Quem está à frente", valor: () => "Pedir", mudar: () => { if (!acoes.radioRival || !acoes.radioRival("frente")) toast("Ninguém por perto à frente.", 1500); } },
+    { rot: "Quem está atrás", valor: () => "Pedir", mudar: () => { if (!acoes.radioRival || !acoes.radioRival("tras")) toast("Ninguém por perto atrás.", 1500); } },
   ],
   box: [
     { rot: "Próximo pneu", dica: "1–4", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return B.pedido === "decidir" ? "Na garagem" : F().PNEUS[B.pedido || proximo()].nome; },
