@@ -259,6 +259,7 @@ function hudF1(m, st, now) {
   const max = compacta ? COMPACTA_N : Math.max(6, Math.min(22, Math.floor((innerHeight - (peq ? 200 : 250)) / (peq ? 22 : 28)))), eu = linhas.findIndex((l) => l.eu);
   set($("hTorre"), "c", "hud" + (compacta ? " compacta" : " completa")); set($("tAlt"), "aria-pressed", String(!compacta));
   if (E.S.phase === "race" && eu >= 0 && window.Radio && m && m.started && !m.dnf && m.finish == null) { window.Radio.posicao(linhas[eu].pos, String(race.startAt)); race.radioCtx = { cors, m, cron, agoraS }; radioRivais(cors, m, cron, agoraS); }
+  if (E.S.phase === "race" && eu >= 0 && m && m.started && !m.dnf && m.finish == null) ultrapassagem(linhas, eu);
   const ver = T.recortar(linhas.length, eu, max), box = $("tLinhas").children;
   for (let k = 0; k < box.length; k++) {
     const d = box[k], l = ver[k] != null ? linhas[ver[k]] : null;
@@ -430,6 +431,23 @@ export function radioRivais(cors, m, cron, agoraS, pedido = null) {
   }
   if (pedido === "frente" && !fr) return R.frase([R.pedaco("lider"), ...(tr && iv.tras.seg != null ? [R.pedaco("tras"), nome(tr), F.pecaDoGap(iv.tras.seg)] : [])], "rival", { forcar: true });
   return null;
+}
+// A animação de ultrapassagem (como no jogo da F1): quando a minha posição muda e fica 0,6 s no lugar novo, o cartão `#hUltra` entra com a posição
+// nova grande, a seta (verde subindo, vermelha descendo), quantas posições e quem eu passei (ou quem me passou). Os primeiros 8 s da largada
+// ficam de fora (a confusão do começo); `prefers-reduced-motion` só troca o texto, sem animar (hud-f1.css).
+function ultrapassagem(linhas, eu) {
+  const pos = linhas[eu].pos, agora = performance.now(), U = race.ultra || (race.ultra = { pos, cand: null, desde: 0, ini: agora });
+  if (agora - U.ini < 8000) { U.pos = pos; return; }
+  if (pos === U.pos) { U.cand = null; return; }
+  if (U.cand !== pos) { U.cand = pos; U.desde = agora; return; }
+  if (agora - U.desde < 600) return;
+  const ganhou = pos < U.pos, n = Math.abs(pos - U.pos), outro = linhas[ganhou ? eu + 1 : eu - 1];
+  U.pos = pos; U.cand = null;
+  let el = $("hUltra");
+  if (!el) { el = document.createElement("div"); el.id = "hUltra"; el.className = "hud"; el.setAttribute("aria-live", "polite"); $("race").appendChild(el); }
+  el.className = "hud " + (ganhou ? "sobe" : "desce");
+  el.innerHTML = `<b class="hu-seta">${ganhou ? "▲" : "▼"}</b><b class="hu-pos">P${pos}</b><span class="hu-txt"><em>${ganhou ? "+" : "−"}${n}</em>${outro ? `<small>${ganhou ? "passou" : "perdeu para"} ${h(outro.sigla || outro.nome || "")}</small>` : ""}</span>`;
+  void el.offsetWidth; el.classList.add("on"); clearTimeout(U.timer); U.timer = setTimeout(() => el.classList.remove("on"), 2600);
 }
 // o dano de uma batida nova: aparece na hora, uma vez só
 function avisoDeBatida(m) {
