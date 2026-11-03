@@ -182,7 +182,7 @@ function passo(c, ent, amb, tr, ev) {
   const zona = F1.zonaDRS(c.idx / n, tr.t.drs);
   const drs = !!(amb.drsZona === zona && zona >= 0 && !ent.brake && !amb.amarela && !amb.safety);
   F1.carregarErs(c.ers, dt, !!ent.brake && c.v > 40, !ent.gas, amb.laps || 0);
-  const usarErs = !!(ent.gas && !amb.safety && (amb.ersAuto !== false ? F1.usarErsAuto(c.ers.carga, c.v, spec.vmax, (tr.pts[c.idx].k || 0) < 1e-4, c.draft > 0.25) : ent.ers));
+  const usarErs = !!(ent.gas && !amb.safety && (amb.ersAuto !== false ? F1.usarErsAuto(c.ers.carga, c.v, spec.vmax, (tr.pts[c.idx].k || 0) < 1 / 1500, c.draft > 0.25) : ent.ers));
   const ersAtivo = F1.gastarErs(c.ers, dt, usarErs, amb.ersAuto === false || c.draft > 0.25); // (overtake: colado no da frente, ou o botão no modo manual; senão o gasto suave da reta)
   c.drsAtivo = drs; c.ersAtivo = ersAtivo;
   // o relevo: a gravidade puxa para baixo da pista

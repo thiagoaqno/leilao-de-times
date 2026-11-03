@@ -1,9 +1,11 @@
-# Corrige o brilho dos carros na corrida
+# Melhora a disputa dos robôs e o uso do ERS
 
-Nas qualidades Média e Alta, limita a luz refletida pelos materiais dos carros antes do bloom. O limite considera a soma dos reflexos e da iluminação, inclusive durante o dia, para evitar os pontos brancos que cintilavam. As emissões continuam livres para as lanternas e outras luzes; na qualidade Baixa, o limite fica desligado.
+Os robôs avaliam a ultrapassagem pela velocidade que teriam em pista livre, em vez de desistir depois de frear atrás do adversário, e podem usar mais espaço lateral quando ele existe. Ao escolher o lado, olham até três curvas futuras e consideram a sequência para não entrar num S pelo lado desfavorável; as regras de espaço e frenagem continuam valendo. Em Mônaco, antecipam a freada nas sequências em que vinham batendo nos muros e respeitam a largura da pista adiante. A primeira sequência tem menos redução de velocidade, recuperando parte do ritmo sem tirar a cautela da segunda.
+
+O ERS dá 22% de potência extra enquanto ativo (antes, 15%). O modo automático também usa energia em curvas muito suaves; os robôs usam o automático em pista livre e reservam o uso forte para as disputas. É uma adaptação para o jogo, não uma simulação completa das regras de 2026.
 
 ## Verificação
 
 - Sintaxe dos arquivos alterados e `git diff --check`.
-- Conferência do shader e da preservação do hook anterior de materiais.
-- Verificação visual em corrida ainda necessária.
+- Simulações locais de grid de 19 robôs em Mônaco; conferir também a corrida visualmente e as disputas com humanos.
+- Nenhum teste novo criado, conforme solicitado.
