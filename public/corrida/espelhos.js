@@ -7,8 +7,9 @@
 import * as THREE from "three";
 import { renderer, scene, cam } from "./cena.js";
 import { qualidade } from "./qualidade.js";
+import { ajusteEspelho } from "./retrovisores-ajuste.js";
 
-const LARG = 256, FOV_H = 34 * Math.PI / 180, ABRE = 15 * Math.PI / 180, BAIXA = 3 * Math.PI / 180, DE_DENTRO = new Set(["cockpit", "onboard", "bico"]), PERTO = 120; // PERTO: até onde (unidades) uma câmera de fora ainda refaz o espelho
+const LARG = 256, FOV_H = 34 * Math.PI / 180, DE_DENTRO = new Set(["cockpit", "onboard", "bico"]), PERTO = 120; // PERTO: até onde (unidades) uma câmera de fora ainda refaz o espelho
 const GEO = new THREE.PlaneGeometry(1, 1);
 const v = new THREE.Vector3(), d = new THREE.Vector3(), cima = new THREE.Vector3(), olho = new THREE.Vector3(), M = new THREE.Matrix4();
 let contador = 0;
@@ -28,24 +29,26 @@ function criar(kart) {
     // (como o piloto regula o retrovisor de verdade: para trás (+z no carro), aberto ABRE para fora e um pouco para baixo, com o campo estreito de um espelho;
     // assim se vê a pista e os carros atrás e, na borda de dentro, só um pedacinho da lateral do próprio carro. O raio do olho refletido pela face
     // apontava para a carroceria)
-    const lado = Math.sign(centro.x || 1), refl = new THREE.Vector3(lado * Math.sin(ABRE), -Math.sin(BAIXA), Math.cos(ABRE)).normalize(); void eye; void n;
+    const lado = Math.sign(centro.x || 1), refl = new THREE.Vector3(); void eye; void n;
     const camera = new THREE.PerspectiveCamera(2 * Math.atan(Math.tan(FOV_H / 2) / razao) * 180 / Math.PI, razao, 0.5, 1800);
-    return { e, centro: centro.clone().addScaledVector(n, 0.03), refl, rt, mat, painel, cam: camera, feito: false };
+    return { e, lado, centro: centro.clone().addScaledVector(n, 0.03), refl, rt, mat, painel, cam: camera, feito: false };
   });
   return (kart.espelho = { itens });
 }
 
-function desenhar(it, kart, todos) {
+function desenhar(it, kart, todos, render = renderer, cena = scene) {
+  const a = ajusteEspelho(it.lado < 0 ? "esquerda" : "direita"), h = a.horizontal * Math.PI / 180, vert = a.vertical * Math.PI / 180;
+  it.refl.set(it.lado * Math.sin(h) * Math.cos(vert), Math.sin(vert), Math.cos(h) * Math.cos(vert));
   const carro = kart.kt.carro; carro.updateWorldMatrix(true, false);
   v.copy(it.centro).applyMatrix4(carro.matrixWorld); // um pouco à frente da face (a câmera não fica dentro da peça)
   d.copy(it.refl).transformDirection(carro.matrixWorld);
   cima.set(0, 1, 0).transformDirection(carro.matrixWorld);
   it.cam.position.copy(v); it.cam.up.copy(cima); it.cam.lookAt(v.x + d.x, v.y + d.y, v.z + d.z);
-  const antes = renderer.getRenderTarget(), sombra = renderer.shadowMap.autoUpdate;
+  const antes = render.getRenderTarget(), sombra = render.shadowMap.autoUpdate;
   for (const o of todos) o.painel.visible = false; // (o painel não aparece no próprio desenho)
-  renderer.shadowMap.autoUpdate = false;
-  try { renderer.setRenderTarget(it.rt); renderer.render(scene, it.cam); }
-  finally { renderer.setRenderTarget(antes); renderer.shadowMap.autoUpdate = sombra; for (const o of todos) o.painel.visible = true; }
+  render.shadowMap.autoUpdate = false;
+  try { render.setRenderTarget(it.rt); render.render(cena, it.cam); }
+  finally { render.setRenderTarget(antes); render.shadowMap.autoUpdate = sombra; for (const o of todos) o.painel.visible = true; }
   it.feito = true;
 }
 
@@ -70,4 +73,11 @@ export function soltarEspelhos(kart) {
   const E = kart && kart.espelho; if (!E) return;
   for (const it of E.itens) { it.painel.parent?.remove(it.painel); it.mat.dispose(); it.rt.dispose(); }
   kart.espelho = null;
+}
+
+// A vitrine usa os mesmos espelhos e ângulos da corrida, com sua própria cena.
+export function quadroEspelhosPreview(kart, render, cena) {
+  if (!kart?.kt) return; const E = kart.espelho || criar(kart); if (!E) return;
+  if (E.itens.some((it) => !it.feito)) { for (const it of E.itens) desenhar(it, kart, E.itens, render, cena); }
+  else { contador++; desenhar(E.itens[contador % E.itens.length], kart, E.itens, render, cena); }
 }

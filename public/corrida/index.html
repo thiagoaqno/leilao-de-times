@@ -13,8 +13,10 @@
 <link rel="stylesheet" href="/corrida/entrada.css">
 <link rel="stylesheet" href="/corrida/hud-f1.css">
 <link rel="stylesheet" href="/corrida/hud-mfd.css">
+<link rel="stylesheet" href="/corrida/hud-telemetria.css">
 <link rel="stylesheet" href="/corrida/teclas.css">
 <link rel="stylesheet" href="/corrida/camera.css">
+<link rel="stylesheet" href="/corrida/ajustes-lobby.css">
 <link rel="stylesheet" href="/corrida/tema-f1.css">
 <link rel="stylesheet" href="/corrida/transmissao.css">
 <link rel="stylesheet" href="/corrida/transicao-f1.css">
@@ -202,6 +204,13 @@
               <section class="sn-cartao" id="carroLista"></section>
               <button class="sn-atalho" id="btnGaragem"><span><b>Peças e pintura</b><small id="garagemSub"></small></span><i aria-hidden="true">›</i></button>
             </div>
+          </div>
+        </section>
+
+        <section class="sn-etapa" data-etapa="ajustes" aria-label="Câmera e retrovisores">
+          <div class="al-layout">
+            <div class="al-visual"><div id="alPreview" class="al-preview" aria-label="Prévia da câmera e dos retrovisores"></div><p>Prévia parada em uma pista. Os ajustes ficam salvos neste navegador.</p></div>
+            <div class="sn-cartao al-controles"><h2>Câmera e retrovisores</h2><label class="al-seletor">Estilo do HUD <select id="alHud"><option value="classico">Clássico</option><option value="telemetria">Telemetria</option></select></label><label class="al-seletor">Câmera a ajustar <select id="alModo"></select></label><div id="alCamCampos"></div><button type="button" id="alRestCam" class="sn-ghost">Restaurar esta câmera</button><div id="alEspCampos"></div><button type="button" id="alRestEsp" class="sn-ghost">Restaurar retrovisores</button></div>
           </div>
         </section>
 

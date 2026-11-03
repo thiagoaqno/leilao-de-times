@@ -14,6 +14,7 @@ import { CARS3, KS, makeKart, poseKart, fantasmaVisual, lodKart, ocultarPiloto, 
 import { camMode, pollPad, pad } from "./controles.js";
 import { quadroCamera, somDaCamera, camEstado } from "./cameras.js";
 import { quadroEspelhos } from "./espelhos.js";
+import { posicionarHudNoHalo } from "./hud-telemetria.js";
 import { physics, quadroDeFisica, quadroParado, criarRede, PASSO } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud, renderResults } from "./hud.js";
@@ -294,6 +295,7 @@ function draw(dt) {
   // a câmera (cameras.js): cockpit, onboard, bico, perseguição próxima e afastada, aérea e TV; quem só assiste ou já
   // passou a bandeirada começa na TV
   const mode = quadroCamera(race, { dt, tr, c, src, nearest, olharTras: keys.olharTras || pad.olharTras, rm: motionPreference.matches, escolha: camMode, assistindo: !(src === c && race.kart), acabou: !!me() && me().finish != null, spec: CARS3[me()?.car] || CARS3.equilibrado });
+  posicionarHudNoHalo($("hCentro"), race.kart, cam, mode, $("race"));
   ocultarPiloto(race.kart, mode === "cockpit"); // na primeira pessoa o capacete e o corpo do piloto somem (as luvas no volante ficam)
   // o volante do jogador (a tela e as luzes de troca) só anda na câmera de cockpit; atualizarVolante só refaz a textura quando algo muda
   if (mode === "cockpit" && race.kart?.kt?.tela?.cv) atualizarVolante(race.kart.kt, { marcha: race.marcha || 1, kmh: Math.round(Math.abs(race.car.v) * 0.75), rpm: race.rpm || 0, bateria: race.ers ? race.ers.carga : 0, ersAtivo: !!race.ersAtivo, drsAberto: !!race.drsAtivo, drsPronto: !!me() && me().drsZona >= 0 });

@@ -2,6 +2,7 @@
 // jogador mudou, guardado no navegador em `corrida:camera` ({ id: { campo: valor } }, só o que saiu do padrão). cameras.js lê `ajusteDe(id)` a cada
 // quadro: o objeto já pronto (padrão + trocas), refeito só quando algo muda.
 //   fov  campo de visão vertical de base, em graus (a velocidade ainda abre um pouco)
+//   x    deslocamento lateral, em metros (positivo para a direita)
 //   y    altura: sobe ou desce a câmera, em metros do carro
 //   z    dentro do carro: avanço (+ para a frente); na perseguição: distância (+ afasta)
 //   incl inclinação do olhar, em graus (+ olha para cima)
@@ -12,24 +13,25 @@ export const CHAVE = "corrida:camera";
 // as câmeras que têm ajuste (a aérea e a TV são automáticas)
 export const EDITAVEIS = ["cockpit", "onboard", "bico", "perto", "longe"];
 export const PADROES = {
-  cockpit: { fov: 64, y: 0, z: 0, incl: 0, trem: 100 },
-  onboard: { fov: 62, y: 0, z: 0, incl: -7, trem: 100 }, // (a T-cam olha para baixo: o halo, o bico e as rodas da frente entram no quadro)
-  bico: { fov: 70, y: 0, z: 0, incl: 0, trem: 100 },
-  perto: { fov: 60, y: 0, z: 0, incl: 0, trem: 100 },
-  longe: { fov: 54, y: 0, z: 0, incl: 0, trem: 100 },
+  cockpit: { fov: 64, x: 0, y: 0, z: 0, incl: 0, trem: 100 },
+  onboard: { fov: 62, x: 0, y: 0, z: 0, incl: -7, trem: 100 }, // (a T-cam olha para baixo: o halo, o bico e as rodas da frente entram no quadro)
+  bico: { fov: 70, x: 0, y: 0, z: 0, incl: 0, trem: 100 },
+  perto: { fov: 60, x: 0, y: 0, z: 0, incl: 0, trem: 100 },
+  longe: { fov: 54, x: 0, y: 0, z: 0, incl: 0, trem: 100 },
 };
 const DENTRO = new Set(["cockpit", "onboard", "bico"]);
 export const dentroDoCarro = (id) => DENTRO.has(id);
 // os campos da tela: nome, dica, limites, passo e a unidade de cada um (a dica do avanço/distância muda conforme a câmera)
 const CAMPOS = [
   { id: "fov", nome: "Campo de visão", un: "°", dica: "quanto cabe na tela: menor aproxima, maior abre", min: 40, max: 110, passo: 1 },
+  { id: "x", nome: "Deslocamento lateral", un: " m", dica: "negativo para a esquerda; positivo para a direita", min: -1, max: 1, passo: 0.05, dec: 2 },
   { id: "y", nome: "Altura", un: " m", dica: "sobe ou desce a câmera", min: -1, max: 1, passo: 0.05, dec: 2 },
   { id: "z", nome: "Avanço", un: " m", dica: "leva a câmera para a frente ou para trás", min: -0.6, max: 1.2, passo: 0.05, dec: 2 },
   { id: "incl", nome: "Inclinação", un: "°", dica: "olha mais para cima ou para baixo", min: -15, max: 15, passo: 0.5, dec: 1 },
   { id: "trem", nome: "Tremor da câmera", un: "%", dica: "0 desliga; 100 é o do jogo", min: 0, max: 200, passo: 5 },
 ];
 // (na perseguição a altura e a distância têm mais folga, porque a câmera anda muito mais longe do carro)
-const FORA = { y: { min: -2, max: 6 }, z: { nome: "Distância", dica: "afasta ou aproxima a câmera do carro", min: -3, max: 8 } };
+const FORA = { x: { min: -4, max: 4 }, y: { min: -2, max: 6 }, z: { nome: "Distância", dica: "afasta ou aproxima a câmera do carro", min: -3, max: 8 } };
 export function camposDe(id) {
   return CAMPOS.map((c) => (DENTRO.has(id) ? c : { ...c, ...(FORA[c.id] || {}) }));
 }

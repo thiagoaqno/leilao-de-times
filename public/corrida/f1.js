@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { temDesenho, folhaDaEquipe, corDoNumero, texturaDosDigitos, logosProntos, FAIXAS, aroDaRoda,
-  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, aplicarVerniz, limitarBrilhoCarro, SOL_FRAG_DECL, SOL_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
+  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, aplicarVerniz, limitarBrilhoCarro, texturaDoHalo, aplicarHalo, texturaDoCockpit, aplicarCockpit, SOL_FRAG_DECL, SOL_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
 import { construir2026 } from "./f1-2026.js";
 
 // combinações de cor das equipes de F1 (ficam em pistas.js: o servidor confere a escolha)
@@ -68,9 +68,10 @@ function pintura(base, cor1, cor2, equipe, numero, fundo = false, novo = false, 
     sh.fragmentShader = "uniform vec3 cor1;\nuniform vec3 cor2;\n" + sh.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>
       { vec3 mk = diffuseColor.rgb; diffuseColor.rgb = cor1 * mk.r + cor2 * mk.g + vec3(0.012) * mk.b; }`);
   };
-  m.onBeforeCompile = (sh) => { montar(sh); aplicarVerniz(sh); };
+  const halo = novo && liv ? texturaDoHalo(equipe) : null, cockpit = novo && liv ? texturaDoCockpit(equipe) : null;
+  m.onBeforeCompile = (sh) => { montar(sh); if (halo) aplicarHalo(sh, halo); if (cockpit) aplicarCockpit(sh, cockpit); aplicarVerniz(sh); };
   if (fundo) { m.metalness = 0; m.metalnessMap = null; } // o painel pintado não é metal (sem reflexo, o metal ficaria cinza)
-  m.customProgramCacheKey = () => (novo ? (liv ? "f1-novo-livery" : "f1-novo-solido") : liv ? (fundo ? "f1-livery-fundo" : "f1-livery") : "f1-pintura") + "-verniz";
+  m.customProgramCacheKey = () => (novo ? (liv ? "f1-novo-livery" : "f1-novo-solido") : liv ? (fundo ? "f1-livery-fundo" : "f1-livery") : "f1-pintura") + "-verniz" + (halo ? "-halo" : "") + (cockpit ? "-cockpit" : "");
   if (liv) setNumero(m, numero);
   return m;
 }

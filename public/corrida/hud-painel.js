@@ -4,6 +4,7 @@
 // poucos quadros). As contas puras estão em hud-mfd.js (HudMfd).
 import { E, $, carOf, checkpoint } from "./estado.js";
 import { race } from "./jogo.js";
+import { htmlHudTelemetria, atualizarHudTelemetria, estiloHud } from "./hud-telemetria.js";
 
 const M = () => window.HudMfd, F = () => window.F1Regras;
 // escreve só o que mudou (o cache fica no próprio elemento): "t" texto, "c" classe (atributo: vale também para SVG), "w" largura, "bg" fundo, "col" cor, "d" display, outro = atributo
@@ -24,11 +25,13 @@ export function montarCentro() {
     <div class="gc-meio"><b id="pMarcha">N</b><span id="gModo">BALANCED</span></div>
     <div class="gc-lado gc-vel">${arco("gRpmArco", "rpm")}<div class="gc-txt"><small>KM/H</small><b id="pVel">0</b><em id="gRpm">0</em></div></div></div>
     <div class="gc-ers"><i id="gErsBarra"></i></div>
-    <div class="gc-baixo"><span class="gc-botao" id="gBotao">⚡</span><b id="pOver">OVERTAKE</b><span class="gc-drs" id="gDrs">DRS</span></div>`;
+    <div class="gc-baixo"><span class="gc-botao" id="gBotao">⚡</span><b id="pOver">OVERTAKE</b><span class="gc-drs" id="gDrs">DRS</span></div>${htmlHudTelemetria()}`;
 }
 // ctx: { m, kmh, modoErs }
 export function atualizarCentro(ctx) {
   const m = ctx.m, rpm = Math.min(1, race.rpm || 0), carga = race.ers ? race.ers.carga : 0, ativo = !!race.ersAtivo;
+  $("race").classList.toggle("hud-telemetria", estiloHud() === "telemetria");
+  if (estiloHud() === "telemetria") atualizarHudTelemetria($("hCentro"), { kmh: ctx.kmh, marcha: !m ? "—" : (ctx.kmh < 1 && !race.marcha ? "N" : race.marcha || 1), modo: ctx.modoErs.texto, bateria: carga, rpm, acel: race.car.gasP, freio: race.car.brkP, drs: race.drsAtivo });
   set($("pVel"), "t", ctx.kmh); set($("pMarcha"), "t", !m ? "" : (ctx.kmh < 1 && !race.marcha ? "N" : race.marcha || 1));
   set($("gRpm"), "t", M().rpmReal(rpm, ctx.kmh));
   const acesas = Math.round(rpm * N_LED), leds = $("gLeds").children;
