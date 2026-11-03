@@ -5,7 +5,7 @@
 // motorsport.com). As cores são lidas dessas descrições e ajustadas à mão; o jeito de cada desenho é uma das sete famílias abaixo.
 //
 // A folha é de 512x256 e envolve a cabeça: x em volta (a frente em 384, as costas em 128, os lados em 0/512 e 256), y da coroa (0) ao queixo (256). A viseira
-// (f1-piloto.js) ocupa y de 90 a 128 e x = 384 ± 85, então esse pedaço fica só com o casco por baixo; a faixa do patrocínio entra logo acima e o filete embaixo.
+// (f1-piloto.js) ocupa y de 98 a 127 e x = 384 ± 94, então esse pedaço fica só com o casco por baixo; a faixa do patrocínio entra logo acima.
 // `cores`: [casco, segunda cor, terceira cor (filetes, detalhes)].
 export const CAPACETES = {
   norris: { cores: ["#c4f31a", "#101114", "#d9ae2e"], desenho: "faixa" },       // verde-neon e preto, uma estrelinha dourada
@@ -39,63 +39,66 @@ export function capacetePorSigla(sigla) {
 
 const LADOS = [0, 256, 512];
 const poli = (x, pts, cor) => { x.fillStyle = cor; x.beginPath(); pts.forEach(([a, b], i) => (i ? x.lineTo(a, b) : x.moveTo(a, b))); x.closePath(); x.fill(); };
-const linha = (x, pts, cor, larg) => { x.strokeStyle = cor; x.lineWidth = larg; x.lineCap = "round"; x.lineJoin = "round"; x.beginPath(); pts.forEach(([a, b], i) => (i ? x.lineTo(a, b) : x.moveTo(a, b))); x.stroke(); };
+// uma fita larga e curva em cada lado da cabeça: sobe do queixo (na frente) até a nuca, afinando nas pontas (cx: o centro do lado na folha; no lado direito, cx = 256, as costas ficam à esquerda; no esquerdo, à direita)
+function fita(x, cx, cor, topo = 78, larg = 56) {
+  const d = cx === 256 ? -1 : 1, X = (v) => cx + d * v; // d = para onde ficam as costas
+  x.fillStyle = cor; x.beginPath();
+  x.moveTo(X(-128), 236); x.bezierCurveTo(X(-60), 214, X(40), 168, X(132), topo); // a borda de cima: do queixo à nuca
+  x.bezierCurveTo(X(136), topo + larg * 0.9, X(70), topo + larg + 66, X(-10), 214 + larg * 0.4); x.bezierCurveTo(X(-70), 240, X(-110), 252, X(-128), 236); x.closePath(); x.fill();
+}
+const filete = (x, cx, cor, topo = 78) => { const d = cx === 256 ? -1 : 1, X = (v) => cx + d * v; x.strokeStyle = cor; x.lineWidth = 6; x.lineCap = "round"; x.beginPath(); x.moveTo(X(-128), 228); x.bezierCurveTo(X(-60), 206, X(40), 160, X(132), topo - 6); x.stroke(); };
+const calota = (x, cor, ate = 66, fil) => { x.fillStyle = cor; x.fillRect(0, 0, 512, ate); if (fil) { x.fillStyle = fil; x.fillRect(0, ate - 2, 512, 7); } }; // o topo: uma cor só em volta da coroa (sem faixas que se juntem no alto)
 
 const DESENHOS = {
-  // o genérico (a galera e quem não está no mapa): casco na cor 1, topo na cor 2, faixa da frente às costas, onda de cor 2 nos lados, queixo de cor 2
+  // o genérico (a galera e quem não está no mapa): topo na cor 2 com filete, uma fita larga de cor 2 em cada lado e o queixo de cor 2
   generico(x, [c1, c2, c3]) {
-    x.fillStyle = c2; x.fillRect(0, 0, 512, 66); x.fillStyle = c3; x.fillRect(0, 64, 512, 7);
-    for (const cx of [128, 384]) x.fillRect(cx - 17, 0, 34, 66);
-    for (const cx of LADOS) { poli(x, [[cx - 105, 196], [cx - 20, 142], [cx + 105, 92], [cx + 105, 142], [cx - 10, 192], [cx - 105, 246]], c2); linha(x, [[cx - 105, 206], [cx - 20, 152], [cx + 105, 102]], c3, 6); }
-    x.fillStyle = c2; x.fillRect(0, 214, 512, 42);
+    calota(x, c2, 66, c3);
+    for (const cx of LADOS) { fita(x, cx, c2); filete(x, cx, c3); }
+    x.fillStyle = c2; x.fillRect(0, 226, 512, 30);
   },
-  // uma faixa larga da frente às costas (casco de outra cor por cima) e uma onda de cor 2 nas laterais
+  // o topo e a fita larga de cor 2 e o filete de cor 3
   faixa(x, [c1, c2, c3]) {
-    for (const cx of [128, 384]) { x.fillStyle = c2; x.fillRect(cx - 30, 0, 60, 90); x.fillStyle = c3; x.fillRect(cx - 38, 0, 6, 90); x.fillRect(cx + 32, 0, 6, 90); }
-    for (const cx of LADOS) { poli(x, [[cx - 110, 150], [cx + 10, 112], [cx + 110, 70], [cx + 110, 112], [cx + 10, 162], [cx - 110, 214]], c2); linha(x, [[cx - 110, 162], [cx + 10, 124], [cx + 110, 82]], c3, 5); }
-    x.fillStyle = c2; x.fillRect(0, 222, 512, 34);
+    calota(x, c2, 62, c3);
+    for (const cx of LADOS) { fita(x, cx, c2, 82, 64); filete(x, cx, c3, 82); }
+    x.fillStyle = c2; x.fillRect(0, 230, 512, 26);
   },
-  // o topo de outra cor, filete e uma onda de cor 3 pelos lados
+  // o topo de outra cor com a borda recortada e uma fita fina de cor 3 nos lados
   topo(x, [c1, c2, c3]) {
-    x.fillStyle = c2; x.fillRect(0, 0, 512, 72); x.fillStyle = c3; x.fillRect(0, 72, 512, 6);
-    for (const cx of [128, 384]) { x.fillStyle = c3; x.fillRect(cx - 12, 0, 24, 72); }
-    for (const cx of LADOS) linha(x, [[cx - 110, 214], [cx - 10, 168], [cx + 110, 120]], c3, 14);
+    x.fillStyle = c2; x.beginPath(); x.moveTo(0, 0); x.lineTo(512, 0); x.lineTo(512, 70);
+    for (let i = 16; i >= 0; i--) x.lineTo(i * 32, 70 + (i % 2 ? 0 : 20));
+    x.closePath(); x.fill();
+    for (const cx of LADOS) fita(x, cx, c3, 100, 34);
     x.fillStyle = c2; x.fillRect(0, 226, 512, 30);
   },
   // faixas horizontais em volta da cabeça (como uma bandeira): em cima e embaixo na cor 2, o meio é o casco, filetes de cor 3
   bandas(x, [c1, c2, c3]) {
-    x.fillStyle = c2; x.fillRect(0, 0, 512, 72); x.fillRect(0, 168, 512, 88);
-    x.fillStyle = c3; x.fillRect(0, 72, 512, 8); x.fillRect(0, 160, 512, 8);
-    for (const cx of [128, 384]) { x.fillStyle = c3; x.fillRect(cx - 10, 0, 20, 72); }
+    x.fillStyle = c2; x.fillRect(0, 0, 512, 70); x.fillRect(0, 170, 512, 86);
+    x.fillStyle = c3; x.fillRect(0, 70, 512, 8); x.fillRect(0, 162, 512, 8);
   },
-  // uma cruz: a faixa da frente às costas por cima (cor 2) e uma tira em volta (cor 3) no meio do casco
+  // uma cruz: o topo de cor 2, uma tira em volta (cor 3) no meio do casco e uma fita de cor 2 nos lados
   cruz(x, [c1, c2, c3]) {
+    calota(x, c2, 56);
     x.fillStyle = c3; x.fillRect(0, 150, 512, 22);
-    for (const cx of [128, 384]) { x.fillStyle = c2; x.fillRect(cx - 28, 0, 56, 256); x.fillStyle = c3; x.fillRect(cx - 34, 0, 5, 256); x.fillRect(cx + 29, 0, 5, 256); }
-    x.fillStyle = c2; x.fillRect(0, 0, 512, 34);
+    for (const cx of LADOS) fita(x, cx, c2, 92, 40);
   },
-  // dois blocos de cor: a parte de cima no casco, a de baixo na cor 2, com a divisão inclinada e um filete de cor 3
+  // dois blocos de cor: a parte de cima no casco, a de baixo na cor 2, com a divisão inclinada e um filete de cor 3, e o topo de cor 3
   blocos(x, [c1, c2, c3]) {
-    poli(x, [[0, 176], [512, 122], [512, 256], [0, 256]], c2); linha(x, [[0, 170], [512, 116]], c3, 8);
-    poli(x, [[0, 0], [190, 0], [150, 70], [0, 70]], c3); poli(x, [[322, 0], [512, 0], [512, 70], [362, 70]], c3);
-    x.fillStyle = c2; x.fillRect(0, 0, 512, 12);
+    poli(x, [[0, 176], [512, 122], [512, 256], [0, 256]], c2); x.strokeStyle = c3; x.lineWidth = 8; x.beginPath(); x.moveTo(0, 170); x.lineTo(512, 116); x.stroke();
+    calota(x, c3, 48);
   },
-  // "asas" de cor 2 de cada lado da viseira, o topo e uma faixa fina de cor 3
+  // "asas" de cor 2 de cada lado da viseira, o topo de cor 2 e a faixa de cor 3 no queixo
   asas(x, [c1, c2, c3]) {
-    for (const cx of [384]) {
-      poli(x, [[cx - 170, 140], [cx - 92, 100], [cx - 60, 92], [cx - 80, 124], [cx - 150, 170]], c2); poli(x, [[cx + 170, 140], [cx + 92, 100], [cx + 60, 92], [cx + 80, 124], [cx + 150, 170]], c2);
-    }
-    for (const cx of [128, 256, 0, 512]) poli(x, [[cx - 90, 160], [cx + 10, 120], [cx + 100, 90], [cx + 70, 140], [cx - 20, 190]], c2);
-    x.fillStyle = c2; x.fillRect(0, 0, 512, 40);
-    for (const cx of [128, 384]) { x.fillStyle = c3; x.fillRect(cx - 8, 0, 16, 76); }
+    calota(x, c2, 50);
+    poli(x, [[214, 146], [290, 104], [320, 94], [304, 126], [236, 176]], c2); poli(x, [[554, 146], [478, 104], [448, 94], [464, 126], [532, 176]], c2);
+    for (const cx of LADOS) fita(x, cx, c2, 96, 36);
     x.fillStyle = c3; x.fillRect(0, 232, 512, 24);
   },
-  // triângulos de cores diferentes no topo e em volta (um desenho mais "quebrado")
+  // o topo com recortes triangulares e fitas de pontas em triângulo nos lados (um desenho mais "quebrado")
   triangulos(x, [c1, c2, c3]) {
-    for (let i = 0; i < 16; i++) { const a = i * 32; poli(x, [[a, 0], [a + 32, 0], [a + 16, 60]], i % 2 ? c2 : c3); poli(x, [[a, 60], [a + 32, 60], [a + 16, 0]], i % 2 ? c3 : c2); }
-    x.fillStyle = c2; x.fillRect(0, 62, 512, 6);
-    for (const cx of LADOS) { poli(x, [[cx - 100, 200], [cx - 20, 130], [cx + 60, 200]], c2); poli(x, [[cx - 20, 200], [cx + 60, 130], [cx + 140, 200]], c3); }
-    x.fillStyle = c2; x.fillRect(0, 226, 512, 30);
+    calota(x, c2, 60);
+    for (let i = 0; i < 16; i++) { const a = i * 32; poli(x, [[a, 60], [a + 32, 60], [a + 16, 84]], c3); }
+    for (const cx of LADOS) { const d = cx === 256 ? -1 : 1; poli(x, [[cx - d * 110, 220], [cx + d * 10, 120], [cx + d * 40, 226]], c2); poli(x, [[cx - d * 40, 232], [cx + d * 90, 150], [cx + d * 120, 236]], c3); }
+    x.fillStyle = c2; x.fillRect(0, 232, 512, 24);
   },
 };
 
@@ -104,8 +107,7 @@ export function pintarFolha(x, cores, desenho, numero) {
   const [c1, c2, c3] = cores;
   x.fillStyle = c1; x.fillRect(0, 0, 512, 256);
   (DESENHOS[desenho] || DESENHOS.generico)(x, cores);
-  x.fillStyle = c3; x.fillRect(284, 76, 200, 12); x.fillStyle = c1; for (let i = 0; i < 12; i++) x.fillRect(290 + i * 16, 80.5, 9, 3); // a faixa do patrocínio (traços miúdos, de longe parece escrita)
-  x.fillStyle = c3; x.fillRect(290, 131, 188, 5); // o filete embaixo da viseira
+  x.fillStyle = c3; x.fillRect(282, 85, 204, 11); // a faixa estreita do patrocínio / nome logo acima da viseira (só cor)
   if (numero != null && numero !== "") {
     x.font = "900 54px 'Arial Black', Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.lineJoin = "round"; x.lineWidth = 7;
     for (const [cx, cy] of [[128, 168], [256, 172], [0, 172], [512, 172]]) { x.strokeStyle = "#0b0c10"; x.strokeText(String(numero), cx, cy); x.fillStyle = "#ffffff"; x.fillText(String(numero), cx, cy); }
