@@ -8,7 +8,7 @@ import { Montador, solido, tom } from "../montagem.js";
 import { livre, ocupado, instancias } from "../comum.js";
 import { sorteio, ruido, acharElipse, acharRet, reservarRet } from "./lugar.js";
 
-const ICO = new THREE.IcosahedronGeometry(1, 0);
+const ICO = new THREE.IcosahedronGeometry(1, 0), CONE = new THREE.ConeGeometry(1, 1, 7);
 
 // ---------------------------------------------------------------------------------------------------------------------
 // As árvores (4 tipos, cada uma uma geometria só com cor por vértice; altura de uns 150 a 240)
@@ -27,7 +27,7 @@ function geoArvore(tipo, semente) {
     for (const [x, y, z, rad, h] of [[0, 190, 0, 26, 1.7], [-14, 150, 8, 22, 1.5], [14, 160, -8, 22, 1.5], [4, 224, 2, 18, 1.8]]) m.geo(S, ICO, { x, y, z, sx: rad, sy: rad * h, sz: rad, cor: ["#6f8f66", "#7da071", "#5f7f5b"][(r() * 3) | 0], ry: r() * 3 });
   } else { // pinheiro
     m.cilindro(S, [0, 30, 0], [3.6, 60], { cor: "#5a4636", seg: 6 });
-    for (let k = 0; k < 4; k++) m.cilindro(S, [0, 62 + k * 34, 0], [40 - k * 9, 56], { cor: ["#2f5a34", "#3a6a3c", "#284f2f", "#336337"][k], seg: 7 });
+    for (let k = 0; k < 3; k++) m.geo(S, CONE, { x: 0, y: 70 + k * 36, z: 0, sx: 38 - k * 9, sy: 72 - k * 10, sz: 38 - k * 9, cor: ["#2f5a34", "#3a6a3c", "#336337"][k] });
   }
   return m.montar("arvore-" + tipo).children[0].geometry;
 }
@@ -37,7 +37,7 @@ export function arvoresDoParque(tr, add, { max = 900 } = {}) {
   const peso = [0.3, 0.3, 0.25, 0.15];
   const poe = (x, z) => {
     let q = r(), k = 0; while (k < 3 && q > peso[k]) { q -= peso[k]; k++; }
-    const tipo = nomes[k], e = 0.8 + r() * 0.55;
+    const tipo = nomes[k], e = 0.5 + r() * 0.42;
     listas[tipo].push({ x, y: tr.chao(x, z) - 1, z, sx: e, sy: e * (0.9 + r() * 0.3), sz: e, r: r() * 6.28 });
   };
   let total = 0;
@@ -45,7 +45,7 @@ export function arvoresDoParque(tr, add, { max = 900 } = {}) {
   for (let i = 0; i < n && total < max; i += 6) {
     const p = tr.pts[i];
     for (const lado of [-1, 1]) {
-      const lat = W / 2 + 70 + r() * 280, x = p.x + p.nx * lado * lat + (r() - 0.5) * 40, z = p.y + p.ny * lado * lat + (r() - 0.5) * 40;
+      const lat = W / 2 + 100 + r() * 280, x = p.x + p.nx * lado * lat + (r() - 0.5) * 40, z = p.y + p.ny * lado * lat + (r() - 0.5) * 40;
       if (r() > 0.18 + 0.75 * ruido(x / 300, z / 300, 5)) continue;
       if (!livre(tr, x, z, 60) || ocupado(tr, x, z)) continue;
       poe(x, z); total++;

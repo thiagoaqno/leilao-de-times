@@ -7,11 +7,11 @@ import { canvasTex } from "../../cena.js";
 import { instancias, sorteio } from "../comum.js";
 import { ruido } from "./lugar.js";
 
-const HAZE = new THREE.Color("#c9d0d6");
+const HAZE = new THREE.Color("#a9b3c0");
 
 // uma montanha de revolução com o perfil `perfil(raio01)` (altura) e um ruído de crista; cor por vértice: rocha escura embaixo, neve em cima,
 // luz de um lado só e a bruma por cima de tudo
-function montanha({ x, z, raio, alto, perfil, semente, neveAcima, rocha, neve, achata = 1, rot = 0, bruma = 0.55 }) {
+function montanha({ x, z, raio, alto, perfil, semente, neveAcima, rocha, neve, achata = 1, rot = 0, bruma = 0.08 }) {
   const NR = 12, NA = 40, pos = [], col = [], idx = [], c = new THREE.Color(), sol = new THREE.Vector3(-0.5, 0.7, -0.5).normalize();
   const altura = (rr, a) => alto * perfil(rr) * (1 + 0.1 * (ruido(Math.cos(a) * 3 + semente, Math.sin(a) * 3, semente) - 0.5) * (1 - rr));
   for (let i = 0; i <= NR; i++) for (let j = 0; j <= NA; j++) {
@@ -22,7 +22,7 @@ function montanha({ x, z, raio, alto, perfil, semente, neveAcima, rocha, neve, a
     const h2 = altura(Math.min(1, rr + 0.05), a), dh = (h2 - h) / (raio * 0.05), luz = THREE.MathUtils.clamp(0.8 + dh * -0.6 * (Math.cos(a - 2.3)), 0.55, 1.15);
     const neva = THREE.MathUtils.smoothstep(h / alto, neveAcima, neveAcima + 0.08 + 0.05 * ruido(a * 4, rr * 8, semente + 3));
     c.set(rocha).lerp(c.set(neve), neva); c.set(rocha).lerp(new THREE.Color(neve), neva).multiplyScalar(luz);
-    const nevoa = THREE.MathUtils.clamp(bruma + (1 - h / alto) * 0.35, 0, 0.92); c.lerp(HAZE, nevoa);
+    const nevoa = THREE.MathUtils.clamp(bruma + (1 - h / alto) * 0.5, 0, 0.9); c.lerp(HAZE, nevoa);
     col.push(c.r, c.g, c.b);
   }
   for (let i = 0; i < NR; i++) for (let j = 0; j < NA; j++) { const a = i * (NA + 1) + j, b = a + NA + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
@@ -33,14 +33,14 @@ function montanha({ x, z, raio, alto, perfil, semente, neveAcima, rocha, neve, a
 export function vulcoes(tr, add) {
   const C = tr.t.world / 2, ang = Math.PI / 4;
   // Popocatépetl: o cone alto com a cratera e o penacho de fumaça; Iztaccíhuatl: a crista comprida de quatro saliências (cabeça, peito, joelhos e pés)
-  const popo = montanha({ x: C + Math.cos(ang) * 10200, z: C + Math.sin(ang) * 10200, raio: 3300, alto: 1850, semente: 3, neveAcima: 0.55, rocha: "#6b6258", neve: "#f2f5f8",
-    perfil: (r) => (r > 0.995 ? 0 : Math.pow(1 - r, 0.78) * (r < 0.06 ? 0.93 + r : 1)) });
+  const popo = montanha({ x: C + Math.cos(ang) * 10200, z: C + Math.sin(ang) * 10200, raio: 3000, alto: 1850, semente: 3, neveAcima: 0.55, rocha: "#4e463e", neve: "#f2f5f8",
+    perfil: (r) => (r > 0.995 ? 0 : Math.pow(1 - r, 1.15) * (r < 0.06 ? 0.93 + r : 1)) });
   popo.name = "popocatepetl"; add(popo);
   const penacho = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xdcd6d0, transparent: true, opacity: 0.55, fog: false, depthWrite: false }));
   penacho.position.set(popo.geometry.attributes.position.array[0], 1850, popo.geometry.attributes.position.array[2]); penacho.scale.set(420, 900, 420); penacho.position.y = 1850 + 380; penacho.name = "popo-fumaca"; penacho.frustumCulled = false; add(penacho);
   const a2 = ang - 0.3, rot = a2 + Math.PI / 2;
-  const izta = montanha({ x: C + Math.cos(a2) * 9300, z: C + Math.sin(a2) * 9300, raio: 3100, alto: 1500, semente: 7, neveAcima: 0.52, rocha: "#746a5e", neve: "#eef2f6", achata: 2.1, rot,
-    perfil: (r) => Math.pow(1 - r, 0.9) * (0.88 + 0.12 * Math.cos(r * 13)) });
+  const izta = montanha({ x: C + Math.cos(a2) * 9300, z: C + Math.sin(a2) * 9300, raio: 2800, alto: 1500, semente: 7, neveAcima: 0.52, rocha: "#554c43", neve: "#eef2f6", achata: 2.1, rot,
+    perfil: (r) => Math.pow(1 - r, 1.2) * (0.88 + 0.12 * Math.cos(r * 13)) });
   izta.name = "iztaccihuatl"; add(izta);
   tr.vulcoesMexico = { popo: popo.name, izta: izta.name };
 }
