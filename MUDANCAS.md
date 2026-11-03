@@ -14,4 +14,4 @@ Mônaco tinha a mesma pista larga da reta dos boxes à Rascasse (112 entre os gu
 ## Conferido
 - Só o que a pista pede, sem rodar a suíte (o CI roda): sintaxe de cada módulo; `node tests/ajuda-cena/invasao.mjs` na cena de Mônaco (0 peças dentro da pista); `medir.mjs monaco` (377 malhas, 188 chamadas por quadro, dentro dos tetos); `tests/corrida-escapes.test.js` (com o caso novo de Mônaco); um robô difícil sozinho e 10 robôs em 3 voltas (médio e difícil) sem batida no muro; a volta de robôs do teste de `corrida-robos`.
 - Prints no navegador (câmera de perseguição) de Sainte Dévote, da Nouvelle Chicane, da Rascasse e da Anthony Noghès: sem erro no console.
-- Limitações: o ângulo da curva 1 é o da linha do OSM (72°, não 90°); os escapes são os mesmos nas duas margens do traçado onde o muro de prédio impede (a A1 de Sainte Dévote é curta); o arco se apoia nas fachadas.
+- Limitações: o ângulo da curva 1 é o da linha do OSM (72°, não 90°); a A1 de Sainte Dévote é curta (os prédios reais ocupam o resto do lado de dentro); o arco se apoia nas fachadas; o prédio da Anthony Noghès é genérico (não há planta real dele no recorte do OSM).
