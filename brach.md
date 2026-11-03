@@ -1,11 +1,11 @@
-# Las Vegas: asfalto iluminado e grid desencontrado
+# Melhora a disputa dos robôs e o uso do ERS
 
-O asfalto de Las Vegas recebe iluminação uniforme à noite sobre a própria textura, sem planos sobre a pista que atravessem os carros. O efeito desliga durante o dia e funciona também nos gráficos baixos.
+Os robôs avaliam a ultrapassagem pela velocidade que teriam em pista livre, em vez de desistir depois de frear atrás do adversário, e podem usar mais espaço lateral quando ele existe. Em Mônaco, antecipam a freada nas sequências em que vinham batendo nos muros e respeitam a largura da pista adiante.
 
-Na F1, as posições das duas colunas do grid ficam intercaladas; carros, robôs e marcas no asfalto usam a mesma posição. O grid do modo comum permanece igual.
+O ERS dá 22% de potência extra enquanto ativo (antes, 15%). O modo automático também usa energia em curvas muito suaves; os robôs usam o automático em pista livre e reservam o uso forte para as disputas. É uma adaptação para o jogo, não uma simulação completa das regras de 2026.
 
 ## Verificação
 
-- Testes de grid, largada e iluminação noturna passaram.
-- Corrida de Las Vegas com 20 carros e gráficos baixos conferida visualmente no navegador.
-- Os testes de tráfego e robôs passaram, salvo um teste de freio que também falha na main; o teste de turbo passou ao repetir.
+- Sintaxe dos arquivos alterados e `git diff --check`.
+- Simulações locais de grid de 19 robôs em Mônaco; conferir também a corrida visualmente e as disputas com humanos.
+- Nenhum teste novo criado, conforme solicitado.

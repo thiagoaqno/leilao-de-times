@@ -561,7 +561,7 @@ function efeitoDoDano(dano) {
 // escorrega, e por isso é difícil seguir colado. Sem o "estilingue" do modo arcade. `draft` vai de 0 (longe) a 1 (colado).
 // (o DRS aberto: +8% de velocidade final pelo arrasto menor; o ERS em uso: +15% de potência; o vácuo colado: até +5% de final. Antes eram
 // 5%, 9% e 3%, e quase não se sentia; na F1 o DRS dá uns 10 a 15 km/h e o ERS ~120 kW de ~750)
-const VACUO_FINAL = 0.05, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.15, DRS_GANHO = 0.08, ERS_POTENCIA = 0.15;
+const VACUO_FINAL = 0.05, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.15, DRS_GANHO = 0.08, ERS_POTENCIA = 0.22;
 function vacuoF1(draft, curva) {
   const d = limite(draft || 0, 0, 1);
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };
