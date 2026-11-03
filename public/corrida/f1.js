@@ -122,7 +122,8 @@ function montarCorpoNovo(k) {
   if (D.detalhes) peca("detalhes", D.detalhes, mat.detalhes());
   if (D.mecanica) peca("mecanica", D.mecanica, mat.mecanica());
   if (D.miudezas) peca("miudezas", D.miudezas, mat.miudezas());
-  // (a luz traseira pronta do modelo não aparece: a do carro é a lanterna do jogo, carros.js, a mesma de sempre, só que no lugar desta)
+  // a luz traseira do modelo (só a peça central, no espaço dela no carro): carros.js troca o material pelo da lanterna do jogo (acende, pisca na chuva, freio)
+  if (D.lanternaGeo) { k.lanternaMesh = peca("lanterna-modelo", D.lanternaGeo, new THREE.MeshBasicMaterial({ color: 0x610500 })); k.lanternaMesh.castShadow = false; }
   // o piloto (o que o modelo tem dele): fica num grupo que a câmera de cockpit esconde (cameras.js: `kart.roof` é `k.piloto`) e as outras mostram
   k.espelhos = D.espelhos || null; // onde ficam os retrovisores (espelhos.js os faz funcionar no carro do jogador)
   if (D.piloto) { k.carro.add(k.piloto); peca("piloto", D.piloto, mat.miudezas(), k.piloto); }

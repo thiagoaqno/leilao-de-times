@@ -71,6 +71,8 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   const pronto = () => {
     k.mats = kt.mats; k.eye.u = spec.L / 2 - kt.olho.z * sc; k.eye.h = kt.olho.y * sc;
     chamas.forEach((f, i) => f.position.set((i ? 1 : -1) * (kt.escapamento.x ?? 0.16), kt.escapamento.y, kt.escapamento.z)); // (o modelo diz onde sai o escapamento)
+    // o carro de 2026 tem a luz no próprio modelo (o espaço dela na traseira): ela vira a lanterna, com o material de sempre, e a nossa some
+    if (kt.lanternaMesh) { kt.lanternaMesh.material = ledMat; suporte.visible = leds.visible = false; }
     if (kt.lanternaPos) lanterna.position.set(kt.lanternaPos.x, kt.lanternaPos.y, kt.lanternaPos.z); // o carro de 2026: no meio do fim da traseira, onde o modelo tem o anel de LEDs (só a posição muda; o jeito da lanterna é o de sempre)
     else lanterna.position.z = kt.escapamento.z - 0.18;
     kt.rodas.filter(r => r.esterca).forEach((r, i) => {
@@ -136,7 +138,7 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   animarDrs(k.kt, !!fx.drs, dt); // a asa traseira: o flap abre com o DRS DESTE carro
   trocarComposto(k.kt, fx.pneu); // a faixa colorida do pneu (macio vermelho, médio amarelo, duro branco, chuva azul): só muda quando o composto muda
   k.tempoGP += dt;
-  k.lanterna.visible = k.freios.visible = !!fx.f1 && !fx.bala;
+  k.lanterna.visible = k.freios.visible = !!fx.f1 && !fx.bala; if (k.kt.lanternaMesh) k.kt.lanternaMesh.visible = k.lanterna.visible;
   const desaceleracao = dt > 0 ? ((k.velAnterior ?? v) - v) / dt : 0; k.velAnterior = v;
   if (k.pil) animarPiloto(k.pil, { dt, v, steer: k.steerV, dec: desaceleracao, lod: k.lod || 0 }); // a cabeça e as mãos (f1-piloto.js), depois do volante girar
   const freando = fx.f1 && v > 90 && desaceleracao > 90 && Math.abs(z - ground) < 5;
