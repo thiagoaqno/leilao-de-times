@@ -1,11 +1,12 @@
-# Melhora a disputa dos robôs e o uso do ERS
+# Bots: trajetória mais precisa em Mônaco e desvio de emergência
 
-Os robôs avaliam a ultrapassagem pela velocidade que teriam em pista livre, em vez de desistir depois de frear atrás do adversário, e podem usar mais espaço lateral quando ele existe. Ao escolher o lado, olham até três curvas futuras e consideram a sequência para não entrar num S pelo lado desfavorável; as regras de espaço e frenagem continuam valendo. Em Mônaco, antecipam a freada nas sequências em que vinham batendo nos muros e respeitam a largura da pista adiante. A primeira sequência tem menos redução de velocidade, recuperando parte do ritmo sem tirar a cautela da segunda.
+Em Mônaco, os bots variam menos em torno da linha e podem usar mais 10 cm de pista na escala do jogo, mantendo o limite dos muros por trecho. A folga dos outros carros e as manobras de trânsito continuam ativas. A física dos freios permanece igual para bots e humanos.
 
-O ERS dá 22% de potência extra enquanto ativo (antes, 15%). O modo automático também usa energia em curvas muito suaves; os robôs usam o automático em pista livre e reservam o uso forte para as disputas. É uma adaptação para o jogo, não uma simulação completa das regras de 2026.
+Quando um bot alcança rapidamente um carro e precisa de mais espaço para frear, ele pode desviar para uma faixa livre sem soltar a freada, desde que haja tempo e espaço também à frente. Se a pista estreitar, permanece atrás; o ERS não é acionado no desvio de emergência.
 
 ## Verificação
 
-- Sintaxe dos arquivos alterados e `git diff --check`.
-- Simulações locais de grid de 19 robôs em Mônaco; conferir também a corrida visualmente e as disputas com humanos.
-- Nenhum teste novo criado, conforme solicitado.
+- Sintaxe e `git diff --check`; nenhum teste novo criado.
+- Simulações de pelotão em Mônaco e Interlagos, com comparação das batidas e dos tempos.
+- Cenário de aproximação rápida conferido com pista livre e com estreitamento adiante.
+- Falta conferir visualmente as disputas contra humanos no jogo.
