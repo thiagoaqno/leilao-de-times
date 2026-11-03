@@ -72,7 +72,7 @@ function tracado(pista, f1 = false) {
   // Abre por fora antes da curva, encosta por dentro no ápice e sai abrindo; as curvas em sequência saem resolvidas juntas.
   // (O relaxamento de antes, 12 mil passos de uma média local, não convergia: a linha ficava perto do eixo da pista.)
   // Em Mônaco a linha otimizada precisa caber no mesmo limite que o volante usa, evitando cortar o S em cima do muro.
-  if (f1) { const base = pista === "monaco" ? Math.min(max + 16 - FOLGA_LINHA, t.width / 2 - 18) : max + 16 - FOLGA_LINHA; lat.set(Linha.otimizar(pts, t.muros ? Float64Array.from(teto, (v) => Math.min(base, v)) : base)); }
+  if (f1) { const base = pista === "monaco" ? t.width / 2 - 17 : max + 16 - FOLGA_LINHA; lat.set(Linha.otimizar(pts, t.muros ? Float64Array.from(teto, (v) => Math.min(base, v)) : base)); }
   pos();
   const k = new Float64Array(n), sinal = new Float64Array(n); // sinal: +1 se a curva vai para o lado de lat positivo, -1 para o outro
   for (let i = 0; i < n; i++) { // curvatura do traçado: quanto a direção vira por unidade andada
@@ -373,6 +373,7 @@ function largar(room) {
     if (f1) {
       if (t.width <= LARGURA_ESTREITA) p.ia.jeito *= 0.5; // menos variação lateral entre as muretas
       p.ia.jeito += p.ia.estilo.lado;
+      if (room.config.pista === "monaco") p.ia.jeito *= 0.5; // menos oscilação entre os muros, sem mudar os desvios do trânsito
       const tr = Sim.criarPista(t, room.config.pista);
       const car = Sim.novo(tr, { grid: p.grid, f1: true, pneu: p.ia.pneu, box: true });
       car.ers = p.ia.ers;
@@ -511,7 +512,24 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
   const sob = !!(room.direcao?.safety || room.direcao?.amarelo) || largando; // (na largada ninguém ultrapassa nem defende: todos saem juntos, cada um na sua fila)
   if (sob) { ia.ult = null; ia.defesa = null; } // sob bandeira ninguém ultrapassa nem defende
   else {
-    if (!ia.ult && alvo && now > (ia.ultAte || 0) && (reta || alvo.ov < 40 || (preso && leve) || dFreio === Infinity)) {
+    let emergenciaSemEspaco = false;
+    // Se está chegando muito rápido, tenta desviar ANTES de encostar, sem soltar a freada de trânsito.
+    // Só inicia a manobra com tempo, pista quase reta e espaço livre até o ponto onde o carro chegará.
+    if (!ia.ult && alvo && !ia.defesa && leve && dFreio > 100) {
+      const fecha = ia.v - alvo.ov, folga = alvo.frente - L_CARRO;
+      const freio = D.frenagemMaxima(c, ia.v, 0, plano.aderenciaFreio) * 0.5;
+      const risco = fecha > 25 && folga > 0 && folga / fecha > 0.8 && folga < fecha * 0.4 + fecha * fecha / (2 * Math.max(1, freio));
+      if (risco) {
+        const olhar = Math.ceil(Math.max(ia.v, 30) * 1.2 / STEP);
+        let limite = maxLat;
+        if (pf.teto) for (let k = 0; k <= olhar; k++) limite = Math.min(limite, pf.teto[(i + k) % n]);
+        const lados = ordemDaPassagem(pf, i, alvo.latOutro, MARG, baseLat, dentro);
+        const lado = lados.find((s) => livre(s) && Math.abs(alvo.latOutro + s * MARG) <= limite);
+        if (lado) ia.ult = { id: alvo.o.id, lado, ate: now + 3000, lento: false, parado: false, marg: MARG, emergencia: true };
+        else emergenciaSemEspaco = true;
+      }
+    }
+    if (!ia.ult && !emergenciaSemEspaco && alvo && now > (ia.ultAte || 0) && (reta || alvo.ov < 40 || (preso && leve) || dFreio === Infinity)) {
       // Usa a velocidade que teria com pista livre: depois de alcançar o carro o freio de trânsito já reduziu ia.v.
       const fecha = Math.max(ia.v, vLivre) - alvo.ov, lento = alvo.ov < 40;
       // quanto tempo até emparelhar (o bico no meio do outro carro; a mudança de linha leva ~0,9 s em paralelo) contra o tempo até frear
@@ -712,11 +730,12 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const i = car.idx, est = ia.estilo;
   ia.s = i; ia.lat = Sim.quadro(tr, car.x, car.y, i).lat;
   const saidaGrid = Math.min(1, ((car.prog - (car.gridIdx - n)) / 100));
-  const linhaEm = (k, prog) => pf.lat[(k + 2) % n] * pf.fator + ia.jeito + Math.sin(prog / 105 + ia.tracadoId * 1.7) * 3
-    + est.dentro * pf.linha.sinal[k % n] * Math.min(1, pf.kf[k % n] * 400) * 7;
+  const precisao = room.config.pista === "monaco" ? 0.4 : 1; // a variação de estilo é menor onde há pouco espaço para corrigir
+  const linhaEm = (k, prog) => pf.lat[(k + 2) % n] * pf.fator + ia.jeito + Math.sin(prog / 105 + ia.tracadoId * 1.7) * 3 * precisao
+    + est.dentro * pf.linha.sinal[k % n] * Math.min(1, pf.kf[k % n] * 400) * 7 * precisao;
   const linha = linhaEm(i, car.prog);
   const baseLat = ia.lat0 * (1 - saidaGrid) + linha * saidaGrid;
-  const maxLat = Math.min(tr.W / 2 - (ia.ult && ia.ult.parado ? 8 : 18), pf.teto ? pf.teto[i] : Infinity);
+  const maxLat = Math.min(tr.W / 2 - (ia.ult && ia.ult.parado ? 8 : room.config.pista === "monaco" ? 17 : 18), pf.teto ? pf.teto[i] : Infinity);
   const maxLatDisputa = Math.min(tr.W / 2 - 10, pf.teto ? pf.teto[i] : Infinity);
   const cl = F1.climaEm(room.clima, now); // a água na pista agora (clima: f1-regras.js)
   const pneu = F1.aderencia(car.pneu, cl.agua), dano = F1.efeitoDoDano(p.dano), curva = pf.kf[i] > 1 / 600;
@@ -795,7 +814,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     if (medo > 0.01) ent.steer = (ia.volante || 0) + (ent.steer - (ia.volante || 0)) * (1 - 0.85 * Math.min(1, medo)); // com o carro abalado o volante vai mais devagar
     ia.volante = ent.steer;
     if (ent.brake && car.travada > TRAVA_ABS) ent.brake = 0; // a roda da frente travou: solta o freio um instante (o ABS de quem sabe frear)
-    ent.ers = !!ia.ult;
+    ent.ers = !!ia.ult && !ia.ult.emergencia;
     ent.pedido = proxima;
     Sim.passo(car, ent, amb, tr, ev);
     // a batida deste passo: a mesma dos humanos (corrida-contato.js), com os outros carros na hora do passo; o robô também troca momento
