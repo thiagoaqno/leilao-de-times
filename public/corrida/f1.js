@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { temDesenho, folhaDaEquipe, corDoNumero, texturaDosDigitos, logosProntos, FAIXAS, aroDaRoda,
-  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, SOL_FRAG_DECL, SOL_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
+  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, aplicarVerniz, SOL_FRAG_DECL, SOL_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
 import { construir2026 } from "./f1-2026.js";
 
 // combinações de cor das equipes de F1 (ficam em pistas.js: o servidor confere a escolha)
@@ -42,12 +42,17 @@ export const f1Pronto = Promise.all([carga(atual, false).pronto, carga(atual, tr
 // (o carbono da máscara continua preto) e o número do piloto; a folha é uma só por equipe e vem do cache.
 // `novo` (o carro de 2026, f1-2026.js): `base` é o material do carbono (sem textura) e `numPos` onde ficam os números; sem equipe, a cor principal em tudo
 function pintura(base, cor1, cor2, equipe, numero, fundo = false, novo = false, numPos = null) {
-  const m = base.clone(); if (!novo) m.color.set(0xffffff);
+  // o corpo é físico (MeshPhysicalMaterial) para ter a camada de verniz (clearcoat) de dia; o verniz em si é ligado por aplicarVerniz (acabamento acetinado de dia) (f1-pintura.js)
+  let m;
+  if (base.isMeshPhysicalMaterial) m = base.clone();
+  else { m = new THREE.MeshPhysicalMaterial(); THREE.MeshStandardMaterial.prototype.copy.call(m, base); }
+  m.clearcoat = 1; m.clearcoatRoughness = 0.38;
+  if (!novo) m.color.set(0xffffff);
   const liv = equipe && folhaDaEquipe(equipe);
   m.userData.cores = { cor1: { value: new THREE.Color(cor1) }, cor2: { value: new THREE.Color(cor2) } };
   if (liv) m.userData.liv = { liv: { value: liv }, dig: { value: texturaDosDigitos() }, numero: { value: new THREE.Vector2(-1, -1) }, corNum: { value: new THREE.Color(corDoNumero(equipe)) }, numPos: { value: new THREE.Vector4(...(numPos || [3.2, 0.55, 4.275, 0.72])) } };
   const def = novo ? "#define NOVO\n" : "";
-  m.onBeforeCompile = (sh) => {
+  const montar = (sh) => {
     Object.assign(sh.uniforms, m.userData.cores);
     if (liv) {
       Object.assign(sh.uniforms, m.userData.liv);
@@ -63,8 +68,9 @@ function pintura(base, cor1, cor2, equipe, numero, fundo = false, novo = false, 
     sh.fragmentShader = "uniform vec3 cor1;\nuniform vec3 cor2;\n" + sh.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>
       { vec3 mk = diffuseColor.rgb; diffuseColor.rgb = cor1 * mk.r + cor2 * mk.g + vec3(0.012) * mk.b; }`);
   };
+  m.onBeforeCompile = (sh) => { montar(sh); aplicarVerniz(sh); };
   if (fundo) { m.metalness = 0; m.metalnessMap = null; } // o painel pintado não é metal (sem reflexo, o metal ficaria cinza)
-  m.customProgramCacheKey = () => (novo ? (liv ? "f1-novo-livery" : "f1-novo-solido") : liv ? (fundo ? "f1-livery-fundo" : "f1-livery") : "f1-pintura");
+  m.customProgramCacheKey = () => (novo ? (liv ? "f1-novo-livery" : "f1-novo-solido") : liv ? (fundo ? "f1-livery-fundo" : "f1-livery") : "f1-pintura") + "-verniz";
   if (liv) setNumero(m, numero);
   return m;
 }

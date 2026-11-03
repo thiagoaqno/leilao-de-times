@@ -2,6 +2,9 @@
 // (qualidade.js): Baixa desenha direto na tela; Média e Alta passam a cena por uma fila de passes (EffectComposer, em cor linear
 // de 16 bits, para as luzes fortes passarem de 1):
 //   1. a cena (RenderPass; com suavização de serrilhado: 2 amostras na Média, 4 na Alta)
+//   1b. o desfoque de profundidade (FOCO), colado na cena porque lê a profundidade dela: o que está longe da câmera (o horizonte, a
+//      cidade, as montanhas, o céu) sai levemente desfocado e a pista e os carros perto ficam nítidos; ainda em cor linear, antes do
+//      bloom e da correção de cor, então não mexe na cor. Faz também a limpeza de pixels inválidos (NaN/infinito)
 //   2. [Alta] o desfoque radial de velocidade: puxa cada ponto da tela para fora, a partir do centro; o miolo e o carro, embaixo
 //      no meio, ficam nítidos e o cenário dos lados borra mais quanto mais rápido (sem "menos movimento" no sistema)
 //   3. o brilho (bloom) das luzes fortes: só o que passa de 1 de claridade (luz traseira, refletores, brilho do sol nos carros e
@@ -27,14 +30,17 @@ import { renderer, scene, cam, sun } from "./cena.js";
 import { clima } from "./clima.js";
 import { varrerLuzPostes, LUZ } from "./kit/luz-postes.js";
 import { E, toast } from "./estado.js";
+import { VERNIZ } from "./f1-pintura.js";
 import { qualidade, aoMudar, pixelRatioDe, rebaixar, restaurar } from "./qualidade.js";
 
 // ---------- os ajustes de cada qualidade (mexa aqui para afinar) ----------
 const AJUSTE = {
   //          amostras do serrilhado · bloom: força, raio, limiar de claridade (linear, antes do ajuste de tons) e a faixa de entrada
-  media: { amostras: 2, meia: true, bloom: { forca: 0.4, raio: 0.5, limiar: 1.1, faixa: 0.6 } },
-  alta: { amostras: 4, meia: false, bloom: { forca: 0.6, raio: 0.6, limiar: 1.0, faixa: 0.6 } },
+  //          · foco (desfoque do que está longe): pontos por pixel e o raio máximo, em fração da altura da imagem (0,0022 = ~2,4 px em 1080p)
+  media: { amostras: 2, meia: true, bloom: { forca: 0.4, raio: 0.5, limiar: 1.1, faixa: 0.6 }, foco: { pontos: 8, raio: 0.0022 } },
+  alta: { amostras: 4, meia: false, bloom: { forca: 0.6, raio: 0.6, limiar: 1.0, faixa: 0.6 }, foco: { pontos: 12, raio: 0.0026 } },
 };
+const FOCO_PERTO = 650, FOCO_LONGE = 2600; // a distância da câmera (u) em que o desfoque começa e em que chega ao máximo (o céu vale o máximo)
 const CLARO_LUZ = 1.6; // as luzes "sem ajuste de tons" (toneMapped: false) passam a valer essa claridade no pós (o bloom pega acima de 1)
 
 const RADIAL = {
@@ -92,25 +98,50 @@ const GRADE = {
     }`,
 };
 
-// um pixel inválido (NaN ou infinito, de algum sombreador numa conta 0/0) é espalhado pelo bloom e pinta a tela de preto, piscando
-// conforme a câmera anda: este passe troca qualquer pixel inválido por preto e limita o brilho antes do bloom
-const LIMPA = {
-  uniforms: { tDiffuse: { value: null } },
+// O desfoque de profundidade (depth-of-field barato) num passe só, logo depois da cena: lê a profundidade do alvo da cena e, de FOCO_PERTO a
+// FOCO_LONGE, mistura cada pixel com alguns vizinhos num disco pequeno (o raio cresce com a distância). Perto da câmera (a pista e os carros)
+// o pixel passa direto, sem nenhuma amostra a mais. Cada vizinho vale pela própria distância (um vizinho mais perto que o pixel não entra),
+// então o carro não "vaza" a cor dele para o fundo desfocado. Também troca qualquer pixel inválido (NaN ou infinito, de algum sombreador
+// numa conta 0/0, que o bloom espalharia e pintaria a tela de preto) por preto e limita o brilho antes do bloom.
+const FOCO = {
+  uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, perto: { value: FOCO_PERTO }, longe: { value: FOCO_LONGE }, raio: { value: 0.0024 }, aspecto: { value: 16 / 9 }, near: { value: 2 }, far: { value: 16000 } },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
-    void main() { vec4 c = texture2D(tDiffuse, vUv); if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0); gl_FragColor = clamp(c, 0.0, 64.0); }`,
+  fragmentShader: `
+    #include <packing>
+    uniform sampler2D tDiffuse; uniform sampler2D tDepth; uniform float perto, longe, raio, aspecto, near, far; varying vec2 vUv;
+    vec4 limpa(vec4 c) { if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0); return clamp(c, 0.0, 64.0); }
+    float desfoque(vec2 uv) { return smoothstep(perto, longe, -perspectiveDepthToViewZ(texture2D(tDepth, uv).x, near, far)); }
+    void main() {
+      vec4 c0 = limpa(texture2D(tDiffuse, vUv));
+      float d0 = desfoque(vUv);
+      if (d0 < 0.02) { gl_FragColor = c0; return; }                                    // perto: nítido, sem custo
+      vec3 soma = c0.rgb; float peso = 1.0;
+      for (int i = 0; i < TAPS; i++) {
+        float f = (float(i) + 0.5) / float(TAPS), a = float(i) * 2.39996;
+        vec2 uv = vUv + vec2(cos(a) / aspecto, sin(a)) * sqrt(f) * raio * d0;           // disco de girassol
+        float w = clamp(desfoque(uv) / d0, 0.0, 1.0);                                 // vizinho mais perto que o pixel: peso menor
+        soma += limpa(texture2D(tDiffuse, uv)).rgb * w; peso += w;
+      }
+      gl_FragColor = vec4(soma / peso, 1.0);
+    }`,
 };
 
 // ---------- a fila de passes de cada qualidade (montada na primeira vez que a qualidade é usada) ----------
 const tam = new THREE.Vector2();
-const feitos = {}; // { media: {composer, grade, radial, w, h, pr}, alta: {...} }
+const feitos = {}; // { media: {composer, grade, radial, foco, w, h, pr}, alta: {...} }
 const ok16 = () => renderer.extensions.has("EXT_color_buffer_float") || renderer.extensions.has("EXT_color_buffer_half_float");
 function montar(q) {
   const cfg = AJUSTE[q], composer = new EffectComposer(renderer);
   const amostras = ok16() ? cfg.amostras : 0; // sem alvo de 16 bits com amostras o quadro sairia preto: aí fica sem suavização
   composer.renderTarget1.samples = composer.renderTarget2.samples = amostras;
-  composer.addPass(new RenderPass(scene, cam));
-  composer.addPass(new ShaderPass(LIMPA));
+  // a cena sai com uma textura de profundidade (nos dois alvos: o composer troca de um para o outro) para o desfoque de profundidade
+  composer.renderTarget1.depthTexture = new THREE.DepthTexture(2, 2); composer.renderTarget2.depthTexture = new THREE.DepthTexture(2, 2);
+  const cena = new RenderPass(scene, cam), desenhaCena = cena.render.bind(cena);
+  const foco = new ShaderPass({ ...FOCO, defines: { TAPS: cfg.foco.pontos } });
+  foco.uniforms.raio.value = cfg.foco.raio; foco.uniforms.near.value = cam.near; foco.uniforms.far.value = cam.far;
+  cena.render = function (rd, escrita, leitura, ...resto) { foco.uniforms.tDepth.value = leitura.depthTexture; return desenhaCena(rd, escrita, leitura, ...resto); }; // a cena desenha na leitura: a profundidade dela
+  composer.addPass(cena);
+  composer.addPass(foco); // logo depois da cena, antes de qualquer passe mexer na profundidade
   let radial = null;
   if (q === "alta") { radial = new ShaderPass(RADIAL); composer.addPass(radial); }
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), cfg.bloom.forca, cfg.bloom.raio, cfg.bloom.limiar);
@@ -119,7 +150,7 @@ function montar(q) {
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   const grade = new ShaderPass(GRADE); composer.addPass(grade);
-  return { composer, grade, radial, w: 0, h: 0, pr: 0 };
+  return { composer, grade, radial, foco, w: 0, h: 0, pr: 0 };
 }
 function pronto(q) {
   const f = feitos[q] || (feitos[q] = montar(q)), pr = renderer.getPixelRatio();
@@ -129,7 +160,9 @@ function pronto(q) {
     f.composer.setPixelRatio(pr); f.composer.setSize(tam.x, tam.y);
     f.grade.uniforms.aspecto.value = tam.x / Math.max(1, tam.y);
     if (f.radial) f.radial.uniforms.aspecto.value = tam.x / Math.max(1, tam.y);
+    f.foco.uniforms.aspecto.value = tam.x / Math.max(1, tam.y);
   }
+  f.foco.uniforms.near.value = cam.near; f.foco.uniforms.far.value = cam.far;
   return f;
 }
 
@@ -155,7 +188,7 @@ function preparar(m) {
   m.customProgramCacheKey = function () { return (chaveAntes ? chaveAntes.call(this) : "") + "|luz" + ganho; };
   m.needsUpdate = true;
 }
-let ultVarredura = 0, ultLuzPostes = 0;
+let ultVarredura = 0, ultLuzPostes = 0, ultVerniz = 0;
 function varrer(agora) {
   ultVarredura = agora;
   scene.traverse((o) => { const m = o.material; if (m) { if (Array.isArray(m)) m.forEach(preparar); else preparar(m); } });
@@ -231,6 +264,10 @@ export function ajustarTela() { if (atual && atual !== "baixa" && feitos[atual])
 // forca: 0 (nítido) a 1 (bem borrado); com turbo vai até 1,4
 export function desenhar(forca) {
   const q = efetivaPos(); if (q !== atual) aplicarQualidade();
+  { // o verniz da pintura dos carros (f1-pintura.js): só de dia e só com o pós (Média e Alta); sobe e desce devagar na virada
+    const t = performance.now(), alvo = q === "baixa" || ehNoite() ? 0 : 1;
+    VERNIZ.value += (alvo - VERNIZ.value) * lim((t - ultVerniz) / 1000 * 1.5); ultVerniz = t;
+  }
   if (performance.now() - ultLuzPostes > 1500) { ultLuzPostes = performance.now(); varrerLuzPostes(scene); } // materiais novos (um carro que entrou) ganham a luz dos postes
   if (q === "baixa") { renderer.render(scene, cam); return; }
   const agora = performance.now();
@@ -255,6 +292,7 @@ export function compilarPos() {
     const f = pronto(q), cam2 = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), plano = new THREE.PlaneGeometry(2, 2);
     const porImagem = new THREE.Group(), naTela = new THREE.Group(), vistos = new Set();
     const junta = (g, m) => { if (m && m.isMaterial && !vistos.has(m)) { vistos.add(m); g.add(new THREE.Mesh(plano, m)); } };
+    junta(porImagem, f.foco.material);
     if (f.radial) junta(porImagem, f.radial.material);
     for (const p of f.composer.passes) if (p.materialHighPassFilter) { // o UnrealBloomPass
       junta(porImagem, p.materialHighPassFilter); (p.separableBlurMaterials || []).forEach((m) => junta(porImagem, m)); junta(porImagem, p.compositeMaterial); junta(porImagem, p.blendMaterial);
@@ -292,7 +330,7 @@ export function comecarMedida() {
   if (desfazerNaLargada) { desfazerNaLargada(); desfazerNaLargada = null; }
   if (pendente && !parou) { const passo = baixar(); conferir = { fps: pendente.fps, n: 0, desfazer: passo.desfazer, aviso: pendente.alta }; console.info("Corrida: qualidade reduzida na largada (" + passo.nome + "; a corrida anterior ficou em " + pendente.fps.toFixed(0) + " qps)"); }
   pendente = null;
-  inicio = performance.now(); quadros = 0; desde = inicio; ruins = 0; ultCor = inicio; N = ehNoite() ? 1 : 0; R = lim(clima.chuva); W = lim(clima.agua); ultVarredura = 0; }
+  inicio = performance.now(); quadros = 0; desde = inicio; ruins = 0; ultCor = inicio; N = ehNoite() ? 1 : 0; VERNIZ.value = qualidade() === "baixa" || N ? 0 : 1; R = lim(clima.chuva); W = lim(clima.agua); ultVarredura = 0; }
 // o passo de baixar: devolve como desfazer
 function baixar() {
   if (qualidade() === "alta") { rebaixar("media"); return { desfazer: () => restaurar("alta"), nome: "Alta → Média" }; }
