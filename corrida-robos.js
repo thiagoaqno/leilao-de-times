@@ -861,7 +861,7 @@ function passo(room, dt, setor, emit) {
       const usaErs = !!(ers && !room.direcao?.safety && F1.usarErsAuto(ers.carga, ia.v, c.vmax, pf.lim[i] > c.vmax * 0.93, encontrou));
       if (ers) F1.gastarErs(ers, dt, usaErs, encontrou);
       // regras de F1: o vácuo na reta (o mesmo de quem joga, com o mesmo teto do ganho aerodinâmico)
-      const aero = vac ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 * (c.drs ?? 1) : 0) + (usaErs ? 0.03 : 0)) : (drs ? 0.05 * (c.drs ?? 1) : 0) + (usaErs ? 0.03 : 0);
+      const aero = vac ? Math.min(F1.AERO_MAX, vac.final + (drs ? F1.DRS_GANHO * (c.drs ?? 1) : 0) + (usaErs ? 0.03 : 0)) : (drs ? F1.DRS_GANHO * (c.drs ?? 1) : 0) + (usaErs ? 0.03 : 0);
       const bk = 1 + (turbo ? 0.18 : 0) + (estrela ? 0.12 : 0) + (bala ? BALA - 1 : 0) + aero;
       const ak = 1 + (turbo ? 0.8 : 0) + (estrela ? 0.4 : 0) + (bala ? 1.5 : 0) + (usaErs ? 0.25 : 0) + (vac ? vac.acel : 0);
       alvo += c.vmax * (bk - 1); // o item mantém sua força mesmo com o ritmo base mais acessível
