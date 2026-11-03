@@ -28,12 +28,30 @@ const MAO = { x: 0.108, y: 0, z: 0.085 }; // cada luva em relação ao centro do
 const OMBRO = { x: 0.12, y: 0.52, z: 0.2 };
 
 // ---------- o que é dividido entre todos os carros ----------
+const sinal = (v) => (v < 0 ? -1 : 1), passo = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+// o formato do capacete de F1: um elipsoide "quadrado" (calota achatada em cima, lados quase retos), mais comprido que alto, que desce reto atrás com uma aba (o spoiler) e tem o queixo saliente na frente.
+// Deforma uma esfera unitária (a frente é −z, o topo +y) mantendo as coordenadas de textura; `esc` engorda a casca (a viseira fica 1,2% por fora).
+function casco(g, esc) {
+  const P = g.attributes.position, N = g.attributes.normal;
+  for (let i = 0; i < P.count; i++) {
+    const sx = P.getX(i), sy = P.getY(i), sz = P.getZ(i);
+    let x = sinal(sx) * Math.abs(sx) ** 0.8, y = sinal(sy) * Math.abs(sy) ** (sy > 0 ? 0.58 : 0.85), z = sinal(sz) * Math.abs(sz) ** 0.8; // (a coroa chata: expoente menor que 1 em cima)
+    x *= RC.x * esc; y *= RC.y * esc; z *= RC.z * esc;
+    const frente = passo(0.2, 0.9, -sz), baixo = passo(-0.05, -0.55, sy), costas = passo(0.35, 0.95, sz);
+    const queixo = frente * baixo; x *= 1 - 0.16 * queixo; z -= 0.022 * queixo; y -= 0.008 * queixo; // o queixo: sai para a frente e afina
+    const aba = costas * Math.max(0, 1 - ((sy - 0.2) / 0.3) ** 2) * (1 - passo(0.5, 0.9, Math.abs(sx))); z += 0.018 * aba; // a aba atrás: um degrau na altura da nuca
+    z += 0.01 * costas * (1 - passo(-0.4, 0.2, sy)); // e as costas descem retas (um pouco para trás embaixo)
+    P.setXYZ(i, x, y, z);
+    const nx = sx / (RC.x * esc), ny = sy / (RC.y * esc), nz = sz / (RC.z * esc), l = Math.hypot(nx, ny, nz) || 1; N.setXYZ(i, nx / l, ny / l, nz / l);
+  }
+  P.needsUpdate = true; N.needsUpdate = true; g.computeBoundingSphere(); g.computeBoundingBox(); return g;
+}
 let G = null;
 function geometrias() {
   if (G) return G;
-  const capacete = new THREE.SphereGeometry(1, 28, 18); capacete.scale(RC.x, RC.y, RC.z); // ~0,15 m de largura, 0,16 de altura e 0,19 de comprimento: pequeno, uns 40% da largura entre as barras laterais do halo (como na foto de referência)
-  // a viseira: uma faixa fina e larga na frente (u = 0,75), do tamanho do olhar, que acompanha a curva da cabeça e dá a volta pelas laterais (um pedaço da mesma bola, um pouco maior)
-  const viseira = new THREE.SphereGeometry(1.01, 32, 4, 1.5 * Math.PI - 1.05, 2.1, 1.12, 0.46); viseira.scale(RC.x, RC.y, RC.z);
+  const capacete = casco(new THREE.SphereGeometry(1, 40, 24), 1);
+  // a viseira: uma faixa escura larga e bem marcada na frente (u = 0,75), na altura dos olhos (~25% da altura do capacete), que dá a volta pela frente seguindo a curva da cabeça (um pedaço da mesma forma, 1,2% maior)
+  const viseira = casco(new THREE.SphereGeometry(1, 40, 3, 1.5 * Math.PI - 1.15, 2.3, 1.2, 0.36), 1.012);
   const luva = (s) => { const c = new THREE.CapsuleGeometry(0.034, 0.045, 3, 8); c.translate(s * MAO.x, MAO.y, MAO.z); return c; };
   const luvas = mergeGeometries([luva(-1), luva(1)]);
   const braco = new THREE.CylinderGeometry(0.03, 0.024, 1, 8, 1); braco.translate(0, 0.5, 0); // do ombro (y = 0) à luva (y = 1); esticado a cada quadro
