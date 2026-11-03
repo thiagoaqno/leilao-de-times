@@ -515,6 +515,40 @@ export const SOL_FRAG_MAIN = `
   diffuseColor.rgb = mix(mk, mix(cor1, cor2, max(faixa, max(asa, ponta))), vMc);
 }`;
 
+// ---------------------------------------------------------------- o verniz da pintura (só de dia)
+// O corpo é um MeshPhysicalMaterial com `clearcoat` 1; quanto vale o verniz é o uniforme compartilhado VERNIZ (0 à noite, 1 de dia; pos.js
+// escreve por quadro, devagar na virada), vezes a parte do ponto que é pintura (o carbono, mcar = 0, fica fosco como estava). De dia a
+// pintura ganha: rugosidade menor (o reflexo do céu da foto, scene.environment, fica mais nítido), a camada de verniz (reflexo do céu mais forte
+// nas bordas, onde o ângulo é raso) e um teto nos brilhos diretos do sol (o carro reflete, não brilha: nada daqui chega ao limiar do bloom).
+export const VERNIZ = { value: 1 };
+const VERNIZ_DECL = "uniform float uVerniz;\n";
+const VERNIZ_LISO = 0.62;      // a rugosidade da pintura vira esse tanto do que era
+const VERNIZ_CEU = 3.2;        // quanto a camada de verniz amplia o reflexo do céu (o reflexo cru do verniz, 4% de frente, é fraco)
+const VERNIZ_TETO_SOL = 0.35;  // o brilho direto do sol no verniz não passa disso
+const VERNIZ_TETO_BASE = 0.85; // e o da tinta por baixo, de dia
+export function aplicarVerniz(sh) {
+  sh.uniforms.uVerniz = VERNIZ;
+  sh.fragmentShader = VERNIZ_DECL + sh.fragmentShader
+    .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
+#ifdef NOVO
+  float vern = uVerniz * vMc;
+#else
+  float vern = uVerniz;
+#endif
+  roughnessFactor *= mix(1.0, ${VERNIZ_LISO.toFixed(2)}, vern);`)
+    .replace("#include <lights_physical_fragment>", `#include <lights_physical_fragment>
+#ifdef USE_CLEARCOAT
+  material.clearcoat *= vern;
+  material.clearcoatRoughness = max(material.clearcoatRoughness, 0.09);
+#endif`)
+    .replace("#include <lights_fragment_end>", `#include <lights_fragment_end>
+#ifdef USE_CLEARCOAT
+  clearcoatSpecularIndirect *= 1.0 + ${(VERNIZ_CEU - 1).toFixed(1)} * vern;
+  clearcoatSpecularDirect = min(clearcoatSpecularDirect, vec3(${VERNIZ_TETO_SOL.toFixed(2)}));
+#endif
+  reflectedLight.directSpecular = min(reflectedLight.directSpecular, vec3(mix(64.0, ${VERNIZ_TETO_BASE.toFixed(2)}, vern)));`);
+}
+
 // a posição de cada ponto da roda em relação ao eixo, em raios (1 = a borda do pneu): a faixa do composto é um anel nesse
 // espaço (o shader mede o comprimento do vetor em cada pixel, então o anel sai redondo mesmo com poucos vértices)
 export function aroDaRoda(pos, idx) {
