@@ -1,0 +1,12 @@
+mao.glb: a mão fechada das luvas do piloto (public/corrida/f1-piloto.js).
+
+Baseado em "Rigged Hand", de J-Toastie (Poly Pizza), licença Creative Commons Attribution 3.0 (CC BY 3.0)
+https://poly.pizza/m/BEy8jbxm6A
+https://creativecommons.org/licenses/by/3.0/
+
+Mudanças feitas aqui (o modelo foi adaptado):
+- a pose de punho fechado é o último quadro da animação que vem no próprio modelo, "cozida" na malha (sem esqueleto);
+- a mão é girada e escalada para segurar uma pegada vertical do volante (a laçada dos dedos fica na origem, a frente é -z,
+  as costas da mão para +x); o modelo original é de mão esquerda e foi espelhado para ficar direita (a esquerda é o espelho, feito no jogo);
+- sem textura nem cor: o jogo pinta por vértice, na cor da equipe (public/corrida/f1-piloto.js);
+- as normais foram recalculadas e a malha comprimida com meshopt (1.518 triângulos).

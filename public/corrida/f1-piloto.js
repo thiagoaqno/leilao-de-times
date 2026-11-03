@@ -12,6 +12,8 @@
 // as luvas, os braços e os ombros saem e a animação para.
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { pintarFolha, capacetePorSigla } from "./f1-capacetes.js";
 
 const menosMovimento = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
@@ -25,6 +27,9 @@ const RC = { x: 0.073, y: 0.081, z: 0.095 }; // os raios do capacete (m)
 const PESCOCO = { x: 0, y: 0.543, z: 0.0 }; // o capacete é uma bola de ~0,26 m 0,14 m acima: o centro dele fica a ~0,683 m, a viseira na altura da borda do cockpit (~0,69) e o topo a ~0,764 m (um pouco abaixo da barra do halo, ~0,776)
 const VOLANTE = { x: 0, y: 0.524, z: -0.32 }; // o centro do volante do Audi R26 (f1-2026.js); com o volante do modelo, usa o dele
 const MAO = { x: 0.118, y: 0, z: 0.035 }; // o punho fechado de cada luva em relação ao centro do volante (antes de girar com ele): na pegada lateral do aro
+// A mão fechada (f1/piloto/mao.glb, ver LICENCA.txt): o modelo vem com a laçada dos dedos na origem, a frente em −z, as costas da mão para +x (a mão direita) e o pulso em +z.
+const GRIP = { x: 0.114, y: 0, z: 0.02 }; // onde fica a laçada dos dedos (o eixo da pegada lateral do aro) no quadro do volante, antes de girar com ele; a esquerda é o espelho
+const PULSO = { x: 0, y: 0.01, z: 0.17 }; // onde o antebraço entra no punho da luva, em relação à laçada (dentro do punho escuro)
 const PUNHO = 0.075; // do punho fechado até o pulso (onde o antebraço entra no punho escuro da luva), para trás (+z)
 const OMBRO = { x: 0.115, y: 0.55, z: 0.2 }; // o ombro (pivô do braço)
 const OSSO = { cima: 0.23, baixo: 0.22 }; // o braço e o antebraço (m): com o ombro a ~0,41 m do pulso o cotovelo dobra um pouco
@@ -81,6 +86,41 @@ function luvasDe(cor) {
     const cuff = new THREE.CylinderGeometry(0.0235, 0.0265, PUNHO - 0.03, 12, 1, true); cuff.rotateX(Math.PI / 2); cuff.translate(x0, MAO.y, z0 + 0.03 + (PUNHO - 0.03) / 2); partes.push(pinta(cuff, esc)); // o punho escuro
   }
   g = mergeGeometries(partes); LUVAS.set(cor, g); return g;
+}
+const MAO3D = { base: null, carregando: false, pilotos: new Set() };
+// carrega a mão uma vez (um arquivo pequeno); quando chega, todos os pilotos já criados trocam as luvas provisórias pela mão
+function garantirMao() {
+  if (MAO3D.base || MAO3D.carregando) return; MAO3D.carregando = true;
+  const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder);
+  l.loadAsync("/corrida/f1/piloto/mao.glb").then((g) => {
+    let m = null; g.scene.updateMatrixWorld(true); g.scene.traverse((o) => { if (o.isMesh && !m) m = o; });
+    const P = m.geometry.attributes.position, N = m.geometry.attributes.normal, n = P.count, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), v = new THREE.Vector3();
+    for (let i = 0; i < n; i++) { v.fromBufferAttribute(P, i).applyMatrix4(m.matrixWorld); pos.set([v.x, v.y, v.z], i * 3); nor.set([N.getX(i), N.getY(i), N.getZ(i)], i * 3); } // (a malha vem quantizada: lê pelos acessos, que desfazem a escala)
+    MAO3D.base = { pos, nor, idx: Uint32Array.from(m.geometry.index.array) };
+    for (const p of MAO3D.pilotos) p.luvas.geometry = maosDe(p.corLuva, p.corPainel);
+  }).catch((e) => { console.warn("Corrida: a mão do piloto não carregou", e); MAO3D.carregando = false; });
+}
+// as duas mãos (a direita é a do modelo; a esquerda, o espelho) numa malha só, pintada por vértice: a palma e os dedos na cor da luva, as costas da mão com um painel de outra cor,
+// o punho escuro (um punho de cano curto) com uma tira de velcro; uma geometria por par de cores, todas com o mesmo material (LUVA)
+const MAOS = new Map();
+function maosDe(cLuva, cPainel) {
+  const k = cLuva + "|" + cPainel; let g = MAOS.get(k); if (g) return g;
+  const { pos, nor, idx } = MAO3D.base, n = pos.length / 3, luva = new THREE.Color(cLuva), painel = new THREE.Color(cPainel), esc = new THREE.Color("#16181c"), velcro = new THREE.Color("#a9aeb8"), partes = [];
+  for (const l of [1, -1]) {
+    const P = new Float32Array(pos.length), N = new Float32Array(nor.length), C = new Float32Array(pos.length);
+    for (let i = 0; i < n; i++) {
+      const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2], nx = nor[i * 3], c = nx > 0.45 && z > 0.012 && z < 0.12 ? painel : luva; // o painel: a face de fora (as costas) entre os nós dos dedos e o pulso
+      P[i * 3] = l * x + l * GRIP.x; P[i * 3 + 1] = y + GRIP.y; P[i * 3 + 2] = z + GRIP.z; N[i * 3] = l * nx; N[i * 3 + 1] = nor[i * 3 + 1]; N[i * 3 + 2] = nor[i * 3 + 2];
+      C[i * 3] = c.r; C[i * 3 + 1] = c.g; C[i * 3 + 2] = c.b;
+    }
+    const m = new THREE.BufferGeometry(); m.setAttribute("position", new THREE.BufferAttribute(P, 3)); m.setAttribute("normal", new THREE.BufferAttribute(N, 3)); m.setAttribute("color", new THREE.BufferAttribute(C, 3));
+    const I = Uint32Array.from(idx); if (l < 0) for (let t = 0; t < I.length; t += 3) { const a = I[t + 1]; I[t + 1] = I[t + 2]; I[t + 2] = a; } // (o espelho vira as faces do avesso)
+    m.setIndex(new THREE.BufferAttribute(I, 1)); partes.push(m);
+    const pinta = (geo, k2) => { const nn = geo.attributes.position.count, a = new Float32Array(nn * 3); for (let i = 0; i < nn; i++) { a[i * 3] = k2.r; a[i * 3 + 1] = k2.g; a[i * 3 + 2] = k2.b; } geo.setAttribute("color", new THREE.BufferAttribute(a, 3)); geo.deleteAttribute("uv"); return geo; };
+    const tubo = (r0, r1, h, zc, cor) => { const t = new THREE.CylinderGeometry(r1, r0, h, 18, 1, true); t.rotateX(Math.PI / 2); t.scale(1, 0.82, 1); t.translate(l * (GRIP.x + PULSO.x), GRIP.y + PULSO.y, GRIP.z + zc); return pinta(t, cor); }; // (do lado do pulso, +z, o raio é r1; o eixo do pulso é um pouco achatado)
+    partes.push(tubo(0.034, 0.027, 0.085, 0.1575, esc), tubo(0.0338, 0.0338, 0.02, 0.145, velcro)); // o punho escuro e a tira de velcro em volta dele
+  }
+  g = mergeGeometries(partes); MAOS.set(k, g); return g;
 }
 const LUVA = () => (LUVA.m ||= new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.65, metalness: 0.05, side: THREE.DoubleSide }));
 const VISEIRA = () => (VISEIRA.m ||= new THREE.MeshStandardMaterial({ color: 0x090b10, roughness: 0.1, metalness: 0.4 }));
@@ -154,11 +194,12 @@ export function criarPiloto(kt, op) {
   const foreBracos = [-1, 1].map(() => { const m = solta(new THREE.Mesh(g.antebraco, traje(cor1, cor2))); m.name = "antebraco"; antebracos.add(m); return m; });
   // as mãos (ficam no volante e aparecem também na primeira pessoa): uma malha só, com as duas luvas, num pivô que gira com o volante
   const maos = new THREE.Group(); maos.name = "maos"; maos.position.copy(centro); kt.carro.add(maos);
-  const luvas = solta(new THREE.Mesh(luvasDe(corDaLuva(cor1, cor2)), LUVA())); luvas.name = "luvas"; maos.add(luvas);
+  garantirMao(); const corLuva = corDaLuva(cor1, cor2), corPainel = corLuva === cor2 ? cor1 : cor2; // as luvas: a mão fechada do modelo (ou, enquanto ela não chega, cápsulas)
+  const luvas = solta(new THREE.Mesh(MAO3D.base ? maosDe(corLuva, corPainel) : luvasDe(corLuva), LUVA())); luvas.name = "luvas"; maos.add(luvas);
   let aro = null; if (!kt.volante) { aro = solta(new THREE.Mesh(g.aro, CARBONO())); aro.name = "luvas-aro"; maos.add(aro); }
   const agit = 0.7 + r() * 0.7; // quão mexida é a cabeça deste piloto (uns são mais calmos)
   const p = {
-    kt, corpo, cab, tronco, bracos, antebracos, foreBracos, maos, aro, centro, rng: r, t: r() * 100, fant: false, escondido: false, neutro: false,
+    kt, corpo, cab, tronco, bracos, antebracos, foreBracos, maos, luvas, corLuva, corPainel, aro, centro, rng: r, t: r() * 100, fant: false, escondido: false, neutro: false,
     mRoll: { x: 0, v: 0 }, mYaw: { x: 0, v: 0 }, mPitch: { x: 0, v: 0 }, mX: { x: 0, v: 0 }, brk: 0,
     w: { roll: 8 + r() * 3.5, yaw: 6 + r() * 2.5, pitch: 9 + r() * 3.5 }, z: { roll: 0.45 + r() * 0.2, yaw: 0.6 + r() * 0.2, pitch: 0.42 + r() * 0.2 }, // frequência e amortecimento das molas: ~0,5 passa um pouco do ponto
     agit, modula: [0.03 + r() * 0.05, r() * 6.2832], // a respiração lenta do ruído (nunca igual)
@@ -166,6 +207,7 @@ export function criarPiloto(kt, op) {
     olhar: { prox: 2.5 + r() * 6, t: -1, dur: 0.6, lado: 1 }, // a olhada no espelho: quando, há quanto tempo, quanto dura, para que lado (−1 esquerdo, 1 direito)
     ang: 0,
   };
+  MAO3D.pilotos.add(p);
   p.ocultarFantasma = (on) => { p.fant = !!on; visivel(p); };
   vistaNeutra(p);
   return p;
@@ -173,7 +215,7 @@ export function criarPiloto(kt, op) {
 function visivel(p) { p.corpo.visible = !p.fant && !p.escondido; p.antebracos.visible = p.maos.visible = !p.fant; }
 // na primeira pessoa (câmera de cockpit do meu carro): o capacete, o tronco e os braços somem; os antebraços e as luvas ficam
 export function ocultarPiloto(k, sim) { const p = k?.pil; if (!p || p.escondido === !!sim) return; p.escondido = !!sim; visivel(p); }
-export function soltarPiloto(k) { const p = k?.pil; if (!p) return; p.corpo.removeFromParent(); p.antebracos.removeFromParent(); p.maos.removeFromParent(); k.pil = null; } // (geometrias, texturas e materiais são de todos: nada a descartar)
+export function soltarPiloto(k) { const p = k?.pil; if (!p) return; MAO3D.pilotos.delete(p); p.corpo.removeFromParent(); p.antebracos.removeFromParent(); p.maos.removeFromParent(); k.pil = null; } // (geometrias, texturas e materiais são de todos: nada a descartar)
 
 // a pose parada: a cabeça no centro, os braços no volante reto
 function vistaNeutra(p) { p.cab.rotation.set(0, 0, 0); p.cab.position.set(PESCOCO.x, PESCOCO.y, PESCOCO.z); p.tronco.rotation.z = 0; posicionarMaos(p, 0); p.neutro = true; }
@@ -186,8 +228,8 @@ function posicionarMaos(p, ang, tremX = 0, tremY = 0) {
   p.maos.position.set(p.centro.x + tremX, p.centro.y + tremY, p.centro.z); p.maos.rotation.z = ang;
   const c = Math.cos(ang), s = Math.sin(ang), L1 = OSSO.cima, L2 = OSSO.baixo;
   for (let i = 0; i < 2; i++) {
-    const lado = i ? 1 : -1, hx = lado * MAO.x, hy = MAO.y; // a luva no quadro do volante → no quadro do carro (gira em z)
-    _h.set(p.centro.x + tremX + hx * c - hy * s, p.centro.y + tremY + hx * s + hy * c, p.centro.z + MAO.z + PUNHO); // o pulso: o antebraço termina no punho escuro da luva
+    const lado = i ? 1 : -1, hx = lado * (GRIP.x + PULSO.x), hy = GRIP.y + PULSO.y; // a luva no quadro do volante → no quadro do carro (gira em z)
+    _h.set(p.centro.x + tremX + hx * c - hy * s, p.centro.y + tremY + hx * s + hy * c, p.centro.z + GRIP.z + PULSO.z); // o pulso: o antebraço termina dentro do punho escuro da luva
     _s.set(lado * OMBRO.x, OMBRO.y, OMBRO.z);
     _d.subVectors(_h, _s); const dist = _d.length() || 1e-4; _d.divideScalar(dist);
     const alcance = Math.min(dist, (L1 + L2) * 0.999), a = (L1 * L1 - L2 * L2 + alcance * alcance) / (2 * alcance), alt = Math.sqrt(Math.max(0, L1 * L1 - a * a));
