@@ -67,7 +67,7 @@ export function physics(dt, spec = carOf(me())) {
   race.drsAtivo = drs; race.ersAtivo = ersAtivo;
   const curva = (tr.pts[race.idx].k || 0) > 1 / 600, vac = pn ? F1.vacuoF1(race.draft, curva) : null; // nas regras de F1: vácuo na reta, ar sujo na curva
   race.arSujo = vac ? 1 - vac.aderencia : 0;
-  const aero = pn ? Math.min(F1.AERO_MAX, vac.final + (drs ? 0.05 * (spec.drs ?? 1) : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
+  const aero = pn ? Math.min(F1.AERO_MAX, vac.final + (drs ? F1.DRS_GANHO * (spec.drs ?? 1) : 0) + (ersAtivo ? 0.03 : 0)) : 0.12 * race.draft + (race.sling > 0 ? 0.08 : 0);
   const boostK = bala ? BALA : (1 + aero + catchup + (boostAtivo ? 0.18 : 0) + (estrelaAtiva ? 0.12 : 0)) * (pequeno ? ENCOLHIDO : 1);
   const bandeiraLimite = dirProva?.safety ? 0.54 : amarela ? 0.82 : 1;
   const vmax = (road ? spec.vmax * (pn?.final || 1) * (dano?.final || 1) : spec.offMax) * Math.min(boostK, bandeiraLimite);

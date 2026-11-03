@@ -16,6 +16,8 @@
 // O `spec` do carro (vmax, acc, brake, grip, kin, turn, scrub, offMax, wall; ver CARROS em pistas.js e f1-equipes.js)
 // continua sendo a descrição do carro: `parametros(spec)` converte nos números físicos.
 (function (root) {
+  // o ganho do DRS aberto na velocidade final e o do ERS na potência: os mesmos de f1-regras.js (DRS_GANHO, ERS_POTENCIA)
+  const DRS_GANHO = 0.08, ERS_POTENCIA = 0.15;
 
 const ESC = 0.75 / 3.6;      // metros por unidade da pista
 const G = 9.81, G_U = G / ESC; // gravidade (m/s² e u/s²)
@@ -144,9 +146,9 @@ function passo(c, ent, amb, p, dt = PASSO) {
   const kFreio = (pn ? pn.freio : 1) * (dn ? dn.freio : 1) * (ex.freio || 1);
   const kTracao = (pn ? pn.tracao : 1) * (dn ? dn.tracao : 1) * (ex.tracao || 1);
   const fin = (pn ? pn.final : 1) * (dn ? dn.final : 1);
-  const kPot = fin * fin * fin * (ex.potencia || 1) * (amb.ers ? 1.09 : 1);
+  const kPot = fin * fin * fin * (ex.potencia || 1) * (amb.ers ? 1 + ERS_POTENCIA : 1);
   const drsK = amb.drs ? p.drs : 0;
-  const kArr = (ex.arrasto || 1) * (amb.drs ? (1 + 0.05 * drsK) ** -3 : 1) * (amb.vacuo ? (1 + amb.vacuo.final) ** -3 : 1);
+  const kArr = (ex.arrasto || 1) * (amb.drs ? (1 + DRS_GANHO * drsK) ** -3 : 1) * (amb.vacuo ? (1 + amb.vacuo.final) ** -3 : 1);
   const kCarga = (ex.carga || 1) * (amb.drs ? 0.85 : 1);
   // pedais: o acelerador sobe em ~0,3 s e solta rápido; o freio sobe em ~0,22 s (por isso dá para frear "progressivo" soltando antes)
   const gasT = ent.gas ? 1 : 0, brkT = ent.brake ? 1 : 0;

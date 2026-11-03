@@ -555,14 +555,16 @@ function efeitoDoDano(dano) {
 // Atrás de outro carro na reta o ar empurra menos: um pouco de velocidade final (bem menos que o DRS, que é o que decide
 // a ultrapassagem) e um pouco de aceleração. Nas curvas é o contrário, o ar sujo: o carro de trás perde aderência e
 // escorrega, e por isso é difícil seguir colado. Sem o "estilingue" do modo arcade. `draft` vai de 0 (longe) a 1 (colado).
-const VACUO_FINAL = 0.03, VACUO_ACEL = 0.15, AR_SUJO = 0.1, AERO_MAX = 0.11;
+// (o DRS aberto: +8% de velocidade final pelo arrasto menor; o ERS em uso: +15% de potência; o vácuo colado: até +5% de final. Antes eram
+// 5%, 9% e 3%, e quase não se sentia; na F1 o DRS dá uns 10 a 15 km/h e o ERS ~120 kW de ~750)
+const VACUO_FINAL = 0.05, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.15, DRS_GANHO = 0.08, ERS_POTENCIA = 0.15;
 function vacuoF1(draft, curva) {
   const d = limite(draft || 0, 0, 1);
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };
 }
 
 const api = { PONTO_VOLTA_RAPIDA, pontosDe, PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
-  zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
+  zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, DRS_GANHO, ERS_POTENCIA, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
   LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, batidaProposital, DSQ_PROPOSITAIS, AVISO_PROPOSITAIS, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, recomendarParada, ESCOLHA_BOX_S, penalidadeUmComposto, acrescimoDeFinal, estrategia, melhoresPlanos,
   CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
