@@ -24,9 +24,10 @@ const suave = (s) => s * s * (3 - 2 * s);
 const RC = { x: 0.073, y: 0.081, z: 0.095 }; // os raios do capacete (m)
 const PESCOCO = { x: 0, y: 0.543, z: 0.0 }; // o capacete é uma bola de ~0,26 m 0,14 m acima: o centro dele fica a ~0,683 m, a viseira na altura da borda do cockpit (~0,69) e o topo a ~0,764 m (um pouco abaixo da barra do halo, ~0,776)
 const VOLANTE = { x: 0, y: 0.524, z: -0.32 }; // o centro do volante do Audi R26 (f1-2026.js); com o volante do modelo, usa o dele
-const MAO = { x: 0.108, y: 0, z: 0.085 }; // cada luva em relação ao centro do volante (antes de girar com ele)
+const MAO = { x: 0.118, y: 0, z: 0.035 }; // o punho fechado de cada luva em relação ao centro do volante (antes de girar com ele): na pegada lateral do aro
+const PUNHO = 0.075; // do punho fechado até o pulso (onde o antebraço entra no punho escuro da luva), para trás (+z)
 const OMBRO = { x: 0.115, y: 0.55, z: 0.2 }; // o ombro (pivô do braço)
-const OSSO = { cima: 0.24, baixo: 0.23 }; // o braço e o antebraço (m): com o ombro a ~0,44 m da luva o cotovelo dobra um pouco
+const OSSO = { cima: 0.23, baixo: 0.22 }; // o braço e o antebraço (m): com o ombro a ~0,41 m do pulso o cotovelo dobra um pouco
 
 // ---------- o que é dividido entre todos os carros ----------
 const sinal = (v) => (v < 0 ? -1 : 1), passo = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -53,14 +54,35 @@ function geometrias() {
   const capacete = casco(new THREE.SphereGeometry(1, 40, 24), 1);
   // a viseira: uma faixa escura larga e bem marcada na frente (u = 0,75), na altura dos olhos (~25% da altura do capacete), que dá a volta pela frente seguindo a curva da cabeça (um pedaço da mesma forma, 1,2% maior)
   const viseira = casco(new THREE.SphereGeometry(1, 40, 3, 1.5 * Math.PI - 1.15, 2.3, 1.2, 0.36), 1.012);
-  const luva = (s) => { const c = new THREE.CapsuleGeometry(0.034, 0.045, 3, 8); c.translate(s * MAO.x, MAO.y, MAO.z); return c; };
-  const luvas = mergeGeometries([luva(-1), luva(1)]);
-  const braco = new THREE.CylinderGeometry(0.03, 0.037, 1, 10, 1); braco.translate(0, 0.5, 0); // do ombro (y = 0) ao cotovelo (y = 1); esticado a cada quadro
-  const antebraco = new THREE.CylinderGeometry(0.024, 0.031, 1, 10, 1); antebraco.translate(0, 0.5, 0); // do cotovelo (y = 0) ao pulso (y = 1)
+  // o braço (manga) afina do ombro ao cotovelo e o antebraço do cotovelo ao pulso; o ombro e o cotovelo são bolinhas (a junta arredondada). As bolas levam a escala inversa do comprimento do osso, que estica o cilindro a cada quadro.
+  const junta = (r, y, L) => { const e = new THREE.SphereGeometry(r, 12, 8); e.scale(1, 1 / L, 1); e.translate(0, y, 0); return e; };
+  const tubo = (rTopo, rBase) => { const c = new THREE.CylinderGeometry(rTopo, rBase, 1, 12, 1, true); c.translate(0, 0.5, 0); return c; };
+  const braco = mergeGeometries([tubo(0.02, 0.029), junta(0.031, 0, OSSO.cima), junta(0.0235, 1, OSSO.cima)]); // do ombro (y = 0) ao cotovelo (y = 1)
+  const antebraco = mergeGeometries([tubo(0.015, 0.0215), junta(0.0235, 0, OSSO.baixo)]); // do cotovelo (y = 0) ao pulso (y = 1)
   const tronco = new THREE.CapsuleGeometry(0.085, 0.13, 4, 12); tronco.scale(1.3, 1, 0.8); // o peito e os ombros (deitado para trás, na malha)
   const aro = new THREE.BoxGeometry(0.235, 0.12, 0.035); // o volante dos carros "leves" (que não trazem o do modelo): só para as mãos terem onde segurar
-  return (G = { capacete, viseira, luvas, braco, antebraco, tronco, aro });
+  return (G = { capacete, viseira, braco, antebraco, tronco, aro });
 }
+// a luva fechada em volta da pegada lateral do volante, de cada lado, numa malha só com cor por vértice (a da equipe nos dedos, no punho fechado e no polegar; o punho escuro):
+// o punho fechado (a palma na pegada), quatro dedos que dão a volta no aro para a frente, o polegar por cima e o punho escuro de onde sai o antebraço.
+// Uma geometria por cor (cache), todas com o mesmo material (LUVA).
+const LUVAS = new Map();
+function luvasDe(cor) {
+  let g = LUVAS.get(cor); if (g) return g;
+  const c = new THREE.Color(cor), esc = new THREE.Color("#17191d"), partes = [];
+  const pinta = (geo, k) => { const n = geo.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = k.r; a[i * 3 + 1] = k.g; a[i * 3 + 2] = k.b; } geo.setAttribute("color", new THREE.BufferAttribute(a, 3)); return geo; };
+  for (const l of [-1, 1]) {
+    const x0 = l * MAO.x, z0 = MAO.z;
+    const punho = new THREE.CapsuleGeometry(0.0245, 0.038, 3, 10); punho.scale(1, 1, 1.1); punho.translate(x0, MAO.y, z0); partes.push(pinta(punho, c));
+    for (let i = 0; i < 4; i++) { // os dedos: de cima do punho, passam por fora do aro e voltam para a frente (−z)
+      const dedo = new THREE.CapsuleGeometry(0.0095, 0.034, 2, 6); dedo.rotateX(Math.PI / 2); dedo.translate(x0 + l * 0.012, MAO.y + (i - 1.5) * 0.0185, z0 - 0.036); partes.push(pinta(dedo, c));
+    }
+    const polegar = new THREE.CapsuleGeometry(0.0105, 0.026, 2, 6); polegar.rotateX(Math.PI / 2); polegar.rotateY(-l * 0.5); polegar.translate(x0 - l * 0.004, MAO.y + 0.046, z0 - 0.002); partes.push(pinta(polegar, c)); // o polegar por cima
+    const cuff = new THREE.CylinderGeometry(0.0235, 0.0265, PUNHO - 0.03, 12, 1, true); cuff.rotateX(Math.PI / 2); cuff.translate(x0, MAO.y, z0 + 0.03 + (PUNHO - 0.03) / 2); partes.push(pinta(cuff, esc)); // o punho escuro
+  }
+  g = mergeGeometries(partes); LUVAS.set(cor, g); return g;
+}
+const LUVA = () => (LUVA.m ||= new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.65, metalness: 0.05, side: THREE.DoubleSide }));
 const VISEIRA = () => (VISEIRA.m ||= new THREE.MeshStandardMaterial({ color: 0x090b10, roughness: 0.1, metalness: 0.4 }));
 const CARBONO = () => (CARBONO.m ||= new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.4, metalness: 0.1 }));
 const TECIDOS = new Map(), CAPACETES = new Map();
@@ -132,7 +154,7 @@ export function criarPiloto(kt, op) {
   const foreBracos = [-1, 1].map(() => { const m = solta(new THREE.Mesh(g.antebraco, traje(cor1, cor2))); m.name = "antebraco"; antebracos.add(m); return m; });
   // as mãos (ficam no volante e aparecem também na primeira pessoa): uma malha só, com as duas luvas, num pivô que gira com o volante
   const maos = new THREE.Group(); maos.name = "maos"; maos.position.copy(centro); kt.carro.add(maos);
-  const luvas = solta(new THREE.Mesh(g.luvas, tecido(corDaLuva(cor1, cor2)))); luvas.name = "luvas"; maos.add(luvas);
+  const luvas = solta(new THREE.Mesh(luvasDe(corDaLuva(cor1, cor2)), LUVA())); luvas.name = "luvas"; maos.add(luvas);
   let aro = null; if (!kt.volante) { aro = solta(new THREE.Mesh(g.aro, CARBONO())); aro.name = "luvas-aro"; maos.add(aro); }
   const agit = 0.7 + r() * 0.7; // quão mexida é a cabeça deste piloto (uns são mais calmos)
   const p = {
@@ -165,7 +187,7 @@ function posicionarMaos(p, ang, tremX = 0, tremY = 0) {
   const c = Math.cos(ang), s = Math.sin(ang), L1 = OSSO.cima, L2 = OSSO.baixo;
   for (let i = 0; i < 2; i++) {
     const lado = i ? 1 : -1, hx = lado * MAO.x, hy = MAO.y; // a luva no quadro do volante → no quadro do carro (gira em z)
-    _h.set(p.centro.x + tremX + hx * c - hy * s, p.centro.y + tremY + hx * s + hy * c, p.centro.z + MAO.z);
+    _h.set(p.centro.x + tremX + hx * c - hy * s, p.centro.y + tremY + hx * s + hy * c, p.centro.z + MAO.z + PUNHO); // o pulso: o antebraço termina no punho escuro da luva
     _s.set(lado * OMBRO.x, OMBRO.y, OMBRO.z);
     _d.subVectors(_h, _s); const dist = _d.length() || 1e-4; _d.divideScalar(dist);
     const alcance = Math.min(dist, (L1 + L2) * 0.999), a = (L1 * L1 - L2 * L2 + alcance * alcance) / (2 * alcance), alt = Math.sqrt(Math.max(0, L1 * L1 - a * a));
