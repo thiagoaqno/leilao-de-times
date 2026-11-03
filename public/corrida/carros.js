@@ -48,12 +48,13 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
     for (const [r, l, c, o] of [[0.13, 0.9, 0xff7a1a, 0.75], [0.07, 0.6, 0xfff07a, 0.95]]) { const m = new THREE.Mesh(new THREE.ConeGeometry(r, l, 10), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending })); m.rotation.x = Math.PI / 2; m.position.z = l / 2; f.add(m); }
     chamas.push(f);
   }
-  // Lanterna central com matriz de LEDs; sem luz dinâmica por carro.
+  // A lanterna de chuva do F1 atual: uma faixa VERTICAL fina de LEDs vermelhos no meio da traseira (2 colunas × 9), numa base preta estreita;
+  // sem luz dinâmica por carro. (Antes era uma placa quadrada de 5 × 4, que não parecia a do carro de verdade.)
   const lanterna = new THREE.Group(); lanterna.position.set(0, 0.57, 2.23); kt.g.add(lanterna); lanterna.scale.setScalar(0.72); lanterna.visible = false;
-  const suporte = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.25, 0.08), new THREE.MeshBasicMaterial({ color: 0x101216 })); lanterna.add(suporte);
+  const suporte = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.36, 0.07), new THREE.MeshBasicMaterial({ color: 0x101216 })); lanterna.add(suporte);
   const ledMat = new THREE.MeshBasicMaterial({ color: 0xff2418, toneMapped: false });
-  const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.045, 0.045, 0.018), ledMat, 20), matriz = new THREE.Object3D();
-  for (let i = 0; i < 20; i++) { matriz.position.set((i % 5 - 2) * 0.057, (Math.floor(i / 5) - 1.5) * 0.057, 0.05); matriz.updateMatrix(); leds.setMatrixAt(i, matriz.matrix); }
+  const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.03, 0.026, 0.016), ledMat, 18), matriz = new THREE.Object3D();
+  for (let i = 0; i < 18; i++) { matriz.position.set((i % 2 - 0.5) * 0.036, (Math.floor(i / 2) - 4) * 0.036, 0.042); matriz.updateMatrix(); leds.setMatrixAt(i, matriz.matrix); }
   lanterna.add(leds);
   // Discos dianteiros ficam incandescentes sob frenagem forte e esfriam progressivamente.
   const freios = new THREE.Group(); kt.g.add(freios); freios.visible = false;
