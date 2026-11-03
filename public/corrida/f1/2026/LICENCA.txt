@@ -1,0 +1,12 @@
+carro.glb e carro-leve.glb: "2026 Audi R26", modelo 3D de Dave Love (Tyler_Dave), licença CC-BY-4.0
+https://creativecommons.org/licenses/by/4.0/
+Fonte: https://sketchfab.com/3d-models/2026-audi-r26-32bf228264b047669b100b0f1b8769ac
+
+Mudanças feitas aqui (o modelo foi adaptado):
+- a malha foi simplificada (carro.glb com ~78 mil triângulos; carro-leve.glb, para os carros dos outros, com ~22 mil), as texturas
+  foram reduzidas e convertidas para WebP, com compressão meshopt e posições quantizadas;
+- na carga do jogo (public/corrida/f1-2026.js) as malhas são juntadas por material, a escala é ajustada ao tamanho do carro do jogo,
+  as rodas são separadas para girar e esterçar e o flap da asa traseira é separado para o DRS;
+- os decalques de patrocinadores (sauber_decals, sw_decals) e o número 27 do modelo NÃO são usados: a pintura de cada equipe, com os
+  patrocínios inventados do jogo, é desenhada por cima (public/corrida/f1-pintura.js);
+- as letras do pneu foram retiradas e o pneu ganhou a faixa colorida do composto.
