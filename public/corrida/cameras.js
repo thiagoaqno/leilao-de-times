@@ -142,9 +142,10 @@ export function quadroCamera(R, o) {
   return mode;
 }
 
-// o quanto do tremor de velocidade vale (0 a 1): abaixo de 250 km/h quase nada, só uma vibração bem leve; acima, sobe até o de antes, que só aparece bem rápido
-// (em 300 km/h). A velocidade em km/h é `v * 0.75` (v em u/s). Batidas (`R.shake`) e fora da pista não passam por aqui.
-const tremorDaVelocidade = (v) => { const kmh = Math.abs(v || 0) * 0.75, b = Math.min(kmh, 250) / 250, leve = 0.06 * b * b, t = lim((kmh - 250) / 50, 0, 1); return leve + (1 - leve) * t * t; };
+// o quanto do tremor de velocidade vale (0 a 1): abaixo de 200 km/h quase nada, só uma vibração bem leve; acima, sobe até o de antes, que chega inteiro
+// em 280 km/h. A velocidade em km/h é `v * 0.75` (v em u/s). Batidas (`R.shake`) e fora da pista não passam por aqui.
+const TREME_DE = 200, TREME_ATE = 280; // km/h
+const tremorDaVelocidade = (v) => { const kmh = Math.abs(v || 0) * 0.75, b = Math.min(kmh, TREME_DE) / TREME_DE, leve = 0.06 * b * b, t = lim((kmh - TREME_DE) / (TREME_ATE - TREME_DE), 0, 1); return leve + (1 - leve) * t * t; };
 
 // dentro do carro (cockpit, onboard e bico): a câmera anda com o carro; na subida a vista levanta e na descida abaixa
 function pov(x, p) {
