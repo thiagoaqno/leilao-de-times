@@ -21,8 +21,8 @@ const PISTAS = {
       [0, 1, 0, 1, 1], // a rua toda: guard-rail colado na borda do asfalto (o lado do corredor dos boxes fica sem muro: a mureta do box é da física dos boxes)
       [0.925, 0.0592, 0, 12, 40], // a reta dos boxes e do pórtico: a parte mais larga da volta
       [0.0605, 0.0765, "fora", 44, 12], // curva 1, Sainte Dévote: o escape de asfalto em frente, do lado de fora (com os blocos Tecpro)
-      [0.25, 0.3, 0, -10, 30], // curvas 3 e 4, Massenet e Casino: a rua mais estreita da volta
-      [0.328, 0.368, 0, -10, 30], // curva 5, Mirabeau Haute: estreita
+      [0.25, 0.3, 0, -6, 30], // curvas 3 e 4, Massenet e Casino: a rua mais estreita da volta
+      [0.328, 0.368, 0, -6, 30], // curva 5, Mirabeau Haute: estreita
       [0.3395, 0.356, "fora", 26, 12], // e o escape curto de asfalto do lado de fora dela
       [0.624, 0.641, 1, 52, 10], // a saída do túnel e a Nouvelle Chicane (curvas 10 e 11): o escape grande de asfalto do lado de fora da primeira curva, por onde se corta a chicane
       [0.652, 0.708, 0, 6, 30], // o cais do porto: mais larga
