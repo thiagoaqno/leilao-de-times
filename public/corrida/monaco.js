@@ -9,6 +9,8 @@ import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, afastarMuro, NIVE
 import { lerPredios, indiceDePredios, predios, adensarRua } from "./kit/monaco/predios.js";
 import { marcosMonaco } from "./kit/monaco/marcos.js";
 import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
+import { escapesMonaco, noEscape } from "./kit/monaco/escapes.js";
+import { arcoSainteDevote, predioAnthonyNoghes } from "./kit/monaco/pontos.js";
 import { tecpro, telaos, largada, cais, fonte, cruzeiros, muroDeArrimo } from "./kit/monaco/detalhes.js";
 import { tunel } from "./kit/monaco/tunel.js";
 import { paddockMonaco } from "./kit/monaco/paddock.js";
@@ -30,20 +32,23 @@ function arquibancadasMonaco(tr, add, predioEm) {
     const p = pts[i % n];
     if (quer === "terra") return -lado(i, "agua"); // o lado oposto ao da água (as arquibancadas do Tabac ficam do lado da Piscina, e o porto fica livre)
     if (quer === "agua") { const a = fundoMonaco(tr, p.x + p.nx * (L + 60), p.y + p.ny * (L + 60)), b = fundoMonaco(tr, p.x - p.nx * (L + 60), p.y - p.ny * (L + 60)); return a > b ? 1 : -1; }
+    if (quer === "dentro") return sinalDaCurva(pts, n, i % n); // por dentro da curva (a A1 de Sainte Dévote e a da Anthony Noghès)
     return -sinalDaCurva(pts, n, i % n);
   };
   const candidatos = [
     ["boxes", t.retaDosBoxes[0] + 0.02, t.retaDosBoxes[1] - 0.012, "fora-da-reta", 4], // a reta dos boxes, do lado de fora do corredor (com a pista estreita ela cabe)
     ["cais", t.cais[0], Math.min(t.cais[1], c.tabac - 0.025), "agua", 3], // o cais do porto, de frente para os iates
-    ["sainteDevote", c.sainteDevote - 0.01, c.sainteDevote + 0.015, "fora", 4],
+    ["sainteDevote", c.sainteDevote - 0.012, c.sainteDevote + 0.016, "dentro", 2, 12], // a arquibancada A1, por dentro da curva 1 (por fora ficam o escape e a capela)
+    ["chicane", t.nouvelleChicane[0] - 0.012, t.nouvelleChicane[1] + 0.014, "agua", 3], // as arquibancadas do porto na Nouvelle Chicane, de frente para os iates
     ["tabac", c.tabac - 0.012, c.tabac + 0.012, "terra", 3], // do lado de dentro, o da Piscina (K): o lado da água continua livre, com o guard-rail baixo
     ["piscine", c.piscine1 - 0.01, c.piscine2 + 0.012, "agua", 3],
-    ["rascasse", c.rascasse - 0.012, c.anthonyNoghes + 0.008, "fora", 4],
+    ["rascasse", c.rascasse - 0.012, c.anthonyNoghes - 0.012, "fora", 3],
+    ["anthonyNoghes", c.anthonyNoghes - 0.014, c.anthonyNoghes + 0.016, "dentro", 4], // a arquibancada da última curva, por dentro, com o prédio atrás (kit/monaco/pontos.js)
   ];
   const out = [];
-  for (const [nome, de, ate, quer, degraus] of candidatos) {
+  for (const [nome, de, ate, quer, degraus, minimo = 22] of candidatos) { // (minimo: o pedaço livre mais curto que ainda vale uma arquibancada, em pontos)
     const i0 = Math.floor(de * n); let i1 = Math.floor(ate * n); if (i1 < i0) i1 += n; // (a reta dos boxes cruza a linha de chegada)
-    if (i1 - i0 < 22) continue;
+    if (i1 - i0 < minimo) continue;
     const meio = Math.floor((i0 + i1) / 2), l = quer === "fora-da-reta" ? (tr.t.boxes?.lado ? -tr.t.boxes.lado : -1) : lado(meio, quer);
     let a = -1, melhor = null; // só o pedaço livre mais comprido de cada candidato (menos malhas)
     const livre = (i) => {
@@ -57,7 +62,7 @@ function arquibancadasMonaco(tr, add, predioEm) {
     for (let i = i0; i <= i1 + 1; i++) {
       const ok = i <= i1 && livre(i);
       if (ok && a < 0) a = i;
-      if ((!ok || i === i1 + 1) && a >= 0) { if (i - 1 - a >= 22 && (!melhor || i - 1 - a > melhor.ate - melhor.de)) melhor = { de: a, ate: i - 1 }; a = -1; }
+      if ((!ok || i === i1 + 1) && a >= 0) { if (i - 1 - a >= minimo && (!melhor || i - 1 - a > melhor.ate - melhor.de)) melhor = { de: a, ate: i - 1 }; a = -1; }
     }
     if (melhor) out.push({ de: melhor.de / n, ate: melhor.ate / n, lado: l, degraus, cor: "#1f5fbf", encosto: "#3f86e8", cobertura: degraus > 3, nome }); // (as de 3 degraus ficam abertas)
   }
@@ -76,9 +81,10 @@ export function cenarioMonaco(tr, ctx) {
   // onde os enfeites de vida.js e do kit não entram: na água, dentro de um prédio, em cima do túnel, no que já foi montado e grudados no guard-rail
   tr.ocupado = (x, y, i) => {
     if ((i != null && tr.coberto?.(i)) || fundoMonaco(tr, x, y) > -10 || predioEm(x, y, 3) || reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr)) return true;
-    return tr.distAt(x, y) < L + 8;
+    return tr.distAt(x, y) < L + 8 || noEscape(tr, x, y, 6);
   };
   mar(tr, ctx);
+  escapesMonaco(tr, add); // o asfalto cinza dos escapes de Sainte Dévote, do Mirabeau e da Nouvelle Chicane (os mesmos trechos de `muros`)
   tunel(tr, add);
   fairmontSobreOTunel(tr, add); // o hotel Fairmont, largo e curvo, sobre a entrada do túnel
   pontePortier(tr, add, hAt, predioEm); // o viaduto da Boulevard du Larvotto, por cima da pista logo antes do Portier (antes das árvores e da vida: reserva o lugar)
@@ -87,6 +93,7 @@ export function cenarioMonaco(tr, ctx) {
   porto(tr, add, ctx);
   piscinas(tr, add, ctx);
   arquibancadasMonaco(tr, add, predioEm);
+  arcoSainteDevote(tr, add); predioAnthonyNoghes(tr, add); // o arco de patrocínio sobre a pista antes da curva 1 e o prédio atrás da arquibancada da Anthony Noghès
   arvores(tr, add, { hAt, predioEm });
   paddockMonaco(tr, add, hAt); // as hospitalidades das equipes, as tendas de apoio e o paddock flutuante (substituem as tendas genéricas)
   grampoMonaco(tr, add, hAt, predioEm); // o canteiro com palmeiras e os postes verdes do grampo do Fairmont
@@ -94,7 +101,7 @@ export function cenarioMonaco(tr, ctx) {
   tr.contextoVidaMonaco = { lista, predioEm, hAt };
   const f = D.frac, c = f.curvas, tc = f.trechos;
   atracados(tr, ctx, tc.cais);
-  tecpro(tr, add, [[c.sainteDevote + 0.006, c.sainteDevote + 0.028, "fora"], [tc.nouvelleChicane[0] - 0.012, tc.nouvelleChicane[1] + 0.012, "fora"], [c.rascasse - 0.01, c.rascasse + 0.008, "fora"], [c.mirabeauHaute - 0.006, c.mirabeauHaute + 0.014, "fora"]]); // (só nas áreas de escape: Sainte Dévote, chicane do porto, Rascasse e Mirabeau)
+  tecpro(tr, add, [[0.0635, 0.0745, "fora"], [0.3415, 0.354, "fora"], [0.629, 0.64, 1]]); // (só nos escapes de asfalto, na frente da barreira: Sainte Dévote, Mirabeau e a saída do túnel / Nouvelle Chicane; `muros` em pistas.js)
   telaos(tr, add, [0.03, c.casino, c.mirabeauHaute + 0.012, tc.cais[0] + 0.03, c.rascasse - 0.02]);
   largada(tr, add); cais(tr, add, tc.cais); fonte(tr, add, hAt); cruzeiros(tr, add);
   tr.marcosPos = D.marcos; // (para conferir no navegador: __corrida.race.tr.marcosPos)

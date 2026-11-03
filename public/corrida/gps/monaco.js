@@ -56,6 +56,7 @@ export const GP_MONACO = {
       { de: 0.9, ate: F.trechos.retaDosBoxes[0], painel: false, alto: 8 },
     ],
   },
+  murosProprios: true, // a barreira é o guard-rail de Mônaco (`guardrail` acima), na distância de `muros` (pistas.js); o muro genérico de pista.js não entra
   depois: (tr, ctx) => { boxesMonaco(tr, ctx.add); vidaMonaco(tr, ctx); }, // o pit lane de Mônaco (terraços, toldos, placas) e a vida: a galera, os fiscais, as bandeiras, os barcos, os guindastes (depois do ambiente e do vidaGP)
   cenario: (tr, ctx) => cenarioMonaco(tr, ctx), // o porto, a piscina, as arquibancadas, o túnel, os prédios reais, os marcos, o Rochedo e as árvores
   boxes: { garagens: false, mureta: true }, // só o corredor, a mureta e os quadrados pintados: as garagens, os terraços e os toldos são de Mônaco (kit/monaco/boxes.js) // o prédio das garagens fica do lado externo da nova faixa de parada

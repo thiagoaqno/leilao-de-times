@@ -10,7 +10,8 @@ export function invasoes(THREE, tr, { folga = 10, altMin = 2.2, altMax = 24, ign
   if (tr.t.espaco) return []; // o Arco-íris é uma fita no espaço, com a beirada rente
   const { pts, n, W } = tr, raio = W / 2 + folga, C = 64, grade = new Map();
   // pista que estreita por barreiras explícitas (Baku, `muros` com recuo negativo): ali a pista vai só até a face da barreira (e a barreira, `-muro`, é a que a física faz o carro encostar)
-  const raioDe = (i, x, y) => { const r = tr.murosEscape; if (!r) return raio; const p = pts[i], lado = (x - p.x) * p.nx + (y - p.y) * p.ny >= 0 ? 1 : -1, v = r[lado][i]; return v < 0 ? W / 2 + v : raio; };
+  const raioDe = (i, x, y) => { const r = tr.murosEscape; if (!r) return raio; const p = pts[i], lado = (x - p.x) * p.nx + (y - p.y) * p.ny >= 0 ? 1 : -1, v = r[lado][i]; if (tr.t.walls) { let m = v || Infinity; for (let k = -10; k <= 10; k += 5) { const u = r[lado][(i + k + n) % n]; if (u) m = Math.min(m, u); } return m === Infinity ? raio : Math.min(raio, W / 2 + m - 3); } // (rua com guard-rail e `muros`, Mônaco: o que é sólido só não pode ficar antes da face da barreira, colada ao asfalto, ou dentro dela, onde a pista estreita; a cerca e os postes sobem em cima dela, e a rampa entre dois trechos tem a menor das distâncias vizinhas)
+    return v < 0 ? W / 2 + v : raio; };
   const chave = (cx, cy) => cx * 100003 + cy;
   pts.forEach((p, i) => { const k = chave(Math.floor(p.x / C), Math.floor(p.y / C)); (grade.get(k) || grade.set(k, []).get(k)).push(i); });
   const perto = (x, y) => { // pontos da linha central a menos de `raio` (x, y): [{ i, d }]

@@ -111,12 +111,12 @@ export const poligonoDentro = (P, x, z) => { let c = false; for (let i = 0, j = 
 export function afastarMuro(tr, geo, i0, raio) {
   const pos = geo.attributes.position, { pts, n } = tr;
   for (let k = 0; k < pos.count; k++) {
-    const i = i0 + (k >> 1);
+    const i = i0 + (k >> 1), R = typeof raio === "function" ? raio(i) : raio; // (`raio` pode variar por ponto: a barreira de `muros` fica a distâncias diferentes do eixo)
     for (let volta = 0; volta < 3; volta++) {
       let x = pos.getX(k), z = pos.getZ(k), mexeu = false;
       for (let j = i - 90; j <= i + 90; j++) {
         const q = pts[((j % n) + n) % n], dx = x - q.x, dz = z - q.y, d = Math.hypot(dx, dz);
-        if (d < raio - 0.01 && Math.abs(q.h - (pos.getY(k) - 10)) < 40) { x = q.x + (dx / (d || 1)) * raio; z = q.y + (dz / (d || 1)) * raio; mexeu = true; }
+        if (d < R - 0.01 && Math.abs(q.h - (pos.getY(k) - 10)) < 40) { x = q.x + (dx / (d || 1)) * R; z = q.y + (dz / (d || 1)) * R; mexeu = true; }
       }
       if (!mexeu) break; pos.setX(k, x); pos.setZ(k, z);
     }

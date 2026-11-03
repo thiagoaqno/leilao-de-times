@@ -28,13 +28,13 @@ export function ambienteGP(tr, add, { marcas = PATROCINIO.slice(0, 9), posto = "
   // a entrada e a saída do corredor dos boxes (regras de F1) ficam livres de painel e cerca
   const bx = tr.t.boxes && window.F1Regras ? window.F1Regras.corredor(tr.t, n, W) : null;
   const naRampa = (i, lado) => { if (!bx || lado !== bx.lado) return false; const r = (((i - bx.i0) % n) + n) % n, ra = window.F1Regras.RAMPA + 3; return r <= (tr.t.muro ? bx.len + 3 : ra) || (r >= bx.len - ra && r <= bx.len + 3); }; // rua com guard-rail: o corredor inteiro fica livre, o guard-rail dá lugar à mureta
-  function lugar(i, lado, lat = L + 1, raio = 12) {
+  function lugar(i, lado, lat = tr.t.muros ? tr.latMuro(lado, i) + 1 : L + 1, raio = 12) { // (com `muros`, Mônaco: a barreira tem a distância de cada trecho, e o que sobe nela acompanha)
     if (naRampa(i, lado)) return null;
     const p = pts[(i + n) % n], x = p.x + p.nx * lado * lat, z = p.y + p.ny * lado * lat;
     if (tr.noCorredor?.(x, z)) return null;
     // Distância exata a qualquer ponto do traçado, inclusive o trecho vizinho de um grampo e o outro lado de uma curva fechada
     // (nada pode estar mais perto da pista do que o deslocamento desenhado `lat`; a peça fica a `raio` do asfalto, no mínimo).
-    const minimo = Math.max(lat - 3, W / 2 + raio);
+    const minimo = tr.t.muros ? lat - 3 : Math.max(lat - 3, W / 2 + raio);
     if (tr.distAt(x, z) < minimo || tr.distAt(x + p.tx * 16, z + p.ty * 16) < minimo || tr.distAt(x - p.tx * 16, z - p.ty * 16) < minimo) return null; // e as pontas das peças de 32
     return { p, x, z, h: p.h, ry: Math.atan2(-p.nx * lado, -p.ny * lado) };
   }

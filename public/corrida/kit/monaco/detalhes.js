@@ -25,7 +25,7 @@ export function tecpro(tr, add, trechos) {
     for (let i = i0; i <= i1; i += 4) {
       const p = pts[i % n];
       for (let fila = 0; fila < 2; fila++) {
-        const d = L + 8 + fila * 11, [x, z] = lateral(p, lado, d);
+        const d = tr.t.muros ? tr.latMuro(lado, i) - 7 - fila * 11 : L + 8 + fila * 11, [x, z] = lateral(p, lado, d); // (com `muros` os blocos ficam NA FRENTE da barreira do escape, não atrás dela)
         if (!livre(tr, x, z, 14) || ocupado(tr, x, z) || tr.distAt(x, z) < d - 4) continue;
         const y = tr.chao(x, z) - 1.5, ry = Math.atan2(p.tx, p.ty) + Math.PI / 2;
         for (let andar = 0; andar < 2; andar++) { (fila === 0 ? azuis : brancos).push({ x, y: y + 4.5 + andar * 9, z, sx: 8.6, sy: 8.4, sz: 22, r: ry - Math.PI / 2 }); vermelhos.push({ x, y: y + 4.5 + andar * 9, z, sx: 8.9, sy: 2.4, sz: 22.3, r: ry - Math.PI / 2 }); }

@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import { canvasTex } from "../../cena.js";
 import { D, fundoMonaco, poligonoDentro } from "./mundo.js";
+import { noEscape } from "./escapes.js";
 
 const M_ALTURA = D.projecao.k * 1.1; // unidades de altura por metro de parede (a escala da planta; o morro é mais achatado)
 const JANELA = 3.5 * D.projecao.k, ANDAR = 3.1 * D.projecao.k * 1.1; // o módulo da fachada: 3,5 m de largura e 3,1 m de altura, em unidades do mundo
@@ -55,7 +56,7 @@ export function lerPredios(tr) {
     if (area2(P) < 0) P.reverse(); // sentido fixo: as normais das paredes saem sempre para fora
     // nenhum prédio toca a pista nem a faixa do muro e da calçada: confere os vértices E as arestas (a cada 8 unidades) contra a linha central
     let dentroDaPista = false;
-    for (let i = 0; i < P.length && !dentroDaPista; i++) { const a = P[i], c = P[(i + 1) % P.length], l = Math.hypot(c[0] - a[0], c[1] - a[1]), passos = Math.max(1, Math.ceil(l / 8)); for (let s = 0; s <= passos; s++) { const t = s / passos; if (tr.distAt(a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t) < tr.W / 2 + tr.t.wall + 8) { dentroDaPista = true; break; } } }
+    for (let i = 0; i < P.length && !dentroDaPista; i++) { const a = P[i], c = P[(i + 1) % P.length], l = Math.hypot(c[0] - a[0], c[1] - a[1]), passos = Math.max(1, Math.ceil(l / 8)); for (let s = 0; s <= passos; s++) { const t = s / passos; const qx = a[0] + (c[0] - a[0]) * t, qz = a[1] + (c[1] - a[1]) * t; if (tr.distAt(qx, qz) < tr.W / 2 + tr.t.wall + 8 || noEscape(tr, qx, qz, 8)) { dentroDaPista = true; break; } } }
     if (dentroDaPista) { descartados++; continue; }
     let cx = 0, cz = 0, x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const [x, z] of P) { cx += x; cz += z; x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
     cx /= P.length; cz /= P.length;
@@ -84,7 +85,7 @@ export function adensarRua(tr, lista) {
     let livre = true;
     for (let a = -largura / 2; a <= largura / 2 && livre; a += 7) for (let b = perto; b <= perto + profundidade && livre; b += 7) {
       const [x, z] = ponto(a, b);
-      if (tr.distAt(x, z) < L + 6 || fundoMonaco(tr, x, z) > -10 || tr.noCorredor?.(x, z) || existente(x, z, 8) || novos.some((q) => Math.hypot(q.cx - x, q.cz - z) < 48) || marcos.some((q) => Math.hypot(q[0] - x, q[1] - z) < 100)) livre = false;
+      if (tr.distAt(x, z) < L + 6 || noEscape(tr, x, z, 10) || fundoMonaco(tr, x, z) > -10 || tr.noCorredor?.(x, z) || existente(x, z, 8) || novos.some((q) => Math.hypot(q.cx - x, q.cz - z) < 48) || marcos.some((q) => Math.hypot(q[0] - x, q[1] - z) < 100)) livre = false;
     }
     if (!livre) continue;
     if (area2(P) < 0) P.reverse();
