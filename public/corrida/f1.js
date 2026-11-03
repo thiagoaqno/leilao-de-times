@@ -5,56 +5,83 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
-import { temDesenho, folhaDaEquipe, corDoNumero, texturaDosDigitos, logosProntos, FAIXAS,
-  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
+import { temDesenho, folhaDaEquipe, corDoNumero, texturaDosDigitos, logosProntos, FAIXAS, aroDaRoda,
+  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, SOL_FRAG_DECL, SOL_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
+import { construir2026 } from "./f1-2026.js";
 
 // combinações de cor das equipes de F1 (ficam em pistas.js: o servidor confere a escolha)
 export const PINTURAS = window.Pistas.MODS.pintura;
-export const TAM = 4.35; // comprimento do modelo, em metros
+export const TAM = 4.35; // comprimento do modelo, em metros (todo modelo é posto nesta medida: a física e as câmeras não mudam)
 
-// dois modelos: o completo (o seu carro e a garagem) e um leve, com ~1/5 dos triângulos (os carros dos outros)
+// Os carros por ano: cada um tem o modelo completo (o seu carro e a garagem) e um leve, com bem menos triângulos (os carros dos outros).
+// `construir` (só os modelos novos) transforma o arquivo em poucas peças prontas (f1-2026.js); sem ele é o carro clássico, de pintura em máscara.
+// Para a sala escolher o ano: `usarModelo(2026)` antes de montar os carros (o padrão da corrida é o 2026; `?carro=classico` na página força o antigo).
+export const MODELOS = {
+  2026: { nome: "Audi R26 (2026)", carro: "/corrida/f1/2026/carro.glb", leve: "/corrida/f1/2026/carro-leve.glb", construir: construir2026 },
+  classico: { nome: "Clássico 88", carro: "/corrida/f1/f1.glb", leve: "/corrida/f1/f1-leve.glb" },
+};
+export const MODELO_PADRAO = 2026;
+let atual = (() => { try { const q = new URLSearchParams(location.search).get("carro"); return q && MODELOS[q] ? q : MODELO_PADRAO; } catch (e) { return MODELO_PADRAO; } })();
 const gl = new GLTFLoader(); gl.setMeshoptDecoder(MeshoptDecoder);
-const carregar = (arq) => { const M = { cena: null, falhou: false, espera: [] }; M.pronto = gl.loadAsync(arq).then((g) => { M.cena = g.scene; for (const k of M.espera.splice(0)) montarCorpo(k); }).catch((e) => { M.falhou = true; console.warn("Corrida: o carro não carregou", arq, e); }); return M; };
-const MODELOS = { completo: carregar("/corrida/f1/f1.glb"), leve: carregar("/corrida/f1/f1-leve.glb") };
-export const f1Pronto = Promise.all([MODELOS.completo.pronto, MODELOS.leve.pronto, logosProntos]); // (os logos das equipes entram na pintura: esperam também)
+const CARGAS = new Map(); // "modelo|leve" -> { cena, dados, falhou, espera, pronto }: cada arquivo carrega uma vez, e só quando alguém pede
+function carga(id, leve) {
+  const chave = id + (leve ? "|leve" : ""); if (CARGAS.has(chave)) return CARGAS.get(chave);
+  const def = MODELOS[id], arq = leve ? def.leve : def.carro, M = { id, def, leve, cena: null, dados: null, falhou: false, espera: [] };
+  M.pronto = gl.loadAsync(arq).then((g) => {
+    if (def.construir) M.dados = def.construir(g.scene, TAM, leve);
+    M.cena = g.scene; for (const k of M.espera.splice(0)) montarCorpo(k);
+  }).catch((e) => { M.falhou = true; console.warn("Corrida: o carro não carregou", arq, e); });
+  CARGAS.set(chave, M); return M;
+}
+export const modeloAtual = () => atual;
+export function usarModelo(id) { if (MODELOS[id]) atual = id; }
+export const f1Pronto = Promise.all([carga(atual, false).pronto, carga(atual, true).pronto, logosProntos]); // (os logos das equipes entram na pintura: esperam também)
 
 // a pintura: troca a cor que vem da máscara (mapa) pelas duas cores do carro. Com `equipe` (uma das pinturas de equipe de
 // f1-pintura.js) o corpo ganha, no lugar das duas cores, a folha de pintura da equipe projetada pela posição de cada ponto
 // (o carbono da máscara continua preto) e o número do piloto; a folha é uma só por equipe e vem do cache.
-function pintura(base, cor1, cor2, equipe, numero, fundo = false) {
-  const m = base.clone(); m.color.set(0xffffff);
+// `novo` (o carro de 2026, f1-2026.js): `base` é o material do carbono (sem textura) e `numPos` onde ficam os números; sem equipe, a cor principal em tudo
+function pintura(base, cor1, cor2, equipe, numero, fundo = false, novo = false, numPos = null) {
+  const m = base.clone(); if (!novo) m.color.set(0xffffff);
   const liv = equipe && folhaDaEquipe(equipe);
   m.userData.cores = { cor1: { value: new THREE.Color(cor1) }, cor2: { value: new THREE.Color(cor2) } };
-  if (liv) m.userData.liv = { liv: { value: liv }, dig: { value: texturaDosDigitos() }, numero: { value: new THREE.Vector2(-1, -1) }, corNum: { value: new THREE.Color(corDoNumero(equipe)) } };
+  if (liv) m.userData.liv = { liv: { value: liv }, dig: { value: texturaDosDigitos() }, numero: { value: new THREE.Vector2(-1, -1) }, corNum: { value: new THREE.Color(corDoNumero(equipe)) }, numPos: { value: new THREE.Vector4(...(numPos || [3.2, 0.55, 4.275, 0.72])) } };
+  const def = novo ? "#define NOVO\n" : "";
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.cores);
     if (liv) {
       Object.assign(sh.uniforms, m.userData.liv);
-      sh.vertexShader = LIV_VERT_DECL + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>" + LIV_VERT_MAIN);
-      sh.fragmentShader = (fundo ? "#define FUNDO\n" : "") + LIV_FRAG_DECL + sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>" + LIV_FRAG_MAIN);
+      sh.vertexShader = def + LIV_VERT_DECL + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>" + LIV_VERT_MAIN);
+      sh.fragmentShader = def + (fundo ? "#define FUNDO\n" : "") + LIV_FRAG_DECL + sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>" + LIV_FRAG_MAIN);
+      return;
+    }
+    if (novo) {
+      sh.vertexShader = def + LIV_VERT_DECL + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>" + LIV_VERT_MAIN);
+      sh.fragmentShader = SOL_FRAG_DECL + sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>" + SOL_FRAG_MAIN);
       return;
     }
     sh.fragmentShader = "uniform vec3 cor1;\nuniform vec3 cor2;\n" + sh.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>
       { vec3 mk = diffuseColor.rgb; diffuseColor.rgb = cor1 * mk.r + cor2 * mk.g + vec3(0.012) * mk.b; }`);
   };
   if (fundo) { m.metalness = 0; m.metalnessMap = null; } // o painel pintado não é metal (sem reflexo, o metal ficaria cinza)
-  m.customProgramCacheKey = () => (liv ? (fundo ? "f1-livery-fundo" : "f1-livery") : "f1-pintura");
+  m.customProgramCacheKey = () => (novo ? (liv ? "f1-novo-livery" : "f1-novo-solido") : liv ? (fundo ? "f1-livery-fundo" : "f1-livery") : "f1-pintura");
   if (liv) setNumero(m, numero);
   return m;
 }
 // Os slicks têm tons discretamente diferentes; só o pneu de chuva tem sulcos.
 const TOM_PNEU = { macio: -0.06, medio: 0, duro: 0.05, chuva: -0.02 };
 // o pneu: faixa e acabamento mudam por uniform, sem carregar textura nem recompilar
-function pneuMat(base, composto) {
+function pneuMat(base, composto, depois = "map_fragment") {
   const m = base.clone();
   m.roughness = 0.92; m.metalness = 0;
   m.userData.faixa = { faixa: { value: new THREE.Color(FAIXAS[composto] || "#ffffff") }, faixaOn: { value: FAIXAS[composto] ? 1 : 0 }, pneuChuva: { value: composto === "chuva" ? 1 : 0 }, pneuTom: { value: TOM_PNEU[composto] || 0 } };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.faixa);
     sh.vertexShader = PNEU_VERT_DECL + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>" + PNEU_VERT_MAIN);
-    sh.fragmentShader = PNEU_FRAG_DECL + sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>" + PNEU_FRAG_MAIN);
+    // (o carro de 2026 pinta a roda com cor por vértice, que entra em color_fragment: a faixa tem de vir depois dela)
+    sh.fragmentShader = PNEU_FRAG_DECL + sh.fragmentShader.replace(`#include <${depois}>`, `#include <${depois}>` + PNEU_FRAG_MAIN);
   };
-  m.customProgramCacheKey = () => "f1-pneu";
+  m.customProgramCacheKey = () => "f1-pneu" + depois;
   return m;
 }
 // o número do piloto (1 ou 2 dígitos) vira os dois dígitos do shader (dezena, unidade; -1 = nenhum)
@@ -64,18 +91,59 @@ function setNumero(m, n) {
 }
 export function coresDa(pint, corPiloto) { const p = PINTURAS[pint] || PINTURAS.propria; return [p.c || corPiloto, p.c2]; }
 
-export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4", leve = false, equipe = null, numero = null, composto = null } = {}) {
+export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4", leve = false, equipe = null, numero = null, composto = null, modelo = atual } = {}) {
   const g = new THREE.Group(), carro = new THREE.Group(); g.add(carro);
   const k = { g, carro, rodas: [], volante: null, mats: [], pintura: null, piloto: new THREE.Object3D(), olho: { z: 0.3, y: 0.95 }, cores: [cor, cor2], equipe: equipe && temDesenho(equipe) ? equipe : null, numero, composto, pneu: null, escapamento: { z: 2.2, y: 0.42 } };
   // enquanto o modelo não chega, uma silhueta simples no lugar
   const prov = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, TAM), new THREE.MeshStandardMaterial({ color: cor, roughness: 0.5 })); prov.position.y = 0.35; prov.castShadow = true; carro.add(prov);
   k.prov = prov; k.mats.push(prov.material); k.pintura = prov.material;
-  const M = k.modelo = leve ? MODELOS.leve : MODELOS.completo;
+  const M = k.modelo = carga(MODELOS[modelo] ? modelo : atual, leve);
   if (M.cena) montarCorpo(k); else if (!M.falhou) M.espera.push(k);
   return k;
 }
+// o carro de 2026: as peças já vêm prontas de f1-2026.js (no quadro do carro); aqui cada uma ganha o seu material e, onde gira, o pivô
+function montarCorpoNovo(k) {
+  const D = k.modelo.dados, num = k.numero;
+  k.carro.remove(k.prov); k.prov.geometry.dispose();
+  const mats = new Map(), M = (nome, f) => { if (!mats.has(nome)) mats.set(nome, f()); return mats.get(nome); };
+  const dupla = (m) => { m.side = THREE.DoubleSide; return m; };
+  const carbono = () => dupla(new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.34, metalness: 0.1 }));
+  const mat = {
+    corpo: () => M("corpo", () => pintura(carbono(), k.cores[0], k.cores[1], k.equipe, num, false, true, D.numPos)),
+    detalhes: () => M("detalhes", () => { const m = D.mats.sauber_detail.clone(); m.metalness = Math.min(m.metalness, 0.4); return m; }),
+    mecanica: () => M("mecanica", () => { const m = D.mats.generics.clone(); m.metalness = Math.min(m.metalness, 0.4); return m; }),
+    miudezas: () => M("miudezas", () => dupla(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.25 }))),
+    luz: () => M("luz", () => { const m = D.mats.rear_light_2.clone(); m.metalness = 0; return m; }),
+    volante: () => M("volante", () => { const m = D.mats.audi_steeringwheel.clone(); m.metalness = 0; return m; }),
+    roda: () => M("roda", () => pneuMat(new THREE.MeshStandardMaterial({ vertexColors: true }), k.composto, "color_fragment")),
+  };
+  const peca = (nome, geo, material, pai = k.carro) => { const o = new THREE.Mesh(geo, material); o.name = nome; o.castShadow = true; o.receiveShadow = false; pai.add(o); return o; };
+  peca("corpo", D.corpo, mat.corpo());
+  if (D.detalhes) peca("detalhes", D.detalhes, mat.detalhes());
+  if (D.mecanica) peca("mecanica", D.mecanica, mat.mecanica());
+  if (D.miudezas) peca("miudezas", D.miudezas, mat.miudezas());
+  if (D.luz) peca("luz", D.luz, mat.luz());
+  // o flap da asa traseira: gira na dobradiça com o DRS (a mesma pintura do corpo)
+  if (D.flap) { const piv = new THREE.Group(); piv.position.copy(D.flap.pos); k.carro.add(piv); peca("flap", D.flap.geo, mat.corpo(), piv); k.flap = piv; k.drsA = 0; k.drsMax = D.drs; }
+  // as rodas: cada uma inteira (pneu, aro e disco); "gira" roda pela distância andada e, nas da frente, "esterca" vira com o volante
+  for (const r of D.rodas) {
+    const esterca = new THREE.Group(); esterca.position.copy(r.centro); k.carro.add(esterca);
+    const gira = new THREE.Group(); esterca.add(gira); peca("roda", r.geo, mat.roda(), gira);
+    k.rodas.push({ gira, esterca: r.frente ? esterca : null, r: r.r });
+  }
+  // o volante (com as luzes e os mostradores): vira em torno do eixo z
+  if (D.volante) {
+    const piv = new THREE.Group(); piv.position.copy(D.volante.centro); k.carro.add(piv); k.volante = piv;
+    peca("volante", D.volante.geo, mat.volante(), piv); if (D.volanteDet) peca("volante-det", D.volanteDet, mat.miudezas(), piv);
+    k.olho = { z: D.volante.centro.z + D.olho.dz, y: D.volante.centro.y + D.olho.dy }; // atrás do volante, na altura do capacete
+  }
+  k.mats = [...mats.values()]; k.pintura = mats.get("corpo"); k.pneu = mats.get("roda") || null;
+  k.lanternaPos = D.lanterna || null; k.escapamento = D.escapamento; k.disco = D.disco;
+  k.aoMontar?.(k);
+}
 function montarCorpo(k) {
   if (k.solto) return;
+  if (k.modelo.dados) return montarCorpoNovo(k);
   k.carro.remove(k.prov); k.prov.geometry.dispose();
   const m = k.modelo.cena.clone(true); m.updateMatrixWorld(true);
   const caixa = new THREE.Box3().setFromObject(m), c0 = caixa.getCenter(new THREE.Vector3());
@@ -144,16 +212,7 @@ function montarFlap(k, m) {
 // a cada quadro: abre (rápido) ou fecha o flap conforme o DRS deste carro, com uma animação curta
 export function animarDrs(k, aberto, dt) {
   if (!k.flap) return; const alvo = aberto ? 1 : 0; if (k.drsA === alvo) return;
-  k.drsA += Math.sign(alvo - k.drsA) * Math.min(Math.abs(alvo - k.drsA), dt / 0.18); k.flap.rotation.x = -0.6 * k.drsA * k.drsA * (3 - 2 * k.drsA); // levanta a ponta de trás
-}
-// a posição de cada ponto da roda em relação ao eixo, em raios (1 = a borda do pneu): a faixa do composto é um anel nesse
-// espaço (o shader mede o comprimento do vetor em cada pixel, então o anel sai redondo mesmo com poucos vértices)
-function aroDaRoda(pos, idx) {
-  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
-  for (let q = 0; q < idx.length; q++) { const x = pos.getX(idx[q]), y = pos.getY(idx[q]), z = pos.getZ(idx[q]); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; }
-  const cy = (y0 + y1) / 2, cz = (z0 + z1) / 2, R = Math.max((y1 - y0) / 2, 1e-6), cx = (x0 + x1) / 2, rx = Math.max((x1 - x0) / 2, 1e-6), a = new Float32Array(pos.count * 2), lat = new Float32Array(pos.count);
-  for (let i = 0; i < pos.count; i++) { a[i * 2] = (pos.getY(i) - cy) / R; a[i * 2 + 1] = (pos.getZ(i) - cz) / R; lat[i] = (pos.getX(i) - cx) / rx; }
-  return { aro: new THREE.BufferAttribute(a, 2), lat: new THREE.BufferAttribute(lat, 1) };
+  k.drsA += Math.sign(alvo - k.drsA) * Math.min(Math.abs(alvo - k.drsA), dt / 0.18); k.flap.rotation.x = -(k.drsMax || 0.6) * k.drsA * k.drsA * (3 - 2 * k.drsA); // levanta a ponta de trás
 }
 // os atributos do corpo para a pintura de equipe: `pcar` = (x, y, s) no quadro do carro (s = distância desde a ponta do bico,
 // 0 a ~4,4) e `ncar` = a normal nesse quadro; feitos uma vez por malha (as cópias do carro dividem a geometria)

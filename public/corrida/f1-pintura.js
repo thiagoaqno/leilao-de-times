@@ -1,6 +1,8 @@
 // Corrida da Galera — a pintura das equipes no carro de F1 (f1.js monta o carro e usa isto).
 //
-// O modelo (f1/f1.glb) é um F1 antigo com UV de máscara, então as pinturas de equipe não ficam em cima do UV: cada
+// (Serve aos dois carros: o de 2026, f1-2026.js, usa a mesma folha e o mesmo shader com `NOVO`; as medidas abaixo valem para os dois, porque
+// todo modelo é posto no comprimento TAM de f1.js.)
+// O modelo clássico (f1/f1.glb) é um F1 antigo com UV de máscara, então as pinturas de equipe não ficam em cima do UV: cada
 // equipe tem UMA "folha" (um canvas de 1024x1152, feito uma vez e guardado: não é uma por carro) com o carro desenhado
 // em cinco vistas, e o shader do corpo projeta a folha na carroceria pela posição de cada ponto (3 projeções misturadas
 // pela normal). Quem pinta é a função `pintar` de cada equipe, em METROS do carro; o mesmo desenho vale nos dois lados.
@@ -436,16 +438,21 @@ export function texturaDosDigitos() {
 }
 
 // ---------------------------------------------------------------- o shader da pintura de equipe (corpo)
-export const LIV_VERT_DECL = "attribute vec3 pcar;\nattribute vec3 ncar;\nvarying vec3 vPc;\nvarying vec3 vNc;\n";
-export const LIV_VERT_MAIN = "\nvPc = pcar; vNc = ncar;";
+// (com NOVO, o carro de 2026: o atributo mcar diz quanto de cada ponto é pintura, 0 = carbono; ver f1-2026.js)
+export const LIV_VERT_DECL = "attribute vec3 pcar;\nattribute vec3 ncar;\nvarying vec3 vPc;\nvarying vec3 vNc;\n#ifdef NOVO\nattribute float mcar;\nvarying float vMc;\n#endif\n";
+export const LIV_VERT_MAIN = "\nvPc = pcar; vNc = ncar;\n#ifdef NOVO\nvMc = mcar;\n#endif";
 // onde ficam os números (s, y, altura em metros) nos lados e (s, x, altura) em cima: ver NUM_* abaixo
 export const LIV_FRAG_DECL = `
 uniform sampler2D liv;
 uniform sampler2D dig;
 uniform vec2 numero;   // dígitos do número (dezena, unidade); unidade < 0: sem número
 uniform vec3 corNum;
+uniform vec4 numPos;   // onde ficam os números: (s, y) na lateral da tampa e (s, y) na asa traseira
 varying vec3 vPc;
 varying vec3 vNc;
+#ifdef NOVO
+varying float vMc;
+#endif
 const float KK = 232.72727;
 vec2 lv(vec2 px, vec4 r) { px = clamp(px, r.xy + 1.5, r.zw - 1.5); return vec2(px.x / 1024.0, 1.0 - px.y / 1152.0); }
 // um número de 1 ou 2 dígitos centrado em (0,0) do plano do decalque; u para a direita, v para cima, h = altura em metros
@@ -474,8 +481,8 @@ export const LIV_FRAG_MAIN = `
   if (numero.y >= 0.0) {
     // número na tampa do motor (os dois lados) e na asa traseira (os dois lados); em cima do bico, lido por quem vem atrás
     float us = dir ? -p.z : p.z;
-    vec2 d1 = digito(us + (dir ? 3.2 : -3.2), p.y - 0.55, 0.2) * a.x;
-    vec2 d2 = digito(us + (dir ? 4.275 : -4.275), p.y - 0.72, 0.17) * a.x;
+    vec2 d1 = digito(us + (dir ? numPos.x : -numPos.x), p.y - numPos.y, 0.2) * a.x;
+    vec2 d2 = digito(us + (dir ? numPos.z : -numPos.z), p.y - numPos.w, 0.17) * a.x;
     vec2 d3 = digito(p.x, 1.02 - p.z, 0.22) * a.y * step(0.0, n.y);
     vec2 d = max(max(d1, d2), d3);
     c = mix(c, vec3(0.015), clamp(d.g, 0.0, 1.0));
@@ -484,8 +491,39 @@ export const LIV_FRAG_MAIN = `
 #ifdef FUNDO
   c = mix(c, mk, max(step(p.y, 0.2), step(n.y, -0.2))); // o assoalho e a barriga seguem de carbono
 #endif
+#ifdef NOVO
+  c = mix(mk, c, vMc); // o assoalho e a barriga seguem de carbono (mk é a cor do carbono do material)
+#endif
   diffuseColor.rgb = c;
 }`;
+
+// Sem equipe (a "Sua cor", o safety car, o fantasma) no carro de 2026: a cor principal em tudo, com a faixa do meio, a asa traseira e as pontas
+// da asa dianteira na cor secundária (a máscara de cores do carro clássico não existe neste modelo).
+export const SOL_FRAG_DECL = `
+uniform vec3 cor1;
+uniform vec3 cor2;
+varying vec3 vPc;
+varying vec3 vNc;
+varying float vMc;
+`;
+export const SOL_FRAG_MAIN = `
+{
+  vec3 mk = diffuseColor.rgb, p = vPc, n = normalize(vNc);
+  float faixa = step(abs(p.x), 0.07) * step(0.25, n.y) * step(p.y, 0.8);
+  float asa = step(3.95, p.z) * step(0.3, p.y);
+  float ponta = step(0.72, abs(p.x)) * step(p.z, 0.7);
+  diffuseColor.rgb = mix(mk, mix(cor1, cor2, max(faixa, max(asa, ponta))), vMc);
+}`;
+
+// a posição de cada ponto da roda em relação ao eixo, em raios (1 = a borda do pneu): a faixa do composto é um anel nesse
+// espaço (o shader mede o comprimento do vetor em cada pixel, então o anel sai redondo mesmo com poucos vértices)
+export function aroDaRoda(pos, idx) {
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (let q = 0; q < idx.length; q++) { const x = pos.getX(idx[q]), y = pos.getY(idx[q]), z = pos.getZ(idx[q]); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+  const cy = (y0 + y1) / 2, cz = (z0 + z1) / 2, R = Math.max((y1 - y0) / 2, 1e-6), cx = (x0 + x1) / 2, rx = Math.max((x1 - x0) / 2, 1e-6), a = new Float32Array(pos.count * 2), lat = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) { a[i * 2] = (pos.getY(i) - cy) / R; a[i * 2 + 1] = (pos.getZ(i) - cz) / R; lat[i] = (pos.getX(i) - cx) / rx; }
+  return { aro: new THREE.BufferAttribute(a, 2), lat: new THREE.BufferAttribute(lat, 1) };
+}
 
 // ---------------------------------------------------------------- o pneu: a faixa do composto (como as da Pirelli)
 export const FAIXAS = { macio: "#e8202a", medio: "#ffd100", duro: "#f4f4f4", chuva: "#1e7fd6" };
