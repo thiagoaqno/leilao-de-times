@@ -522,6 +522,26 @@ export const SOL_FRAG_MAIN = `
 // deixa um brilho suave do céu nas curvas da carenagem (onde o ângulo é raso) e não deixa o painel chapado. Os brilhos diretos do sol têm teto:
 // o carro reflete um pouco, não brilha (nada daqui chega ao limiar do bloom).
 export const VERNIZ = { value: 1 };
+// Limita a luz refletida pela carroceria antes do bloom, inclusive a soma da luz difusa,
+// dos reflexos e do ambiente. A emissão fica livre para as luzes que devem brilhar.
+export const TETO_CARRO = { value: 0 };
+export function limitarBrilhoCarro(m) {
+  if (!m || !(m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial)) return;
+  const antes = m.onBeforeCompile, chave = m.customProgramCacheKey;
+  m.onBeforeCompile = function (sh, renderer) {
+    if (antes) antes.call(this, sh, renderer);
+    sh.uniforms.tetoCarro = TETO_CARRO;
+    sh.fragmentShader = 'uniform float tetoCarro;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', `
+if (tetoCarro > 0.0) {
+  vec3 reflexoCarro = max(outgoingLight - totalEmissiveRadiance, vec3(0.0));
+  float claridadeCarro = dot(reflexoCarro, vec3(0.2126, 0.7152, 0.0722));
+  if (claridadeCarro > tetoCarro) outgoingLight = reflexoCarro * (tetoCarro / claridadeCarro) + totalEmissiveRadiance;
+}
+#include <opaque_fragment>`);
+  };
+  m.customProgramCacheKey = function () { return (chave ? chave.call(this) : '') + '|teto-carro'; };
+  m.needsUpdate = true;
+}
 const VERNIZ_DECL = "uniform float uVerniz;\n";
 const VERNIZ_ASPERO = 0.52;    // a rugosidade da pintura de dia vira (no máximo) isso: acetinado
 const VERNIZ_CAMADA = 0.28;    // a força da camada de verniz (baixa)

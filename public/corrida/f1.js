@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { temDesenho, folhaDaEquipe, corDoNumero, texturaDosDigitos, logosProntos, FAIXAS, aroDaRoda,
-  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, aplicarVerniz, SOL_FRAG_DECL, SOL_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
+  LIV_VERT_DECL, LIV_VERT_MAIN, LIV_FRAG_DECL, LIV_FRAG_MAIN, aplicarVerniz, limitarBrilhoCarro, SOL_FRAG_DECL, SOL_FRAG_MAIN, PNEU_VERT_DECL, PNEU_VERT_MAIN, PNEU_FRAG_DECL, PNEU_FRAG_MAIN } from "./f1-pintura.js";
 import { construir2026 } from "./f1-2026.js";
 
 // combinações de cor das equipes de F1 (ficam em pistas.js: o servidor confere a escolha)
@@ -102,7 +102,7 @@ export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4", leve = false, equi
   const k = { g, carro, rodas: [], volante: null, mats: [], pintura: null, piloto: new THREE.Object3D(), olho: { z: 0.3, y: 0.95 }, cores: [cor, cor2], equipe: equipe && temDesenho(equipe) ? equipe : null, numero, composto, volanteVivo, pneu: null, escapamento: { z: 2.2, y: 0.42 } };
   // enquanto o modelo não chega, uma silhueta simples no lugar
   const prov = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, TAM), new THREE.MeshStandardMaterial({ color: cor, roughness: 0.5 })); prov.position.y = 0.35; prov.castShadow = true; carro.add(prov);
-  k.prov = prov; k.mats.push(prov.material); k.pintura = prov.material;
+  limitarBrilhoCarro(prov.material); k.prov = prov; k.mats.push(prov.material); k.pintura = prov.material;
   const M = k.modelo = carga(MODELOS[modelo] ? modelo : atual, leve);
   if (M.cena) montarCorpo(k); else if (!M.falhou) M.espera.push(k);
   return k;
@@ -161,6 +161,7 @@ function montarCorpoNovo(k) {
     k.olho = { z: D.volante.centro.z + D.olho.dz, y: D.volante.centro.y + D.olho.dy }; k.olhoBaixo = D.olho.baixo || 0; // atrás do volante, na altura do capacete
   }
   k.mats = [...mats.values()]; k.pintura = mats.get("corpo"); k.pneu = mats.get("roda") || null;
+  k.mats.forEach(limitarBrilhoCarro);
   k.lanternaPos = D.lanterna || null; k.escapamento = D.escapamento; k.disco = D.disco;
   k.aoMontar?.(k);
 }
@@ -187,6 +188,7 @@ function montarCorpo(k) {
     o.material = mats.get(nome);
   });
   k.mats = [...mats.values()]; k.pintura = mats.get("body_mat") || k.mats[0]; k.pneu = mats.get("pneu") || null;
+  k.mats.forEach(limitarBrilhoCarro);
   // rodas: o modelo traz as duas de cada eixo numa malha só; aqui ela vira duas (esquerda e direita), e cada roda ganha
   // um pivô no próprio centro: "gira" roda pela distância andada e, nas da frente, "esterca" vira com o volante
   k.carro.updateMatrixWorld(true);
