@@ -12,6 +12,14 @@ const ALL_FORMATIONS = new Set(["auto", ...Object.keys(FORMATIONS.futsal), ...Ob
 
 const app = express();
 const server = http.createServer(app);
+// Registra pausas reais do processo sem identificar jogadores nem salas.
+const atrasoDoServidor = require("node:perf_hooks").monitorEventLoopDelay({ resolution: 20 });
+atrasoDoServidor.enable();
+setInterval(() => {
+  const ms = atrasoDoServidor.max / 1e6;
+  if (ms > 500) console.warn(`Servidor: processamento ficou ${Math.round(ms)} ms sem atender eventos`);
+  atrasoDoServidor.reset();
+}, 10000).unref();
 // compressão das mensagens do WebSocket: os pacotes dos jogos em tempo real se repetem muito e encolhem bastante
 const io = new Server(server, { perMessageDeflate: { threshold: 128 } });
 protegerCanais(io); // um evento com dados quebrados não derruba mais o servidor (antes dos jogos abrirem os canais)

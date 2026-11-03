@@ -171,9 +171,22 @@ module.exports = function attachCorrida(io) {
     }, 10);
   }
 
+  // A primeira otimização de uma pista roda fora do laço principal, sem parar outras salas.
+  function aguardarTracado(room, continuar) {
+    if (room.config.regras !== "f1" || Robos.tracadoPronto(room.config.pista)) return false;
+    if (room.preparandoTracado) return true;
+    const pista = room.config.pista, fase = room.phase, registrada = rooms.get(room.code) === room;
+    room.preparandoTracado = true;
+    Robos.prepararTracado(pista).then(() => {
+      room.preparandoTracado = false;
+      if ((!registrada || rooms.get(room.code) === room) && room.phase === fase && room.config.pista === pista) continuar();
+    }).catch((e) => { room.preparandoTracado = false; console.warn("Corrida: falha ao preparar traçado", e.message); });
+    return true;
+  }
   // ---------- corrida ----------
   // A classificação (regras de F1) já escolheu a semente e os robôs; ela chama `startRace(room, grid)` com os ids na ordem do grid.
   function startRace(room, grid) {
+    if (aguardarTracado(room, () => startRace(room, grid))) return;
     const f1 = room.config.regras === "f1", daClassificacao = !!(grid && room.quali);
     clearTimeout(room.endTimer);
     clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer);
@@ -271,6 +284,7 @@ module.exports = function attachCorrida(io) {
   // a classificação (Q1, Q2 e Q3) antes da corrida das regras de F1; no fim ela chama startRace com o grid
   const classificacao = { log, broadcast, largar: (room, grid) => startRace(room, grid) };
   function iniciarClassificacao(room) {
+    if (aguardarTracado(room, () => iniciarClassificacao(room))) return;
     clearTimeout(room.endTimer); clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer);
     preparar(room);
     room.phase = "quali"; room.resultado = null; room.luzes = null; room.finishOrder = [];
@@ -367,7 +381,12 @@ module.exports = function attachCorrida(io) {
   // Setor novo: vale o próximo na ordem (ou, se um aviso se perdeu, o que o carro mostra estar ali: corrida-setores.js).
   // Voltar ao setor 0 depois do 11 fecha a volta (a primeira passagem é a largada).
   function onSector(room, p, s, now = Date.now()) { // (`now`: a hora do passo da física em que o carro cruzou o portão)
-    if (room.phase === "quali") { const mudou = Quali.aoSetor(room, p, s, now); if (mudou) Quali.verificarFim(room, classificacao); return mudou; } // classificação: volta lançada
+    if (room.phase === "quali") {
+      const anterior = p.qUltima?.id, mudou = Quali.aoSetor(room, p, s, now);
+      if (mudou && p.qUltima && p.qUltima.id !== anterior) for (const sid of p.sockets) nsp.sockets.get(sid)?.emit("quali:volta", p.qUltima);
+      if (mudou) Quali.verificarFim(room, classificacao);
+      return mudou;
+    } // classificação: volta lançada
     if (room.phase !== "race" || p.finish != null) return false;
     if (now < room.startAt) { if (now < room.startAt - 2000) return false; now = room.startAt; } // (o relógio dos passos pode errar por alguns ms: um setor logo antes das luzes não pode ser jogado fora, senão o contador do servidor fica um setor atrás para sempre)
     if (p.dnf) return false;
@@ -710,21 +729,24 @@ module.exports = function attachCorrida(io) {
       if (Itens.use(room, me, d.back === true, (event, data) => nsp.to(room.code).emit(event, data))) broadcast(room);
     });
 
-    // a volta que acabei de fazer (amostras a cada 0,1 s): até cinco pilotos ensinam linhas diferentes.
-    // Só vale se bate com o tempo que o servidor mediu, se é uma volta só (uma por volta, de quem está correndo) e se é limpa (sem batida).
+    // Voltas de corrida e classificação (amostras a cada 0,1 s) ensinam até cinco traçados.
+    // O tempo e a sequência precisam coincidir com a volta medida pelo servidor.
     socket.on("volta", (d = {}) => {
       const { room, me } = ctx();
-      if (!room || !me || me.bot || !Number.isFinite(me.last) || me.voltaEnviada === me.laps) return;
-      if (me.voltaSuja) return; // volta com batida ou fantasma: não vira traçado nem ritmo dos robôs
+      if (!room || !me || me.bot) return;
+      const quali = d.quali != null ? me.qUltima : null;
+      if (d.quali != null && (!quali || quali.id !== d.quali || me.qVoltaEnviada === quali.id || Date.now() - quali.fim > 15000)) return;
+      if (!quali && (!Number.isFinite(me.last) || me.voltaEnviada === me.laps)) return;
+      const tempo = quali ? quali.tempo : me.last;
       const s = d.s, pista = room.config.pista, t = T.PISTAS[pista];
-      if (!Array.isArray(s) || s.length < 100 || s.length > 4000 || me.last < t.minLap) return;
+      if (!Array.isArray(s) || s.length < 100 || s.length > 4000 || tempo < t.minLap) return;
       if (!s.every((a) => Array.isArray(a) && a.length === 6 && a.every(Number.isFinite) && a[1] >= 0 && a[2] >= 0 && a[1] <= t.world && a[2] <= t.world)) return;
-      if (Math.abs((s[s.length - 1][0] - s[0][0]) / 1000 - me.last) > 1.5) return;
-      me.voltaEnviada = me.laps;
+      if (Math.abs((s[s.length - 1][0] - s[0][0]) / 1000 - tempo) > 1.5) return;
+      if (quali) me.qVoltaEnviada = quali.id; else me.voltaEnviada = me.laps;
       let nova = 0;
-      try { nova = bd.salvarVoltaCorrida(pista, me.last, me.car, me.name, s); } catch (e) { console.warn("Corrida: volta não guardada", e.message); }
-      // o ritmo (as cinco melhores de cada um) vale na próxima largada; a linha muda só com a melhor volta do piloto
-      if (nova === 2 && Robos.aprender(pista, bd.melhoresTracadosCorrida(pista))) { log(room, `🤖 Os robôs aprenderam a volta de ${me.name} em ${t.name}.`); broadcast(room); }
+      try { nova = bd.salvarVoltaCorrida(pista, tempo, me.car, me.name, s); } catch (e) { console.warn("Corrida: volta não guardada", e.message); }
+      // As cinco voltas mais rápidas da pista alimentam os traçados da próxima largada.
+      if (nova > 0 && Robos.aprender(pista, bd.melhoresTracadosCorrida(pista))) { log(room, `🤖 Os robôs aprenderam a volta de ${me.name} em ${t.name}.`); broadcast(room); }
     });
 
     // o relógio: o navegador pergunta a hora do servidor várias vezes e fica com a resposta de menor ida e volta (pose.js, criarRelogio)

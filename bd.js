@@ -56,12 +56,12 @@ function melhorVoltaCorrida(pista) {
   const v = bd().prepare("SELECT tempo, carro, piloto, dados FROM corrida_voltas WHERE pista = ?").get(pista);
   return v ? { tempo: v.tempo, carro: v.carro, piloto: v.piloto, s: JSON.parse(v.dados) } : null;
 }
-// As cinco melhores voltas de cada piloto ficam (migração 017). O traçado dos robôs é a melhor volta de cada um dos
-// cinco pilotos mais rápidos; o ritmo deles é a média das voltas guardadas (ritmoCorrida).
+// As cinco melhores voltas de cada piloto ficam (migração 017). Os robôs usam as cinco voltas
+// mais rápidas da pista; o ritmo clássico é a média das voltas guardadas (ritmoCorrida).
 const VOLTAS_POR_PILOTO = 5;
 function melhoresTracadosCorrida(pista) {
-  return bd().prepare(`SELECT tempo, carro, piloto, dados FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY chave ORDER BY tempo, feita_em) AS r
-    FROM corrida_voltas_piloto WHERE pista = ?) WHERE r = 1 ORDER BY tempo, feita_em LIMIT 5`).all(pista)
+  return bd().prepare(`SELECT tempo, carro, piloto, dados FROM corrida_voltas_piloto
+    WHERE pista = ? ORDER BY tempo, feita_em, id LIMIT 5`).all(pista)
     .map((v) => ({ tempo: v.tempo, carro: v.carro, piloto: v.piloto, s: JSON.parse(v.dados) }));
 }
 // O ritmo de quem joga: a média das (até) cinco melhores voltas de cada piloto, e depois a média entre os pilotos.
