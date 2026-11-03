@@ -9,6 +9,7 @@ import { D, fundoMonaco, aguaMonaco, orlaMonaco, relevoMonaco, afastarMuro, NIVE
 import { lerPredios, indiceDePredios, predios, adensarRua } from "./kit/monaco/predios.js";
 import { marcosMonaco } from "./kit/monaco/marcos.js";
 import { mar, porto, piscinas, atracados } from "./kit/monaco/agua.js";
+import { escapesMonaco, noEscape } from "./kit/monaco/escapes.js";
 import { tecpro, telaos, largada, cais, fonte, cruzeiros, muroDeArrimo } from "./kit/monaco/detalhes.js";
 import { tunel } from "./kit/monaco/tunel.js";
 import { paddockMonaco } from "./kit/monaco/paddock.js";
@@ -76,9 +77,10 @@ export function cenarioMonaco(tr, ctx) {
   // onde os enfeites de vida.js e do kit não entram: na água, dentro de um prédio, em cima do túnel, no que já foi montado e grudados no guard-rail
   tr.ocupado = (x, y, i) => {
     if ((i != null && tr.coberto?.(i)) || fundoMonaco(tr, x, y) > -10 || predioEm(x, y, 3) || reservado.some(([cx, cy, rr]) => (x - cx) ** 2 + (y - cy) ** 2 < rr * rr)) return true;
-    return tr.distAt(x, y) < L + 8;
+    return tr.distAt(x, y) < L + 8 || noEscape(tr, x, y, 6);
   };
   mar(tr, ctx);
+  escapesMonaco(tr, add); // o asfalto cinza dos escapes de Sainte Dévote, do Mirabeau e da Nouvelle Chicane (os mesmos trechos de `muros`)
   tunel(tr, add);
   fairmontSobreOTunel(tr, add); // o hotel Fairmont, largo e curvo, sobre a entrada do túnel
   pontePortier(tr, add, hAt, predioEm); // o viaduto da Boulevard du Larvotto, por cima da pista logo antes do Portier (antes das árvores e da vida: reserva o lugar)
@@ -94,7 +96,7 @@ export function cenarioMonaco(tr, ctx) {
   tr.contextoVidaMonaco = { lista, predioEm, hAt };
   const f = D.frac, c = f.curvas, tc = f.trechos;
   atracados(tr, ctx, tc.cais);
-  tecpro(tr, add, [[c.sainteDevote + 0.006, c.sainteDevote + 0.028, "fora"], [tc.nouvelleChicane[0] - 0.012, tc.nouvelleChicane[1] + 0.012, "fora"], [c.rascasse - 0.01, c.rascasse + 0.008, "fora"], [c.mirabeauHaute - 0.006, c.mirabeauHaute + 0.014, "fora"]]); // (só nas áreas de escape: Sainte Dévote, chicane do porto, Rascasse e Mirabeau)
+  tecpro(tr, add, [[0.0635, 0.0745, "fora"], [0.3415, 0.354, "fora"], [0.629, 0.64, 1]]); // (só nos escapes de asfalto, na frente da barreira: Sainte Dévote, Mirabeau e a saída do túnel / Nouvelle Chicane; `muros` em pistas.js)
   telaos(tr, add, [0.03, c.casino, c.mirabeauHaute + 0.012, tc.cais[0] + 0.03, c.rascasse - 0.02]);
   largada(tr, add); cais(tr, add, tc.cais); fonte(tr, add, hAt); cruzeiros(tr, add);
   tr.marcosPos = D.marcos; // (para conferir no navegador: __corrida.race.tr.marcosPos)

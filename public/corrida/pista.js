@@ -81,7 +81,9 @@ export function buildTrack(id) {
   const tr = { id, t, pts, n, W, look: LOOK[id], theme: THEMES[id], mini, wallLat: t.walls ? W / 2 + t.wall : Infinity, grp: new THREE.Group() };
   tr.obstaculos = window.Pistas.obstaculosDaPista(t, pts); // sólidos da física (sim.js e fisica.js usam a mesma conta)
   if (t.superficieEscape) tr.superficiesEscape = window.Pistas.mapaSuperficies(pts, t.superficieEscape);
-  if (t.escapeLivre) tr.murosEscape = window.Pistas.murosDoEscape(pts, W, tr.superficiesEscape, t);
+  if (t.escapeLivre || t.muros) tr.murosEscape = window.Pistas.murosDoEscape(pts, W, tr.superficiesEscape, t);
+  // onde fica a face da barreira naquele ponto e lado (lado 1 ou -1): a distância do eixo (`muros` de pistas.js, a mesma matriz da física) ou, onde ela não diz (0), o muro fixo da rua (`wallLat`); Infinity sem muro nenhum
+  tr.latMuro = (lado, i) => { const r = tr.murosEscape?.[lado]?.[((i % n) + n) % n]; return r ? W / 2 + r : tr.wallLat; };
   // grade de distância até a pista (para o relevo e para espalhar enfeites sem cair na pista)
   const G = 96, cell = t.world / G, gd = new Float32Array((G + 1) * (G + 1)), gi = new Int32Array((G + 1) * (G + 1));
   for (let j = 0; j <= G; j++) for (let i = 0; i <= G; i++) {
@@ -248,7 +250,7 @@ function buildWorld(tr) {
     const vs = [], uv = [], idx = [];
     for (let i = i0; i <= i1; i++) {
       const p = pts[((i % n) + n) % n], d = i * 6;
-      for (const [l, yy, u] of [[l0, y0, 0], [l1, y1, uSpan]]) { vs.push(p.x + p.nx * l, p.h * falloff(tr, l) + yy, p.y + p.ny * l); uv.push(u, d / vLen); }
+      for (const [lc, yy, u] of [[l0, y0, 0], [l1, y1, uSpan]]) { const l = typeof lc === "function" ? lc(i) : lc; vs.push(p.x + p.nx * l, p.h * falloff(tr, l) + yy, p.y + p.ny * l); uv.push(u, d / vLen); }
       if (i < i1) { const a = (i - i0) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(vs, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
@@ -305,8 +307,9 @@ function buildWorld(tr) {
         let m = null;
         for (const [x0, x1, d] of fatias) {
           if (x1 <= x0 || d === -2) continue; const g = estiloDe(d);
-          m = ribbon(s * L, s * L, 0.5, matDe(d), vLenDe(d), g?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`;
-          if (base?.estilo === "monaco") afastarMuro(tr, m.geometry, x0, L - (tr.t.muroFolga ?? 8) + 13);
+          const lat = tr.t.muros ? (i) => s * tr.latMuro(s, i) : s * L; // com `muros` (Mônaco), a barreira fica na distância de cada trecho (colada, estreita, ou recuada no escape)
+          m = ribbon(lat, lat, 0.5, matDe(d), vLenDe(d), g?.alto ?? 12, 1, x0, x1); m.castShadow = true; m.name = `${id}-muro`;
+          if (base?.estilo === "monaco") afastarMuro(tr, m.geometry, x0, tr.t.muros ? (i) => tr.latMuro(s, i) - 1 : L - (tr.t.muroFolga ?? 8) + 13);
         }
         return m;
       };

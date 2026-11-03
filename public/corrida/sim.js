@@ -27,7 +27,7 @@ function criarPista(t, id) {
   const tr = { id, t, pts, n, W, wallLat: t.walls ? W / 2 + t.wall : Infinity, pneus: new Int8Array(n) };
   if (t.superficieEscape) tr.superficiesEscape = P.mapaSuperficies(pts, t.superficieEscape);
   tr.obstaculos = P.obstaculosDaPista(t, pts); // os obstáculos sólidos da pista (o canteiro do grampo de Mônaco), os mesmos do navegador e do servidor
-  if (t.escapeLivre) tr.murosEscape = P.murosDoEscape(pts, W, tr.superficiesEscape, t);
+  if (t.escapeLivre || t.muros) tr.murosEscape = P.murosDoEscape(pts, W, tr.superficiesEscape, t);
   if (!t.espaco && !t.muro && !t.escapeLivre) { // barreiras de pneus: do lado de fora das curvas fechadas (o mesmo cálculo de pista.js)
     for (let i = 0; i < n; i++) {
       const p = pts[i], q = pts[(i + 3) % n]; if (!(p.k > 1 / 170)) continue;

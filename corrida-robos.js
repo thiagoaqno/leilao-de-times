@@ -51,7 +51,7 @@ const LINHAS = new Map();
 function tetoDoMuro(t, pts) {
   const n = pts.length, teto = new Float64Array(n).fill(Infinity); if (!t.muros) return teto;
   const m = T.murosDoEscape(pts, t.width, null, t), folga = t.muroFolga ?? 8;
-  for (let i = 0; i < n; i++) for (const lado of [-1, 1]) if (m[lado][i]) teto[i] = Math.min(teto[i], t.width / 2 + m[lado][i] - folga - 6);
+  for (let i = 0; i < n; i++) for (const lado of [-1, 1]) if (m[lado][i]) teto[i] = Math.min(teto[i], t.width / 2 + m[lado][i] - folga - (t.folgaLinha ?? 6));
   return teto;
 }
 function tracado(pista, f1 = false) {
@@ -194,8 +194,8 @@ function perfilF1(pf, f) {
   if (!v) {
     v = D.perfilIdeal(pf.pts.map((p, i) => ({ k: pf.kf[i], h: p.h })), pf.c, STEP, margemDaPista(pf.pista).margem * q, null, margemDaPista(pf.pista).freio);
     if (pf.teto && pf.t.muros) { // entre as barreiras da Cidade Velha (Baku) a pista estreita: o perfil ideal passa a ser mais lento ali (e a freada vem antes), sem bater
-      const n = pf.n, vmax = pf.c.vmax; v = Array.from(v);
-      for (let i = 0; i < n; i++) if (pf.teto[i] < 30) v[i] = Math.min(v[i], vmax * (0.14 + 0.5 * Math.max(0, pf.teto[i]) / 30));
+      const n = pf.n, vmax = pf.c.vmax, lim = pf.t.tetoMuro ?? 30; v = Array.from(v); // (lim: a folga do centro do carro abaixo da qual a pista conta como estreita; Mônaco, de rua colada, diz o seu em `tetoMuro`)
+      for (let i = 0; i < n; i++) if (pf.teto[i] < lim) v[i] = Math.min(v[i], vmax * (0.14 + 0.5 * Math.max(0, pf.teto[i]) / lim));
       for (let volta = 0; volta < 2; volta++) for (let i = n - 1; i >= 0; i--) v[i] = Math.min(v[i], Math.sqrt(v[(i + 1) % n] ** 2 + 2 * pf.c.brake * 0.72 * STEP));
     }
     if (mapa.size >= 30) mapa.delete(mapa.keys().next().value);
@@ -751,7 +751,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     // o volante e os pedais são calculados a cada passo da física (120 Hz), como quem joga: o robô sente o carro escorregar
     // Em pista seca e livre, olha mais adiante no S e alivia o acelerador antes de frear. Tráfego,
     // bandeiras, dano e pneu gasto conservam a pilotagem normal; acima do limite volta a frear.
-    const chicaneMonaco = room.config.pista === "monaco" && ((f > 0.625 && f < 0.655) || (f > 0.805 && f < 0.835));
+    const chicaneMonaco = room.config.pista === "monaco" && !tr.t.muros && ((f > 0.625 && f < 0.655) || (f > 0.805 && f < 0.835));
     const chicaneLivre = chicaneMonaco && !tf.encontrou && !amb.safety && !amb.amarela && !p.azul && !cl.agua &&
       (car.pneu?.desgaste || 0) < 0.5 && (p.dano || 0) < 10 && !car.inst;
     Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent, chicaneLivre ? 1.15 : 1);
