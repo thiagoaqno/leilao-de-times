@@ -26,10 +26,9 @@ function frear(v0, v1, pneu, agua = 0) {
 }
 const novo = (composto, desgaste = 0, temp = 1) => ({ composto, desgaste, temp });
 
-test("freio de F1: o pneu gasto ou molhado trava a roda se o pedal vai a fundo (o novo e seco, não)", () => {
+test("freio de F1: o pneu molhado trava a roda se o pedal vai a fundo (o novo e seco, não)", () => {
   assert.equal(frear(150, 40, novo("macio")).trav, 0);
-  assert.ok(frear(150, 40, novo("macio", 0.95)).trav > 0.1, "macio acabado trava");
-  assert.ok(frear(150, 40, novo("medio", 0.95)).trav > 0.2, "médio acabado trava");
+  // (o pneu acabado no seco já não trava: o penhasco ficou 50% mais brando; molhado continua travando)
   assert.ok(frear(150, 40, novo("medio"), 1).trav > 0.3, "médio na pista encharcada trava");
   // e freia pior: a análise dos robôs conta o limite do pneu (não só o pedal)
   const seco = D.frenagemMaxima(mclaren, 100, 0, { freio: 1.0, grip: 1.28 }), molhado = D.frenagemMaxima(mclaren, 100, 0, { freio: 0.76, grip: 0.89 });
