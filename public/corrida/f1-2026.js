@@ -185,7 +185,7 @@ export function construir2026(raiz, tam, leve) {
   const unir = (conj, opc) => { const l = de(conj); return l.length ? juntar(l, opc) : null; };
   // o anel de LEDs do modelo (rear_light_2, no meio do difusor, abaixo da asa) só marca ONDE fica a lanterna do jogo (carros.js): ela não muda de jeito
   const [ra, rb] = fatiar(de(new Set(["rear_light_2"]))[0], (c) => Math.abs(c[0]) < 0.08 && c[1] < (0.5 - yMin) * s && c[2] > 1.8);
-  if (ra.idx.length) { const b = caixaDe([ra]), t = b.getCenter(new THREE.Vector3()); D.lanterna = { x: 0, y: t.y, z: b.max.z + 0.03 }; }
+  if (ra.idx.length) { const b = caixaDe([ra]), t = b.getCenter(new THREE.Vector3()); D.lanterna = { x: 0, y: t.y, z: b.max.z + 0.03 }; D.lanternaGeo = juntar([ra]); } // (a peça da luz do modelo: carros.js a acende como a lanterna do jogo)
   D.detalhes = unir(new Set(["sauber_detail"]), { uv: true }); D.mecanica = unir(new Set(["generics"]), { uv: true }); D.luz = unir(new Set(["rear_light_2"]), { uv: true });
 
   // --- as rodas: o arquivo traz as quatro juntas em cada malha; aqui cada roda vira UMA malha (pneu + aro + disco), com o centro na origem

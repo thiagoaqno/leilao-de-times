@@ -48,12 +48,13 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
     for (const [r, l, c, o] of [[0.13, 0.9, 0xff7a1a, 0.75], [0.07, 0.6, 0xfff07a, 0.95]]) { const m = new THREE.Mesh(new THREE.ConeGeometry(r, l, 10), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending })); m.rotation.x = Math.PI / 2; m.position.z = l / 2; f.add(m); }
     chamas.push(f);
   }
-  // Lanterna central com matriz de LEDs; sem luz dinâmica por carro.
+  // A lanterna de chuva do F1 atual: uma faixa VERTICAL fina de LEDs vermelhos no meio da traseira (2 colunas × 9), numa base preta estreita;
+  // sem luz dinâmica por carro. (Antes era uma placa quadrada de 5 × 4, que não parecia a do carro de verdade.)
   const lanterna = new THREE.Group(); lanterna.position.set(0, 0.57, 2.23); kt.g.add(lanterna); lanterna.scale.setScalar(0.72); lanterna.visible = false;
-  const suporte = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.25, 0.08), new THREE.MeshBasicMaterial({ color: 0x101216 })); lanterna.add(suporte);
+  const suporte = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.36, 0.07), new THREE.MeshBasicMaterial({ color: 0x101216 })); lanterna.add(suporte);
   const ledMat = new THREE.MeshBasicMaterial({ color: 0xff2418, toneMapped: false });
-  const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.045, 0.045, 0.018), ledMat, 20), matriz = new THREE.Object3D();
-  for (let i = 0; i < 20; i++) { matriz.position.set((i % 5 - 2) * 0.057, (Math.floor(i / 5) - 1.5) * 0.057, 0.05); matriz.updateMatrix(); leds.setMatrixAt(i, matriz.matrix); }
+  const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.03, 0.026, 0.016), ledMat, 18), matriz = new THREE.Object3D();
+  for (let i = 0; i < 18; i++) { matriz.position.set((i % 2 - 0.5) * 0.036, (Math.floor(i / 2) - 4) * 0.036, 0.042); matriz.updateMatrix(); leds.setMatrixAt(i, matriz.matrix); }
   lanterna.add(leds);
   // Discos dianteiros ficam incandescentes sob frenagem forte e esfriam progressivamente.
   const freios = new THREE.Group(); kt.g.add(freios); freios.visible = false;
@@ -70,6 +71,8 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   const pronto = () => {
     k.mats = kt.mats; k.eye.u = spec.L / 2 - kt.olho.z * sc; k.eye.h = kt.olho.y * sc;
     chamas.forEach((f, i) => f.position.set((i ? 1 : -1) * (kt.escapamento.x ?? 0.16), kt.escapamento.y, kt.escapamento.z)); // (o modelo diz onde sai o escapamento)
+    // o carro de 2026 tem a luz no próprio modelo (o espaço dela na traseira): ela vira a lanterna, com o material de sempre, e a nossa some
+    if (kt.lanternaMesh) { kt.lanternaMesh.material = ledMat; suporte.visible = leds.visible = false; }
     if (kt.lanternaPos) lanterna.position.set(kt.lanternaPos.x, kt.lanternaPos.y, kt.lanternaPos.z); // o carro de 2026: no meio do fim da traseira, onde o modelo tem o anel de LEDs (só a posição muda; o jeito da lanterna é o de sempre)
     else lanterna.position.z = kt.escapamento.z - 0.18;
     kt.rodas.filter(r => r.esterca).forEach((r, i) => {
@@ -135,7 +138,7 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   animarDrs(k.kt, !!fx.drs, dt); // a asa traseira: o flap abre com o DRS DESTE carro
   trocarComposto(k.kt, fx.pneu); // a faixa colorida do pneu (macio vermelho, médio amarelo, duro branco, chuva azul): só muda quando o composto muda
   k.tempoGP += dt;
-  k.lanterna.visible = k.freios.visible = !!fx.f1 && !fx.bala;
+  k.lanterna.visible = k.freios.visible = !!fx.f1 && !fx.bala; if (k.kt.lanternaMesh) k.kt.lanternaMesh.visible = k.lanterna.visible;
   const desaceleracao = dt > 0 ? ((k.velAnterior ?? v) - v) / dt : 0; k.velAnterior = v;
   if (k.pil) animarPiloto(k.pil, { dt, v, steer: k.steerV, dec: desaceleracao, lod: k.lod || 0 }); // a cabeça e as mãos (f1-piloto.js), depois do volante girar
   const freando = fx.f1 && v > 90 && desaceleracao > 90 && Math.abs(z - ground) < 5;
