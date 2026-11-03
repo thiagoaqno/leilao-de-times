@@ -1,11 +1,11 @@
-// Corrida da Galera — a tela de RESULTADO do GP (regras de F1): o pódio com a cor e o logo de cada equipe, o carro do vencedor (ou o seu,
-// se você subiu ao pódio) girando no palco 3D de palco.js, a festa de quem ganha, e a tabela no estilo da transmissão: uma faixa com o
+// Corrida da Galera — a tela de RESULTADO do GP (regras de F1): o pódio com a cor e o logo de cada equipe, os carros dos 3 primeiros cada um
+// em cima do seu degrau (podio-3d.js: uma cena só, e não o palco da sala, que o menus.js pára a cada estado do servidor), a festa de quem ganha, e a tabela no estilo da transmissão: uma faixa com o
 // degradê da equipe por piloto, a sigla de 3 letras (o humano também tem), o ícone amarelo de quem levou acréscimo de tempo e chips de
 // dano, stop-and-go e bandeira preta. hud.js só chama `htmlResultado` + `aposResultado` (e `resultadoMudou`, para não refazer a tela,
 // e o carro, a cada estado do servidor). O desenho é CSS (resultado-gp.css): a animação de entrada some com "reduzir movimento".
 import { E, PISTAS, h, fmt } from "./estado.js";
 import { MODS3, MODS_PADRAO } from "./carros.js";
-import { palco } from "./palco.js";
+import { podio3d } from "./podio-3d.js";
 
 const reduz = () => !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
 const EQUIPES = () => (window.F1Pilotos && window.F1Pilotos.EQUIPES) || {};
@@ -85,26 +85,20 @@ const noPodio = (S) => S.resultado.slice(0, 3).filter((r) => !r.dnf && !r.nc && 
 function degrauHTML(r, vencedor, ctx) {
   const { S, m } = ctx, p = S.players.find((x) => x.id === r.id), eq = infoEquipe(p), v = r === vencedor, eu = !!(m && r.id === m.id);
   const tempo = v ? fmt(r.tempo) : "+" + (r.tempo - vencedor.tempo).toFixed(3);
-  return `<div class="rg-deg d${r.pos} ${eu ? "eu" : ""}" style="${estiloEq(eq.cor)}">
-    <div class="rg-deg-info">${v ? `<span class="rg-copa">${ICONE.copa}</span>` : ""}${marca(eq)}<b class="rg-deg-nome">${h(nomeDe(p))}</b><small class="rg-deg-eq"><span class="rg-sigla">${h(siglaDe(p))}</span>${eq.nome ? ` · ${h(eq.nome)}` : ""}</small><span class="rg-deg-tempo">${tempo}</span>${r.pontos ? `<span class="rg-deg-pts">+${r.pontos} pts</span>` : ""}</div>
-    <div class="rg-bloco"><span>${r.pos}</span></div></div>`;
-}
-
-// de quem é o carro do palco: o seu, se você está no pódio; senão o do vencedor
-function dono(S, m, podio) {
-  const meu = m && podio.some((r) => r.id === m.id) ? m : null, p = meu || S.players.find((x) => x.id === podio[0].id);
-  return { p, meu: !!meu };
+  // de cima para baixo: o carro (3D; sem WebGL, o logo grande), o degrau com o número e, embaixo, quem é
+  return `<div class="rg-deg d${r.pos} ${eu ? "eu" : ""}" data-id="${h(r.id)}" style="${estiloEq(eq.cor)}">
+    <div class="rg-deg-car"><div class="rg-logo-grande">${marca(eq)}</div>${eu ? `<span class="rg-seu">Seu carro</span>` : ""}</div>
+    <div class="rg-bloco"><span>${r.pos}</span></div>
+    <div class="rg-deg-info">${v ? `<span class="rg-copa">${ICONE.copa}</span>` : ""}${marca(eq)}<b class="rg-deg-nome">${h(nomeDe(p))}</b><small class="rg-deg-eq"><span class="rg-sigla">${h(siglaDe(p))}</span>${eq.nome ? ` · ${h(eq.nome)}` : ""}</small><span class="rg-deg-tempo">${tempo}</span>${r.pontos ? `<span class="rg-deg-pts">+${r.pontos} pts</span>` : ""}</div></div>`;
 }
 
 export function htmlResultado(S, m, isHost, aviso) {
   const R = S.resultado, F = window.F1Regras, vencedor = R[0], ctx = { S, m, F, vencedor }, podio = noPodio(S);
   let alto = "";
   if (podio.length && podio[0] === vencedor) {
-    const d = dono(S, m, podio), eq = infoEquipe(d.p), euVenci = !!(m && vencedor.id === m.id), ordem = [podio[1], podio[0], podio[2]].filter(Boolean);
+    const euVenci = !!(m && vencedor.id === m.id), ordem = [podio[1], podio[0], podio[2]].filter(Boolean);
     alto = `<div class="rg-podio ${euVenci ? "vitoria" : ""}" style="${estiloEq(infoEquipe(S.players.find((x) => x.id === vencedor.id)).cor)}">
-      <div class="rg-palco" style="${estiloEq(eq.cor)}"><div class="rg-carro" data-carro="${h(d.p.id)}"><div class="rg-logo-grande">${marca(eq)}</div></div>
-        <div class="rg-palco-txt"><small>${d.meu ? "Seu carro" : "Carro vencedor"}</small><b>${h(eq.nome || nomeDe(d.p))}</b></div>
-        ${euVenci ? `<div class="rg-vitoria" role="status"><b>VITÓRIA</b><small>${h(PISTAS[S.config.pista].name)}</small></div>` : ""}</div>
+      ${euVenci ? `<div class="rg-vitoria" role="status"><b>VITÓRIA</b><small>${h(PISTAS[S.config.pista].name)}</small></div>` : ""}
       <div class="rg-degraus" role="list" aria-label="Pódio">${ordem.map((r) => degrauHTML(r, vencedor, ctx)).join("")}</div></div>`;
   }
   return `<div class="placa gp rg-placa"><div class="chk"></div><div class="in"><div class="av-item av-fixo" style="--fundo:#f2f2f5;--txt:#0a0c12;--bloco:#0a0c12">${aviso}</div>
@@ -114,39 +108,37 @@ export function htmlResultado(S, m, isHost, aviso) {
     <div class="row rg-botoes">${S.temporada ? `<button class="primary" id="rSede">← Voltar à sede</button>` : isHost ? `<button class="primary" id="rAgain">🏁 Novo GP</button><button id="rLobby">Trocar pista</button>` : `<span class="muted">Esperando o organizador…</span>`}${S.temporada ? "" : `<button class="ghost" onclick="location.href='/'">🏠 Vila</button>`}</div></div></div>`;
 }
 
-// ---- depois de desenhar: o carro no palco 3D (ou o logo grande), o confete de quem ganhou ----
-let hostCarro = null;
-function carroNoPalco(host, S, m) {
-  const podio = noPodio(S); if (!podio.length) return;
-  const p = dono(S, m, podio).p, eq = infoEquipe(p), pint = eq.pintura && MODS3.pintura[eq.pintura] ? eq.pintura : null;
-  const mods = pint ? { ...(p.mods || MODS_PADRAO), pintura: pint } : p.mods;
-  try {
-    if (palco.ok && palco.montarEm(host)) { palco.mostrar({ cor: p.color, modelo: p.car, mods, corEquipe: eq.cor, prontoF1: true }); if (palco.ok) { hostCarro = host; host.classList.add("tem-3d"); return; } }
-  } catch (e) { palco.ok = false; }
-  host.classList.remove("tem-3d"); // sem WebGL: fica o logo grande da equipe
+// ---- depois de desenhar: os 3 carros do pódio (ou os logos grandes), o confete de quem ganhou ----
+function carrosNoPodio(el, S, m) {
+  const podio = el.querySelector(".rg-podio"); if (!podio) return;
+  const itens = [];
+  for (const r of noPodio(S)) {
+    const deg = podio.querySelector(`.rg-deg.d${r.pos}`), p = S.players.find((x) => x.id === r.id);
+    if (!deg || !p) continue;
+    const eq = infoEquipe(p), pint = eq.pintura && MODS3.pintura[eq.pintura] ? eq.pintura : null;
+    const mods = pint ? { ...(p.mods || MODS_PADRAO), pintura: pint } : p.mods;
+    const comp = (r.compostos && r.compostos[r.compostos.length - 1]) || p.pneuAtual || p.pneu || null;
+    itens.push({ id: r.id, pos: r.pos, slot: deg.querySelector(".rg-deg-car"), bloco: deg.querySelector(".rg-bloco"), cor: p.color, modelo: p.car, mods, corEquipe: eq.cor, numero: p.numero, sigla: p.bot ? p.sigla : null, composto: comp, eu: !!(m && r.id === m.id) });
+  }
+  try { podio3d.montar(podio, itens); } catch (e) { console.warn("Corrida: pódio 3D", e); podio3d.soltar(); } // sem WebGL (ou erro): ficam os logos grandes
 }
 export function aposResultado(el, S, m) {
-  const host = el.querySelector(".rg-carro");
-  if (host) carroNoPalco(host, S, m);
+  carrosNoPodio(el, S, m);
   if (el.querySelector(".rg-podio.vitoria") && !reduz() && window.Comum) {
     const eq = infoEquipe(m), cores = [eq.cor, "#ffffff", "#ffd23f", "#e10600", eq.cor];
     window.Comum.confetti(cores, { onde: el, dur: [2.4, 2.4], fica: 6500 });
     setTimeout(() => { if (el.isConnected && !el.classList.contains("hidden")) window.Comum.confetti(cores, { onde: el, dur: [2.2, 2.2], fica: 6000 }); }, 1900);
   }
 }
-// sai da tela do resultado: solta o palco, mas só se ele ainda estiver no meu carro (a sala pode ter pego o palco para a vitrine dela)
-export function limparResultado() {
-  if (hostCarro && hostCarro.isConnected && hostCarro.querySelector("canvas.sn-palco3d")) palco.parar();
-  else if (hostCarro && !hostCarro.isConnected) { /* a tela já foi refeita: o palco foi reaproveitado */ }
-  hostCarro = null;
-}
+// sai da tela do resultado: solta os carros, a cena e o renderizador (o pódio 3D é só desta tela: nada a ver com o palco da sala)
+export function limparResultado() { podio3d.soltar(); }
 
 // a tela só é refeita quando o resultado muda (o servidor manda o estado várias vezes por segundo; refazer reiniciaria a animação e o carro)
 let ultima = "";
 export function resultadoMudou(el, S, m, isHost) {
   const chave = JSON.stringify([S.startAt, S.resultado.map((r) => [r.id, r.pos, r.tempo, r.pontos, r.dano, r.penal]), S.players.map((p) => [p.id, p.acrescimo, p.equipe]), m && m.id, !!isHost, !!S.temporada, (S.log || []).length]);
   if (chave === ultima && el.firstChild && !el.classList.contains("hidden")) return false;
-  limparResultado(); ultima = chave; return true;
+  podio3d.desprender(); ultima = chave; return true; // (a tela vai ser refeita: os mesmos carros voltam para os degraus novos, sem recarregar)
 }
 
 // ---- para ver a tela sem correr um GP: `__corrida.resultadoFalso({ euPos: 1 })` no #debug ----
