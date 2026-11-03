@@ -31,7 +31,7 @@ const MAO = { x: 0.118, y: 0, z: 0.035 }; // o punho fechado de cada luva em rel
 const GRIP = { x: 0.114, y: 0, z: 0.02 }; // onde fica a laçada dos dedos (o eixo da pegada lateral do aro) no quadro do volante, antes de girar com ele; a esquerda é o espelho
 const ESC_MAO = 0.82; // a mão do modelo (a laçada dos dedos de ~6 cm) encolhe para a de um adulto na escala do carro: menos da metade da largura do volante
 const GIRO_VOLANTE = 0.5; // quanto o volante (e as mãos nele) gira no esterço máximo, rad (~29°): com os 0,9 de antes, a mão de dentro subia até a câmera e a de fora saía de vista
-const PULSO = { x: 0, y: 0.008, z: 0.14 }; // onde o antebraço entra no punho da luva, em relação à laçada (dentro do punho escuro)
+const PULSO = { x: 0.019, y: -0.004, z: 0.165 }; // onde o antebraço entra no punho da luva, em relação à laçada (dentro do punho escuro)
 const PUNHO = 0.075; // do punho fechado até o pulso (onde o antebraço entra no punho escuro da luva), para trás (+z)
 const OMBRO = { x: 0.115, y: 0.55, z: 0.2 }; // o ombro (pivô do braço)
 const OSSO = { cima: 0.23, baixo: 0.22 }; // o braço e o antebraço (m): com o ombro a ~0,41 m do pulso o cotovelo dobra um pouco
@@ -119,8 +119,8 @@ function maosDe(cLuva, cPainel) {
     const I = Uint32Array.from(idx); if (l < 0) for (let t = 0; t < I.length; t += 3) { const a = I[t + 1]; I[t + 1] = I[t + 2]; I[t + 2] = a; } // (o espelho vira as faces do avesso)
     m.setIndex(new THREE.BufferAttribute(I, 1)); partes.push(m);
     const pinta = (geo, k2) => { const nn = geo.attributes.position.count, a = new Float32Array(nn * 3); for (let i = 0; i < nn; i++) { a[i * 3] = k2.r; a[i * 3 + 1] = k2.g; a[i * 3 + 2] = k2.b; } geo.setAttribute("color", new THREE.BufferAttribute(a, 3)); geo.deleteAttribute("uv"); return geo; };
-    const tubo = (r0, r1, h, zc, cor) => { r0 *= ESC_MAO; r1 *= ESC_MAO; h *= ESC_MAO; zc *= ESC_MAO; const t = new THREE.CylinderGeometry(r1, r0, h, 18, 1, true); t.rotateX(Math.PI / 2); t.scale(1, 0.82, 1); t.translate(l * (GRIP.x + PULSO.x), GRIP.y + PULSO.y, GRIP.z + zc); return pinta(t, cor); }; // (do lado do pulso, +z, o raio é r1; o eixo do pulso é um pouco achatado)
-    partes.push(tubo(0.034, 0.027, 0.085, 0.1575, esc), tubo(0.0338, 0.0338, 0.02, 0.145, velcro)); // o punho escuro e a tira de velcro em volta dele
+    const tubo = (r0, r1, h, zc, cor) => { r0 *= ESC_MAO; r1 *= ESC_MAO; h *= ESC_MAO; zc *= ESC_MAO; const t = new THREE.CylinderGeometry(r1, r0, h, 18, 1, true); t.rotateX(Math.PI / 2); t.scale(0.73, 1, 1); t.translate(l * (GRIP.x + PULSO.x), GRIP.y + PULSO.y, GRIP.z + zc); return pinta(t, cor); }; // (do lado do pulso, +z, o raio é r1; o eixo do pulso é um pouco achatado)
+    partes.push(tubo(0.0375, 0.032, 0.09, 0.185, esc), tubo(0.0383, 0.0383, 0.02, 0.17, velcro)); // o punho escuro e a tira de velcro em volta dele
   }
   g = mergeGeometries(partes); MAOS.set(k, g); return g;
 }
