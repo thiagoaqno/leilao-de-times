@@ -44,12 +44,14 @@ test("voltas dos bots: a migração 017 traz os traçados que já estavam guarda
   assert.strictEqual(bd.ritmoCorrida("rio").tempo, 61.5);
 });
 
-test("recordes: a migração traz a melhor volta que já estava guardada", () => {
+test("recordes: as voltas de antes (migração 013) ficam fora do quadro, e a primeira de F1 com robôs toma o lugar", () => {
   const db = bd.abrir();
-  db.exec("DELETE FROM migracoes WHERE nome = '013-corrida-recordes.sql'; DROP TABLE corrida_recordes;");
+  db.exec("DELETE FROM migracoes WHERE nome IN ('013-corrida-recordes.sql', '024-recordes-f1-robos.sql'); DROP TABLE corrida_recordes;");
   bd.salvarVoltaCorrida("monaco", 28.4, "drifteiro", "Zeca", Array.from({ length: 100 }, (_, i) => [i * 100, 0, 0, 0, 0, i]));
   bd.migrar(db);
-  assert.deepStrictEqual(bd.recordesCorrida().monaco.map((r) => [r.piloto, r.tempo, r.carro]), [["Zeca", 28.4, "drifteiro"]]);
+  assert.strictEqual(bd.recordesCorrida().monaco, undefined, "a volta antiga não diz de onde veio: fora do quadro da Vila");
+  assert.strictEqual(bd.registrarRecordeCorrida("monaco", 30.1, "equilibrado", "Zeca"), 1, "a de F1 entra, mesmo mais lenta que a antiga");
+  assert.deepStrictEqual(bd.recordesCorrida().monaco.map((r) => [r.piloto, r.tempo, r.carro]), [["Zeca", 30.1, "equilibrado"]]);
 });
 
 test("GET /api/recordes-corrida: todas as pistas, com o quadro de cada uma", async () => {
@@ -62,7 +64,7 @@ test("GET /api/recordes-corrida: todas as pistas, com o quadro de cada uma", asy
   } finally { await srv.parar(); }
 });
 
-test("corrida de verdade: a volta medida pelo servidor entra no quadro e a sala fica sabendo", { timeout: 60000 }, async () => {
+test("corrida de verdade sem as regras de F1 e sem robôs: a volta conta, mas não entra no quadro da Vila", { timeout: 60000 }, async () => {
   const srv = await subirServidor(), T = require("../public/corrida/pistas.js");
   const a = await conectar(srv.url, "/corrida");
   try {
@@ -77,12 +79,9 @@ test("corrida de verdade: a volta medida pelo servidor entra no quadro e a sala 
     for (let s = 1; s < T.SECTORS; s++) await setor(s);
     await new Promise((ok) => setTimeout(ok, Math.max(0, largada + T.PISTAS.monaco.minLap * 1000 + 300 - Date.now()))); // uma volta mais lenta que o mínimo da pista
     await setor(0); // fechou a volta
-    for (let i = 0; i < 50 && !avisos.length; i++) await new Promise((ok) => setTimeout(ok, 50));
-    assert.strictEqual(avisos.length, 1);
-    assert.deepStrictEqual([avisos[0].piloto, avisos[0].pos, avisos[0].pista], ["Ana", 1, "monaco"]);
+    await new Promise((ok) => setTimeout(ok, 500));
+    assert.strictEqual(avisos.length, 0, "o quadro da Vila só leva volta de F1 com robôs (corrida.js)");
     const r = await fetch(srv.url + "/api/recordes-corrida").then((x) => x.json());
-    const top = r.pistas.find((p) => p.id === "monaco").top;
-    assert.strictEqual(top.length, 1); assert.strictEqual(top[0].piloto, "Ana");
-    assert.ok(top[0].tempo >= T.PISTAS.monaco.minLap && Math.abs(top[0].tempo - avisos[0].tempo) < 1e-9);
+    assert.strictEqual(r.pistas.find((p) => p.id === "monaco").top.length, 0);
   } finally { a.close(); await srv.parar(); }
 });
