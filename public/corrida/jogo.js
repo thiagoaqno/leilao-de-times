@@ -17,7 +17,7 @@ import { physics, quadroDeFisica, quadroParado, criarRede, PASSO } from "./fisic
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
 import { standings, hud, renderResults } from "./hud.js";
 import { estadoDeExemplo } from "./resultado-gp.js";
-import { f1Pronto } from "./f1.js";
+import { f1Pronto, atualizarVolante } from "./f1.js";
 import { propsPronto } from "./props.js";
 import { startItems, stopItems, stepItems } from "./itens.js";
 import { passoEfeitos, limparEfeitos, amostrasDeEfeitos } from "./efeitos.js";
@@ -137,7 +137,7 @@ export function startRace(st) {
   const f1 = st.config.regras === "f1", carro = f1 ? window.Sim.novo(tr, { grid: mine ? mine.grid : 0, f1: true, pneu: window.Sim.pneuDaLargada(st.phase, mine && mine.pneu, window.F1Regras.climaEm(st.clima, st.startAt).agua), box: st.phase !== "quali" }) : { x: spot.x, y: spot.y, z: tr.pts[spot.idx].h, vz: 0, air: false, a: spot.a, v: 0, vx: 0, vy: 0, slip: 0, steer: 0 };
   definirEstacao(tr.id); // o filtro de cor da estação do GP (pos.js)
   race = { startAt: st.startAt, tr, car: carro, net: f1 && mine ? criarRede() : null, acc: 0, idx: spot.idx, sector: SECTORS - 1, lastSent: 0, wrong: 0, ghosts: new Map(), msg: null, beeped: 0, finished: false, laps: 0, shake: 0,
-    kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods, undefined, false, { numero: mine.numero }) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0,
+    kart: mine ? makeKart(mine.color, mine.car, false, "", mine.mods, undefined, false, { numero: mine.numero, volante: true }) : null, cam: { pos: null, a: spot.a }, lapT0: st.startAt, rec: [], recLast: -1e9, best: loadBest(st.config.pista), bestKart: null, bptr: 0, draft: 0, draftT: 0, sling: 0,
     pneu: f1 ? carro.pneu : null, ers: f1 ? carro.ers : null, box: f1 ? carro.box : null, // regras de F1: pneu, ERS e pit stop
     quali: st.phase === "quali", luzes: st.phase === "race" && st.config.regras === "f1" ? st.luzes : null, luzN: 0,
     tvAte: st.phase === "race" && st.config.regras === "f1" && st.tvAte && st.tv ? st.tvAte : 0 }; // a transmissão de TV antes das luzes // classificação (sem batida nem box) e as cinco luzes da largada
@@ -293,6 +293,8 @@ function draw(dt) {
   // a câmera (cameras.js): cockpit, onboard, bico, perseguição próxima e afastada, aérea e TV; quem só assiste ou já
   // passou a bandeirada começa na TV
   const mode = quadroCamera(race, { dt, tr, c, src, nearest, olharTras: keys.olharTras || pad.olharTras, rm: motionPreference.matches, escolha: camMode, assistindo: !(src === c && race.kart), acabou: !!me() && me().finish != null, spec: CARS3[me()?.car] || CARS3.equilibrado });
+  // o volante do jogador (a tela e as luzes de troca) só anda na câmera de cockpit; atualizarVolante só refaz a textura quando algo muda
+  if (mode === "cockpit" && race.kart?.kt?.tela?.cv) atualizarVolante(race.kart.kt, { marcha: race.marcha || 1, kmh: Math.round(Math.abs(race.car.v) * 0.75), rpm: race.rpm || 0, bateria: race.ers ? race.ers.carga : 0, ersAtivo: !!race.ersAtivo, drsAberto: !!race.drsAtivo, drsPronto: !!me() && me().drsZona >= 0 });
   const modoClima = somDaCamera(mode); // o clima só conhece perto, cockpit, longe e cima
   // sol e sombras acompanham o carro (a direção do sol vem da foto do céu, quando tem)
   const sd = tr.sol; if (sd) sun.position.set(src.x + sd.x * 800, (src.z || 0) + sd.y * 800, src.y + sd.z * 800); else sun.position.set(src.x - 300, (src.z || 0) + 700, src.y + 260);

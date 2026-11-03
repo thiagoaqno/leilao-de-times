@@ -119,7 +119,7 @@ export function quadroCamera(R, o) {
   if (mode === "cima") aereaHeli(ctx);
   else if (mode === "cockpit") {
     const eyeU = kart.eye.u, eyeH = kart.eye.h, spec = o.spec;
-    pov(ctx, { fo: (eyeU - spec.L / 2) * KS, eh: eyeH * KS, lift: 1.5, mira: 0.5, fov: 72, fovV: 22, rolar: 0.035, trem: 1, tremOff: 0.7, tremBatida: 1.6 });
+    pov(ctx, { fo: (eyeU - spec.L / 2) * KS, eh: eyeH * KS, lift: 1.5, mira: 0.5, baixo: kart.kt?.olhoBaixo || 0, fov: 72, fovV: 22, rolar: 0.035, trem: 1, tremOff: 0.7, tremBatida: 1.6 });
   } else if (mode === "onboard") {
     const M = medidas(kart).tcam, esc = kart.sc * KS;
     pov(ctx, { fo: M.f * esc, eh: M.y * esc, lift: 0, mira: 0.42, fov: 76, fovV: 18, rolar: 0.025, trem: 0.9, tremOff: 0.6, tremBatida: 1.3 });
@@ -145,7 +145,7 @@ function pov(x, p) {
   C.lookY = C.lookY == null ? ahead : C.lookY + (ahead - C.lookY) * (1 - Math.exp(-dt * 6));
   C.pitch = (C.pitch || 0) + ((R.pitch || 0) - (C.pitch || 0)) * (1 - Math.exp(-dt * 8));
   cam.position.set(c.x + fx * fo, c.z + eh + p.lift + Math.sin(C.pitch) * fo * 0.5, c.y + fy * fo); C.pos = null;
-  cam.lookAt(c.x + fx * (fo + 70), Math.max(C.lookY, c.z + Math.tan(C.pitch) * 70 - 6) + eh * p.mira, c.y + fy * (fo + 70));
+  cam.lookAt(c.x + fx * (fo + 70), Math.max(C.lookY, c.z + Math.tan(C.pitch) * 70 - 6) + eh * p.mira - (p.baixo || 0) * 70, c.y + fy * (fo + 70)); // (baixo: o olhar inclinado para o volante)
   if (!rm) { // a vibração cresce com a velocidade e o volante inclina um pouco a cabeça
     const trem = (speedK * speedK * 0.35 + (R.offroad ? p.tremOff : 0)) * p.trem;
     cam.position.y += (Math.random() - 0.5) * trem; cam.position.x += (Math.random() - 0.5) * trem * 0.5;

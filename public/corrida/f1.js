@@ -91,9 +91,9 @@ function setNumero(m, n) {
 }
 export function coresDa(pint, corPiloto) { const p = PINTURAS[pint] || PINTURAS.propria; return [p.c || corPiloto, p.c2]; }
 
-export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4", leve = false, equipe = null, numero = null, composto = null, modelo = atual } = {}) {
+export function montarF1({ cor = "#e63946", cor2 = "#f4f4f4", leve = false, equipe = null, numero = null, composto = null, modelo = atual, volanteVivo = false } = {}) {
   const g = new THREE.Group(), carro = new THREE.Group(); g.add(carro);
-  const k = { g, carro, rodas: [], volante: null, mats: [], pintura: null, piloto: new THREE.Object3D(), olho: { z: 0.3, y: 0.95 }, cores: [cor, cor2], equipe: equipe && temDesenho(equipe) ? equipe : null, numero, composto, pneu: null, escapamento: { z: 2.2, y: 0.42 } };
+  const k = { g, carro, rodas: [], volante: null, mats: [], pintura: null, piloto: new THREE.Object3D(), olho: { z: 0.3, y: 0.95 }, cores: [cor, cor2], equipe: equipe && temDesenho(equipe) ? equipe : null, numero, composto, volanteVivo, pneu: null, escapamento: { z: 2.2, y: 0.42 } };
   // enquanto o modelo não chega, uma silhueta simples no lugar
   const prov = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, TAM), new THREE.MeshStandardMaterial({ color: cor, roughness: 0.5 })); prov.position.y = 0.35; prov.castShadow = true; carro.add(prov);
   k.prov = prov; k.mats.push(prov.material); k.pintura = prov.material;
@@ -135,7 +135,18 @@ function montarCorpoNovo(k) {
   if (D.volante) {
     const piv = new THREE.Group(); piv.position.copy(D.volante.centro); k.carro.add(piv); k.volante = piv;
     peca("volante", D.volante.geo, mat.volante(), piv); if (D.volanteDet) peca("volante-det", D.volanteDet, mat.miudezas(), piv);
-    k.olho = { z: D.volante.centro.z + D.olho.dz, y: D.volante.centro.y + D.olho.dy }; // atrás do volante, na altura do capacete
+    // a tela e as luzes de troca do volante: só o carro do jogador (op.volante) tem textura e liga; nos outros ficam apagadas e paradas
+    const volanteVivo = k.volanteVivo;
+    if (D.tela) {
+      const mt = new THREE.MeshBasicMaterial({ color: 0x050607, toneMapped: false, side: THREE.DoubleSide }); mats.set("tela", mt); peca("tela", D.tela.geo, mt, piv);
+      k.tela = { mat: mt, cv: null, tex: null, ult: "", prox: 0, cargaAnt: 0, colheAte: 0 };
+      if (volanteVivo) iniciarTela(k.tela);
+    }
+    if (D.leds) {
+      const mt = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.DoubleSide }); mats.set("leds", mt); const o = peca("leds", D.leds.geo, mt, piv); o.castShadow = false;
+      k.leds = { geo: D.leds.geo, n: -1 }; apagarLeds(k.leds);
+    }
+    k.olho = { z: D.volante.centro.z + D.olho.dz, y: D.volante.centro.y + D.olho.dy }; k.olhoBaixo = D.olho.baixo || 0; // atrás do volante, na altura do capacete
   }
   k.mats = [...mats.values()]; k.pintura = mats.get("corpo"); k.pneu = mats.get("roda") || null;
   k.lanternaPos = D.lanterna || null; k.escapamento = D.escapamento; k.disco = D.disco;
@@ -240,6 +251,48 @@ function dividirRodas(o) {
 export function animarF1(k, dist, virar) {
   for (const r of k.rodas) { r.gira.rotation.x -= dist / r.r; if (r.esterca) r.esterca.rotation.y = -virar * 0.42; }
   if (k.volante) k.volante.rotation.z = -virar * 0.9;
+}
+// ---------- o volante do carro do jogador (só ele, só na câmera de cockpit): a tela do meio e as 15 luzes de troca ----------
+const TELA_W = 256, TELA_H = 144, LED_COR = { g: [0.1, 0.9, 0.3], r: [1, 0.16, 0.1], b: [0.18, 0.48, 1], off: [0.07, 0.075, 0.085] };
+function iniciarTela(T) {
+  const cv = document.createElement("canvas"); cv.width = TELA_W; cv.height = TELA_H; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  T.cv = cv; T.tex = tex; T.mat.map = tex; T.mat.color.set(0xffffff); T.mat.needsUpdate = true; desenharTela(T, { marcha: "N", kmh: 0, bateria: 0, modo: "BALANCED", drs: 0 });
+}
+function apagarLeds(L) { pintarLeds(L, 0); }
+// acende as n primeiras luzes (da esquerda para a direita; as mesmas faixas de cor do mostrador do HUD: verde, vermelho e azul)
+function pintarLeds(L, n) {
+  if (L.n === n) return; L.n = n; const g = L.geo, c = g.attributes.color, idx = g.userData.led;
+  for (let i = 0; i < c.count; i++) { const k = idx[i], v = k >= n ? LED_COR.off : LED_COR[k < N_LEDS_PK * 0.45 ? "g" : k < N_LEDS_PK * 0.8 ? "r" : "b"]; c.setXYZ(i, v[0], v[1], v[2]); }
+  c.needsUpdate = true;
+}
+const N_LEDS_PK = 15;
+function desenharTela(T, d) {
+  const x = T.cv.getContext("2d"), W = TELA_W, H = TELA_H;
+  x.fillStyle = "#06080b"; x.fillRect(0, 0, W, H);
+  // marcha grande, à esquerda
+  x.textBaseline = "middle"; x.textAlign = "center"; x.fillStyle = "#ffffff"; x.font = "900 96px 'Arial Black', Arial, sans-serif"; x.fillText(String(d.marcha), 52, 64);
+  // velocidade, à direita
+  x.textAlign = "right"; x.font = "900 58px 'Arial Black', Arial, sans-serif"; x.fillText(String(d.kmh), W - 12, 54);
+  x.fillStyle = "#8d96a3"; x.font = "700 18px Arial, sans-serif"; x.fillText("KM/H", W - 12, 92);
+  // DRS: apagado, pronto (âmbar) ou aberto (verde)
+  x.textAlign = "center"; x.fillStyle = d.drs === 2 ? "#18c060" : d.drs === 1 ? "#e0a020" : "#2a2f37"; x.beginPath(); x.roundRect(8, 8, 62, 26, 5); x.fill();
+  x.fillStyle = d.drs ? "#06080b" : "#7b8492"; x.font = "800 17px Arial, sans-serif"; x.fillText("DRS", 39, 22);
+  // bateria do ERS
+  const b = Math.max(0, Math.min(1, d.bateria)), cor = d.modo === "OVERTAKE" ? "#ff4fd8" : b < 0.2 ? "#ff3b30" : b < 0.5 ? "#ffb020" : "#27d46a";
+  x.fillStyle = "#1a1f26"; x.fillRect(10, 112, 150, 16); x.fillStyle = cor; x.fillRect(10, 112, 150 * b, 16);
+  x.textAlign = "left"; x.fillStyle = "#8d96a3"; x.font = "700 15px Arial, sans-serif"; x.fillText("BATT " + Math.round(b * 100) + "%", 10, 102);
+  x.textAlign = "right"; x.fillStyle = cor; x.font = "800 17px Arial, sans-serif"; x.fillText(d.modo, W - 10, 120);
+  T.tex.needsUpdate = true;
+}
+// d: { marcha, kmh, rpm (0 a 1), bateria (0 a 1), ersAtivo, drsAberto, drsPronto }. A tela só se refaz quando algo muda e no máximo a ~12 quadros por segundo.
+export function atualizarVolante(k, d, agora = performance.now()) {
+  if (k.leds) pintarLeds(k.leds, Math.round(Math.max(0, Math.min(1, d.rpm)) * N_LEDS_PK));
+  const T = k.tela; if (!T || !T.cv || agora < T.prox) return;
+  if (d.bateria > T.cargaAnt + 0.0004) T.colheAte = agora + 400; T.cargaAnt = d.bateria; // recarregando (frear ou tirar o pé)
+  const modo = d.ersAtivo ? "OVERTAKE" : agora < T.colheAte ? "HARVEST" : "BALANCED", drs = d.drsAberto ? 2 : d.drsPronto ? 1 : 0;
+  const chave = d.marcha + "|" + d.kmh + "|" + Math.round(d.bateria * 100) + "|" + modo + "|" + drs;
+  if (chave === T.ult) return; T.ult = chave; T.prox = agora + 80;
+  desenharTela(T, { marcha: d.marcha, kmh: d.kmh, bateria: d.bateria, modo, drs });
 }
 // o composto que o carro está usando (macio, medio, duro, chuva; null = sem faixa): só mexe em dois uniforms, e só quando muda
 export function trocarComposto(k, composto) {

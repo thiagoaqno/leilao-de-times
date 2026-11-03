@@ -21,13 +21,13 @@ export const CARS3 = {
 export const KS = 10; // metros do modelo -> unidades da pista
 export const MODS3 = window.Pistas.MODS, MODS_PADRAO = window.Pistas.MODS_PADRAO;
 // leve: o modelo com menos triângulos e sem sombra projetada (os carros dos outros; não há mais sombra redonda falsa no chão: era a mancha preta oval sob o carro)
-// op: { numero (o número do piloto, no carro de equipe), semPintura (a pintura de equipe fica de fora: a máscara de cores) }
+// op: { volante (o carro do jogador: a tela e as luzes de troca do volante, f1.js), numero (o número do piloto, no carro de equipe), semPintura (a pintura de equipe fica de fora: a máscara de cores) }
 export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene, leve = false, op = {}) {
   const tipo = CARS3[model] ? model : "equilibrado", spec = CARS3[tipo], md = { ...MODS_PADRAO, ...(mods || {}) };
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
   const [cor1, cor2] = coresDa(md.pintura, color);
   const equipe = ghost || op.semPintura ? null : PINTURAS[md.pintura]?.equipe || null; // a pintura de equipe (f1-pintura.js); a "Sua cor" segue na máscara
-  const kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2, leve: leve || ghost, equipe, numero: op.numero });
+  const kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2, leve: leve || ghost, equipe, numero: op.numero, volanteVivo: !!op.volante });
   const sc = spec.L / TAM; kt.g.scale.setScalar(sc * KS); body.add(kt.g);
   if (name) {
     const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
@@ -68,7 +68,7 @@ export function makeKart(color, model, ghost = false, name = "", mods = MODS_PAD
   const pronto = () => {
     k.mats = kt.mats; k.eye.u = spec.L / 2 - kt.olho.z * sc; k.eye.h = kt.olho.y * sc;
     chamas.forEach((f, i) => f.position.set((i ? 1 : -1) * (kt.escapamento.x ?? 0.16), kt.escapamento.y, kt.escapamento.z)); // (o modelo diz onde sai o escapamento)
-    if (kt.lanternaPos) { lanterna.position.set(kt.lanternaPos.x, kt.lanternaPos.y, kt.lanternaPos.z); lanterna.scale.setScalar(kt.lanternaPos.k); } // o carro de 2026: em cima do anel de LEDs do modelo
+    if (kt.lanternaPos) lanterna.position.set(kt.lanternaPos.x, kt.lanternaPos.y, kt.lanternaPos.z); // o carro de 2026: no meio do fim da traseira, onde o modelo tem o anel de LEDs (só a posição muda; o jeito da lanterna é o de sempre)
     else lanterna.position.z = kt.escapamento.z - 0.18;
     kt.rodas.filter(r => r.esterca).forEach((r, i) => {
       const disco = freios.children[i]; if (!disco) return;

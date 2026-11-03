@@ -13,7 +13,7 @@ export const CFG_2026 = {
   asa: { z: -2.15, y: 0.78, x: 0.57 }, // o flap: o que fica atrás de z, acima de y e dentro de ±x (a asa traseira, fora as placas das pontas)
   escapamento: [0, 0.5, -1.77],        // a ponta do escapamento dourado (x, y, z)
   // abaixo, já em metros do carro (depois da escala)
-  olho: { dz: 0.62, dy: 0.32 },        // o capacete do piloto em relação ao centro do volante
+  olho: { dz: 0.62, dy: 0.32, baixo: 0.13 }, // o capacete do piloto em relação ao centro do volante e quanto o olhar desce (rad), para a câmera de cockpit pegar o volante
   numPos: [3.2, 0.55, 4.17, 0.52],    // os números do piloto: (s, y) na lateral da tampa do motor e (s, y) na asa traseira
   drs: 0.5,                            // quanto o flap abre (rad)
   disco: { dx: -0.03, k: 0.6 },        // o brilho do freio: deslocamento lateral e tamanho em relação ao do carro clássico
@@ -22,15 +22,16 @@ export const CFG_2026 = {
 // cores de cada coisa pequena que vira cor por vértice (sRGB)
 const COR = {
   glass: "#2b434d", sauber_mirror_right: "#20252b", chrome: "#2a2d33", black_s: "#101113", driver_color: "#dcec1c", gp21_cinture: "#202329",
-  whitelight: "#cfd2d6", chrome_ao: "#8d9298", kers_red: "#c81414", kers_yellow: "#e6dc20", kers_green: "#12c035", generic_lcd: "#0a1210",
-  indicator_lights: "#a4a8ac", CLEARLED: "#9aa0a6", vehicle_revs_type2: "#24903a",
+  whitelight: "#cfd2d6", chrome_ao: "#8d9298", kers_red: "#c81414", kers_yellow: "#e6dc20", kers_green: "#12c035",
+  indicator_lights: "#a4a8ac", vehicle_revs_type2: "#0a0b0d",
   tread_medium: "#111113", sauber_wheel_hub: "#34373d", discs: "#55504a",
 };
 const SEM_NOME = (m) => m.name.replace(/\.\d+$/, "");
 const DESCARTA = new Set(["sauber_decals", "sauber_number_27", "sw_decals"]); // patrocinadores de verdade e o número 27 do modelo
 const CORPO = new Set(["sauber_paint", "sauber_carbon1", "sauber_carbon3"]);
 const MIUDEZAS = new Set(["glass", "sauber_mirror_right", "chrome", "black_s", "driver_color", "gp21_cinture", "whitelight"]);
-const VOLANTE_DET = new Set(["chrome_ao", "kers_red", "kers_yellow", "kers_green", "generic_lcd", "indicator_lights", "CLEARLED", "vehicle_revs_type2"]);
+const VOLANTE_DET = new Set(["chrome_ao", "kers_red", "kers_yellow", "kers_green", "indicator_lights", "vehicle_revs_type2"]);
+export const N_LEDS = 15; // as luzes de troca de marcha em cima do volante (o modelo traz 15, cada uma em dobro: base e lente)
 const RODA = new Set(["tread_medium", "sauber_wheel_hub", "discs"]);
 
 // ---------- triângulos soltos: { pos, nor, uv, idx } em Float32 (o arquivo guarda tudo quantizado) ----------
@@ -137,9 +138,9 @@ export function construir2026(raiz, tam, leve) {
 
   // --- peças com a textura do arquivo (sem os patrocinadores)
   const unir = (conj, opc) => { const l = de(conj); return l.length ? juntar(l, opc) : null; };
-  // a luz de chuva e de freio do modelo é o anel de LEDs no meio do difusor (rear_light_2, x ~ 0, abaixo da asa): a lanterna do jogo (carros.js) vai nele
+  // o anel de LEDs do modelo (rear_light_2, no meio do difusor, abaixo da asa) só marca ONDE fica a lanterna do jogo (carros.js): ela não muda de jeito
   const [ra, rb] = fatiar(de(new Set(["rear_light_2"]))[0], (c) => Math.abs(c[0]) < 0.08 && c[1] < (0.5 - yMin) * s && c[2] > 1.8);
-  if (ra.idx.length) { const b = caixaDe([ra]), t = b.getCenter(new THREE.Vector3()); D.lanterna = { x: 0, y: t.y, z: b.max.z + 0.004, k: Math.max((b.max.x - b.min.x) / 0.32, (b.max.y - b.min.y) / 0.25) * 1.1 }; }
+  if (ra.idx.length) { const b = caixaDe([ra]), t = b.getCenter(new THREE.Vector3()); D.lanterna = { x: 0, y: t.y, z: b.max.z + 0.03 }; }
   D.detalhes = unir(new Set(["sauber_detail"]), { uv: true }); D.mecanica = unir(new Set(["generics"]), { uv: true }); D.luz = unir(new Set(["rear_light_2"]), { uv: true });
 
   // --- as rodas: o arquivo traz as quatro juntas em cada malha; aqui cada roda vira UMA malha (pneu + aro + disco), com o centro na origem
@@ -169,6 +170,20 @@ export function construir2026(raiz, tam, leve) {
       const centro = caixaDe(vol).getCenter(new THREE.Vector3());
       D.volante = { geo: centrar(juntar(vol, { uv: true }), centro), centro };
       const det = de(VOLANTE_DET); if (det.length) D.volanteDet = centrar(juntar(det, { cor: true }), centro);
+      // a tela do meio (generic_lcd): o uv vira o retângulo da tela inteiro, para a textura de canvas de f1.js (atualizarVolante)
+      const lcd = de(new Set(["generic_lcd"]))[0];
+      if (lcd) {
+        const b = caixaDe([lcd]), w = b.max.x - b.min.x, h = b.max.y - b.min.y, uv = new Float32Array(lcd.pos.length / 3 * 2);
+        for (let i = 0; i < uv.length / 2; i++) { uv[i * 2] = (lcd.pos[i * 3] - b.min.x) / w; uv[i * 2 + 1] = (lcd.pos[i * 3 + 1] - b.min.y) / h; } // (visto de trás, o +x do carro é a direita)
+        D.tela = { geo: centrar(juntar([{ ...lcd, uv }], { uv: true }), centro), prop: w / h };
+      }
+      // as 15 luzes de troca (CLEARLED): cada vértice sabe de qual luz é (da esquerda para a direita de quem dirige) e a cor muda por vértice
+      const led = de(new Set(["CLEARLED"]));
+      if (led.length) {
+        const g = centrar(juntar(led, { cor: true }), centro), p = g.attributes.position, b = new THREE.Box3().setFromBufferAttribute(p), larg = (b.max.x - b.min.x) / N_LEDS * 0.7, idx = new Uint8Array(p.count);
+        for (let i = 0; i < p.count; i++) idx[i] = Math.max(0, Math.min(N_LEDS - 1, Math.round((p.getX(i) - b.min.x - larg / 2) / ((b.max.x - b.min.x - larg) / (N_LEDS - 1)))));
+        g.userData.led = idx; D.leds = { geo: g };
+      }
     }
   }
   const [ex, ey, ez] = F(...C.escapamento); D.escapamento = { x: Math.max(0.05, Math.abs(ex)), y: ey, z: ez };
