@@ -1,6 +1,7 @@
 // Corrida da Galera — os carros de Fórmula 1 em 3D, a vitrine da garagem e a fumaça.
 import * as THREE from "three";
 import { scene } from "./cena.js";
+import { soltarEspelhos } from "./espelhos.js";
 import { montarF1, animarF1, animarDrs, soltarF1, trocarComposto, f1Pronto, coresDa, TAM, PINTURAS } from "./f1.js";
 import { clima } from "./clima.js";
 let kartChegou = false; f1Pronto.then(() => { kartChegou = true; }); // a foto da garagem é refeita quando o modelo 3D chega
@@ -165,7 +166,7 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
 export function dropKart(k) {
   if (!k) return; (k.target || scene).remove(k.g);
   for (const grupo of [k.lanterna, k.freios]) grupo.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
-  soltarF1(k.kt); for (const f of k.chamas || []) f.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
+  soltarEspelhos(k); soltarF1(k.kt); for (const f of k.chamas || []) f.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
 }
 
 // prévia 3D do carro na garagem (um renderizador pequeno, só para as fotos)

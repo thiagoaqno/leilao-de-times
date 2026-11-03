@@ -142,6 +142,10 @@ export function quadroCamera(R, o) {
   return mode;
 }
 
+// o quanto do tremor de velocidade vale (0 a 1): abaixo de 250 km/h quase nada, só uma vibração bem leve; acima, sobe até o de antes, que só aparece bem rápido
+// (em 300 km/h). A velocidade em km/h é `v * 0.75` (v em u/s). Batidas (`R.shake`) e fora da pista não passam por aqui.
+const tremorDaVelocidade = (v) => { const kmh = Math.abs(v || 0) * 0.75, b = Math.min(kmh, 250) / 250, leve = 0.06 * b * b, t = lim((kmh - 250) / 50, 0, 1); return leve + (1 - leve) * t * t; };
+
 // dentro do carro (cockpit, onboard e bico): a câmera anda com o carro; na subida a vista levanta e na descida abaixa
 function pov(x, p) {
   const { R, C, dt, tr, c, rm, speedK, fovStep, nearest } = x;
@@ -154,7 +158,7 @@ function pov(x, p) {
   cam.position.set(c.x + fx * fo, c.z + eh + p.lift + Math.sin(C.pitch) * fo * 0.5, c.y + fy * fo); C.pos = null;
   cam.lookAt(c.x + fx * (fo + 70), Math.max(C.lookY, c.z + Math.tan(C.pitch) * 70 - 6) + p.eh * p.mira - (p.baixo || 0) * 70 + Math.tan(A.incl * Math.PI / 180) * 70, c.y + fy * (fo + 70)); // (baixo: o olhar inclinado para o volante)
   if (!rm) { // a vibração cresce com a velocidade e o volante inclina um pouco a cabeça
-    const trem = (speedK * speedK * 0.35 + (R.offroad ? p.tremOff : 0)) * p.trem * kt;
+    const trem = (speedK * speedK * 0.35 * tremorDaVelocidade(x.src.v) + (R.offroad ? p.tremOff : 0)) * p.trem * kt;
     cam.position.y += (Math.random() - 0.5) * trem; cam.position.x += (Math.random() - 0.5) * trem * 0.5;
     cam.rotateZ(-c.steer * p.rolar * Math.min(1, speedK * 1.5));
   }
@@ -180,7 +184,7 @@ function perseguicao(x) {
   cam.position.copy(C.pos);
   if (R.shake > 0) { R.shake -= dt; if (!rm) { cam.position.x += (Math.random() - 0.5) * 3 * kt; cam.position.y += (Math.random() - 0.5) * 3 * kt; } }
   if (R.offroad && !rm) cam.position.y += (Math.random() - 0.5) * 1.2 * kt;
-  if (!rm && speedK > 0.75) cam.position.y += (Math.random() - 0.5) * (speedK - 0.75) * 1.4 * kt; // tremidinha no fim de reta
+  if (!rm) cam.position.y += (Math.random() - 0.5) * (Math.max(0, speedK - 0.75) * 1.4 * tremorDaVelocidade(src.v) + speedK * 0.05) * kt; // (a tremidinha do fim de reta: só bem rápido) // tremidinha no fim de reta
   // olha para o chão lá na frente: na subida a câmera levanta o olhar, na descida abaixa
   const la = near ? 60 : 85, lx = src.x + fx * la, ly = src.y + fy * la, chao = groundH(tr, lx, ly, nearest(tr, lx, ly, R.idx));
   C.lookH = C.lookH == null ? chao : C.lookH + (chao - C.lookH) * (1 - Math.exp(-dt * 5));

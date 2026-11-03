@@ -109,8 +109,14 @@ export function construir2026(raiz, tam, leve) {
 
   // --- o corpo: pintura, carbono das asas e da tampa do motor, num material só. O flap sai da asa traseira.
   const [ax, ay, az] = F(C.asa.x, C.asa.y, C.asa.z), asaTeste = (c) => c[2] > az && c[1] > ay && Math.abs(c[0]) < Math.abs(ax);
-  const flapFontes = [], restoFontes = [];
-  for (const f of de(CORPO)) { const [dentro, fora] = fatiar(f, asaTeste); if (dentro.idx.length) flapFontes.push(dentro); restoFontes.push(fora); }
+  // o aro do volante: no arquivo ele vem dentro do carbono do corpo (sauber_carbon3), não no material do volante; sai do corpo e vai para o volante (gira junto)
+  const rA = F(-0.16, 0.5, 0.44), rB = F(0.16, 0.7, 0.55), rMin = rA.map((v, i) => Math.min(v, rB[i])), rMax = rA.map((v, i) => Math.max(v, rB[i]));
+  const noAro = (c) => c[0] > rMin[0] && c[0] < rMax[0] && c[1] > rMin[1] && c[1] < rMax[1] && c[2] > rMin[2] && c[2] < rMax[2];
+  const flapFontes = [], restoFontes = [], aroFontes = [];
+  for (let f of de(CORPO)) {
+    if (!leve && f.nome === "sauber_carbon3") { const [aro, resto] = fatiar(f, noAro); if (aro.idx.length) { aro.rgb = "#101216"; aroFontes.push(aro); } f = resto; }
+    const [dentro, fora] = fatiar(f, asaTeste); if (dentro.idx.length) flapFontes.push(dentro); restoFontes.push(fora);
+  }
   // para a pintura (f1-pintura.js): `pcar` = (x, y, s) com s = distância desde a ponta do bico, `ncar` = a normal e `mcar` = quanto vale a pintura
   // (0 = carbono: a barriga e o assoalho)
   let zNariz = 1e9; for (const f of restoFontes) for (let i = 2; i < f.pos.length; i += 3) if (f.pos[i] < zNariz) zNariz = f.pos[i];
@@ -165,12 +171,14 @@ export function construir2026(raiz, tam, leve) {
 
   if (!leve) {
     D.miudezas = unir(MIUDEZAS, { cor: true }); D.piloto = unir(PILOTO, { cor: true });
+    // os retrovisores (espelhos.js): onde fica a face de trás de cada um, no quadro do carro (z maior = mais para trás) e a largura da peça
+    D.espelhos = de(new Set(["sauber_mirror_right"])).map((f) => { const b = caixaDe([f]), c = b.getCenter(new THREE.Vector3()); return { x: c.x, y: c.y, z: b.max.z, w: b.max.x - b.min.x }; });
     // --- o volante (as luzes e os mostradores dele giram junto): o centro é o da malha do volante; vira em torno do eixo z (o rosto olha para trás)
     const vol = de(new Set(["audi_steeringwheel"]));
     if (vol.length) {
       const centro = caixaDe(vol).getCenter(new THREE.Vector3());
       D.volante = { geo: centrar(juntar(vol, { uv: true }), centro), centro };
-      const det = de(VOLANTE_DET); if (det.length) D.volanteDet = centrar(juntar(det, { cor: true }), centro);
+      const det = [...de(VOLANTE_DET), ...aroFontes]; if (det.length) D.volanteDet = centrar(juntar(det, { cor: true }), centro);
       // a tela do meio (generic_lcd): o uv vira o retângulo da tela inteiro, para a textura de canvas de f1.js (atualizarVolante)
       const lcd = de(new Set(["generic_lcd"]))[0];
       if (lcd) {

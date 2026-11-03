@@ -124,6 +124,7 @@ function montarCorpoNovo(k) {
   if (D.miudezas) peca("miudezas", D.miudezas, mat.miudezas());
   if (D.luz) peca("luz", D.luz, mat.luz());
   // o piloto (o que o modelo tem dele): fica num grupo que a câmera de cockpit esconde (cameras.js: `kart.roof` é `k.piloto`) e as outras mostram
+  k.espelhos = D.espelhos || null; // onde ficam os retrovisores (espelhos.js os faz funcionar no carro do jogador)
   if (D.piloto) { k.carro.add(k.piloto); peca("piloto", D.piloto, mat.miudezas(), k.piloto); }
   // o flap da asa traseira: gira na dobradiça com o DRS (a mesma pintura do corpo)
   if (D.flap) { const piv = new THREE.Group(); piv.position.copy(D.flap.pos); k.carro.add(piv); peca("flap", D.flap.geo, mat.corpo(), piv); k.flap = piv; k.drsA = 0; k.drsMax = D.drs; }
