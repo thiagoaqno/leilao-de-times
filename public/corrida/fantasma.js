@@ -12,7 +12,7 @@ const REC_KEY = (id) => "corrida:recorde:" + id + (PISTAS[id] && PISTAS[id].scal
 export function loadBest(id) { const b = store.get(REC_KEY(id)); return b && Array.isArray(b.s) && b.s.length > 20 && b.t > 0 ? b : null; }
 const progOf = (idx, tl) => (idx > race.tr.n * 0.75 && tl < 8000 ? idx - race.tr.n : idx); // antes de cruzar a linha conta negativo
 export function recordLap() {
-  const m = me(); if (!m || !E.S || E.S.phase !== "race" || m.finish != null) return;
+  const m = me(); if (!m || !E.S || !["race", "quali"].includes(E.S.phase) || m.finish != null) return;
   const tl = sNow() - race.lapT0; if (tl < 0 || tl - race.recLast < 100) return;
   race.recLast = tl; const c = race.car, q = (v, k = 10) => Math.round(v * k) / k;
   race.rec.push([Math.round(tl), q(c.x), q(c.y), q(c.z), q(c.a, 100), progOf(race.idx, tl)]);
@@ -28,6 +28,16 @@ export function lapDone(m) {
   if (!race.sujou && race.rec.length > 100) socket.emit("volta", { s: race.rec });
   race.sujou = false;
   race.lapT0 += lt * 1000; race.rec = []; race.recLast = -1e9; race.bptr = 0;
+}
+// O servidor fecha a volta de classificação; as amostras usam o início da sessão como relógio.
+export function voltaDaClassificacao(volta) {
+  if (!race || !race.quali || race.startAt !== volta.sessao) return;
+  const inicio = volta.inicio - race.lapT0, fim = volta.fim - race.lapT0;
+  const pontos = race.rec.filter((a) => a[0] >= inicio - 150 && a[0] <= fim + 150);
+  if (!race.sujou && pontos.length > 100) {
+    const t0 = pontos[0][0]; socket.emit("volta", { quali: volta.id, s: pontos.map((a) => [a[0] - t0, ...a.slice(1)]) });
+  }
+  race.rec = race.rec.filter((a) => a[0] >= fim - 150); race.sujou = false;
 }
 export function drawBest(dt) {
   const b = race.best, m = me();

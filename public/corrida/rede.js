@@ -4,6 +4,7 @@ import { Sound } from "./sons.js";
 import { show, renderLobby } from "./menus.js";
 import { race, startRace, stopRace, nearest, prepararPista, adiantarLargada } from "./jogo.js";
 import { checkMyLap, renderResults, renderQuali } from "./hud.js";
+import { voltaDaClassificacao } from "./fantasma.js";
 import { onBox, onUse, onHit, onBoom, setHazards } from "./itens.js";
 import { reconciliar, reenviarEntradas } from "./fisica.js";
 
@@ -85,6 +86,7 @@ socket.on("snap", (buf) => { // pacote binário: { t, c: [[id, x, y, z, a, v, pr
     gh.prog = r[6];
   }
 });
+socket.on("quali:volta", voltaDaClassificacao);
 socket.on("ack", reconciliar); // o estado verdadeiro do meu carro (fisica.js)
 socket.on("connect", reenviarEntradas);
 // O relógio: pergunta a hora do servidor (seis vezes na primeira meia segunda, depois a cada 2 s) e fica com as respostas de menor ida e volta.

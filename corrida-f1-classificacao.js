@@ -126,6 +126,7 @@ function aoSetor(room, p, s, quando) { // (`quando`: a hora do passo da física 
   if (p.qIni == null) { if (agora > q.fimAt) p.qFim = true; else p.qIni = agora; return true; }
   const volta = (agora - p.qIni) / 1000;
   if (volta < T.PISTAS[room.config.pista].minLap) return false; // atalho: não conta, mas o setor segue o do navegador
+  p.qUltima = { id: (p.qSequencia = (p.qSequencia || 0) + 1), inicio: p.qIni, fim: agora, tempo: volta, sessao: q.startAt };
   if (p.qMelhor == null || volta < p.qMelhor) { p.qMelhor = volta; p.qQuando = agora; }
   if (agora > q.fimAt) p.qFim = true; else p.qIni = agora;
   return true;
