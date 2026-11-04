@@ -289,7 +289,7 @@ function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 
 
 // ---------- o clima ----------
 // Cada GP tem uma PREVISÃO (`previsaoDoGP`, sorteada pela semente do GP): a chance `p` de chuva (a maioria dos GPs fica de 0 a
-// 10%, 20 a 40%, 50 a 70% ou 80 a 95%: a média é de uns 40%), QUANDO ela vem (largada molhada, começo,
+// 10%, 20 a 40%, 50 a 70% ou 80 a 95%: a média é de uns 51%), QUANDO ela vem (largada molhada, começo,
 // do meio para o fim, perto do fim) e a força (garoa, chuva forte ou garoa que vira chuva forte). A chuva de verdade sai da
 // previsão: cai com a chance `p` (outro sorteio da mesma semente) e, se cai, começa dentro da janela prevista (`sortearClima`).
 // Se chove, a classificação e a corrida ganham cada uma o seu roteiro (a mesma chuva do fim de semana, mas cada sessão com o seu
@@ -299,7 +299,7 @@ function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 
 // para qualquer hora, a força da chuva (`chuvaEm`) e a água na pista (`aguaEm`, `climaEm`): sobe com a chuva (de 0 seco a 1
 // encharcado) e desce devagar quando ela para. É uma conta pura do tempo, sem estado: o servidor, o navegador e os robôs
 // chegam ao mesmo valor (a tabela guardada em `dadosDoClima` é só um atalho da mesma conta).
-const CHANCE_CHUVA = 0.4, GAROA = 0.45, CHUVA_FORTE = 1; // (CHANCE_CHUVA: a média aproximada das previsões)
+const CHANCE_CHUVA = 0.51, GAROA = 0.45, CHUVA_FORTE = 1; // (CHANCE_CHUVA: a média aproximada das previsões)
 const AGUA_SOBE_S = 75;   // segundos de chuva para a pista ir de seca a encharcada (a garoa para no teto dela, GAROA)
 const AGUA_SECA_S = 240;  // segundos para uma pista encharcada secar de vez, sem chuva (quatro minutos de corrida)
 const RAMPA_S = 25;       // a chuva entra, sai e muda de força em rampas suaves desse tamanho
@@ -312,8 +312,8 @@ const seco = (dur) => ({ chove: false, t0: 0, dur: Math.round(dur), agua0: 0, tr
 // ----- a previsão -----
 const OPCOES_DE_CLIMA = ["aleatorio", "seco", "chuva", "variavel"]; // a opção da sala casual: Aleatório (a previsão), Seco, Chuva, Variável
 const ROTULO_CLIMA = { aleatorio: "Aleatório", seco: "Seco", chuva: "Chuva", variavel: "Variável" };
-// [peso, de, ate]: média das previsões ~40%, preservando previsões diferentes para cada GP.
-const FAIXAS_DE_CHUVA = [[0.25, 0, 0.10], [0.35, 0.20, 0.40], [0.25, 0.50, 0.70], [0.15, 0.80, 0.95]];
+// [peso, de, ate]: média das previsões ~51%, preservando previsões diferentes para cada GP.
+const FAIXAS_DE_CHUVA = [[0.15, 0, 0.10], [0.25, 0.20, 0.40], [0.35, 0.50, 0.70], [0.25, 0.80, 0.95]];
 // quando a chuva pode começar: `de`..`ate` (fração da sessão em que ela começa de verdade) e `janela` (o que a previsão anuncia)
 // (a chuva vem cedo: o "variável" e a maioria das aleatórias chovem a partir de 1/4 a 1/3 da corrida, para dar tempo de trocar para o pneu de chuva)
 const QUANDO = {
@@ -557,12 +557,9 @@ function efeitoDoDano(dano) {
 }
 
 // ---------- o vácuo da F1 ----------
-// Atrás de outro carro na reta o ar empurra menos: um pouco de velocidade final (bem menos que o DRS, que é o que decide
-// a ultrapassagem) e um pouco de aceleração. Nas curvas é o contrário, o ar sujo: o carro de trás perde aderência e
-// escorrega, e por isso é difícil seguir colado. Sem o "estilingue" do modo arcade. `draft` vai de 0 (longe) a 1 (colado).
-// (o DRS aberto: +8% de velocidade final pelo arrasto menor; o ERS em uso: +15% de potência; o vácuo colado: até +5% de final. Antes eram
-// 5%, 9% e 3%, e quase não se sentia; na F1 o DRS dá uns 10 a 15 km/h e o ERS ~120 kW de ~750)
-const VACUO_FINAL = 0.05, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.15, DRS_GANHO = 0.08, ERS_POTENCIA = 0.22;
+// Atrás de outro carro o vácuo aumenta a velocidade final e reduz a aderência em curva.
+// DRS e vácuo podem ser combinados; o teto também inclui uma pequena contribuição do ERS.
+const VACUO_FINAL = 0.20, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.90, DRS_GANHO = 0.50, ERS_POTENCIA = 0.22;
 function vacuoF1(draft, curva) {
   const d = limite(draft || 0, 0, 1);
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };

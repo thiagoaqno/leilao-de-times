@@ -17,7 +17,7 @@
 // continua sendo a descrição do carro: `parametros(spec)` converte nos números físicos.
 (function (root) {
   // o ganho do DRS aberto na velocidade final e o do ERS na potência: os mesmos de f1-regras.js (DRS_GANHO, ERS_POTENCIA)
-  const DRS_GANHO = 0.08, ERS_POTENCIA = 0.22;
+  const DRS_GANHO = 0.50, ERS_POTENCIA = 0.22;
 
 const ESC = 0.75 / 3.6;      // metros por unidade da pista
 const G = 9.81, G_U = G / ESC; // gravidade (m/s² e u/s²)
@@ -173,7 +173,9 @@ function passo(c, ent, amb, p, dt = PASSO) {
     if (g !== c.marcha) { if (g < c.marcha) c.desceT = DESCE_INTERVALO; c.marcha = g; c.trocaT = TROCA_T; }
   }
   c.trocaT = Math.max(0, c.trocaT - dt); c.desceT = Math.max(0, (c.desceT || 0) - dt);
-  const x = rotacao(uU, vmaxU, c.marcha);
+  // A oitava acompanha os ganhos aerodinâmicos para não cortar o motor antes do novo limite.
+  const vmaxRot = c.marcha === NUM ? vmaxU * (amb.drs ? 1 + DRS_GANHO * drsK : 1) * (amb.vacuo ? 1 + amb.vacuo.final : 1) : vmaxU;
+  const x = rotacao(uU, vmaxRot, c.marcha);
   c.rpm = Math.max(0.3, x);
   if (amb.ar) { // no ar: sem pneu e sem motor; só o arrasto e a guinada que já tinha
     const V = Math.hypot(c.v, c.vl) * ESC, q = 0.5 * RHO * V * V * p.CdA * kArr;
@@ -218,7 +220,7 @@ function passo(c, ent, amb, p, dt = PASSO) {
     let FxMotor = 0;
     if (rev) FxMotor = -0.55 * p.W * Math.max(0, 1 - Math.abs(u) / (70 * ESC)); // a ré chega a uns 70 u/s
     else if (gas > 0 && c.trocaT <= 0) {
-      const xr = rotacao(Math.abs(u) / ESC, vmaxU, c.marcha);
+      const xr = rotacao(Math.abs(u) / ESC, vmaxRot, c.marcha);
       FxMotor = gas * p.eta * p.Ppico * kPot * potencia(xr) / Math.max(Math.abs(u), 5);
     }
     // tração: o eixo de trás segura `muTr·Nr·kTracao` para a frente e `muR·Nr` para o lado, no mesmo círculo (elipse) de atrito:

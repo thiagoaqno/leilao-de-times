@@ -179,10 +179,10 @@ test("câmbio de 8 marchas: espaçadas para chegar perto do corte (12 mil rpm) a
 test("pneu, dano, DRS, ERS e vácuo continuam valendo dentro da física nova", () => {
   const fin = (amb, spec = mclaren) => { const c = D.novoCarro(); andar(spec, c, { gas: 1 }, 45, { chao: true, ...amb }); return c.v; };
   const base = fin({});
-  assert.ok(fin({ drs: true }) > base * 1.03 && fin({ drs: true }) < base * 1.08, "DRS");
+  assert.ok(fin({ drs: true }) > base * 1.35 && fin({ drs: true }) < base * 1.60, "DRS");
   assert.ok(fin({ ers: true }) > base * 1.01, "ERS");
   const vac = F1.vacuoF1(1, false);
-  assert.ok(fin({ vacuo: vac }) > base * 1.015, "vácuo");
+  assert.ok(fin({ vacuo: vac }) > base * 1.15 && fin({ vacuo: vac }) < base * 1.25, "vácuo");
   assert.ok(Math.abs(fin({ dano: F1.efeitoDoDano(10) }) / base - 0.9) < 0.02, "10% de dano tira ~10% da velocidade final");
   assert.ok(fin({ pn: F1.aderencia({ composto: "macio", desgaste: 1, temp: 1 }) }) < base, "pneu acabado");
   // aderência: pneu gasto e dano tiram da lateral, pneu novo e quente segura mais

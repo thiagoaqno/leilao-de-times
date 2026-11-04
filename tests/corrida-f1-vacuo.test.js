@@ -1,12 +1,12 @@
-// Corrida, regras de F1: o vácuo de verdade (pouco na reta, ar sujo na curva) e o DRS valendo mais que ele.
+// Corrida, regras de F1: o vácuo na reta, o ar sujo na curva e o DRS.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const F1 = require("../public/corrida/f1-regras.js");
 
-test("vácuo da F1: pouco na reta, menos que o DRS, e sem nada longe", () => {
+test("vácuo da F1: 20% na reta, DRS de 50% e sem vácuo longe", () => {
   const longe = F1.vacuoF1(0, false), colado = F1.vacuoF1(1, false);
   assert.equal(longe.final, 0); assert.equal(longe.acel, 0); assert.equal(longe.aderencia, 1);
-  assert.ok(colado.final > 0 && colado.final < F1.DRS_GANHO, "o vácuo ganha menos velocidade final que o DRS");
+  assert.equal(colado.final, 0.20); assert.equal(F1.DRS_GANHO, 0.50);
   assert.equal(colado.aderencia, 1, "na reta não tira aderência");
   // colado no vácuo, abrir o DRS ainda ganha velocidade (o teto não come o DRS)
   assert.ok(Math.min(F1.AERO_MAX, colado.final + F1.DRS_GANHO) > colado.final + F1.DRS_GANHO - 0.01);
