@@ -8,16 +8,16 @@
 // ---------- os pneus ----------
 // Três compostos secos e o de chuva. `pico` é a aderência lateral do pneu novo e quente sobre o grip do carro (1,35 é a referência
 // original da dirigibilidade); `vida` é quantas VOLTAS ele dura, pilotado limpo, até o penhasco (não depende do tamanho da corrida:
-// o macio dura uma volta e meia em qualquer GP); `aquece` é o quanto esquenta rápido e `perdaAntes` o que perde de
+// o macio dura 2,8 voltas em qualquer GP); `aquece` é o quanto esquenta rápido e `perdaAntes` o que perde de
 // aderência até o fim da vida. As cores são as da Pirelli. Os números saem da calibração de `tests/corrida-f1-estrategia.test.js`
 // (o simulador de stint com a física do carro: ver `ferramentas/pneus-fisica.js`).
 // `molhado` é quanto da aderência sobra com a pista encharcada (água 1; seco é 1 e no meio interpola): os secos ficam com a
 // metade e o de chuva com 90%. O de chuva no seco tem o `pico` do duro, mas `derrete` (o desgaste vai a ×2,8) e `esquenta` (a
 // temperatura passa de 1, até +0,4, e a aderência cai até 25%) quando a pista está seca: dura 2 a 3 voltas.
 const PNEUS = {
-  macio: { nome: "Macio", cor: "#e8202a", pico: 1.38, vida: 2.25, aquece: 1.7, perdaAntes: 0.03, molhado: 0.5 },
-  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 4, aquece: 1.1, perdaAntes: 0.03, molhado: 0.5 },
-  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.32, vida: 7.35, aquece: 0.85, perdaAntes: 0.02, molhado: 0.5 },
+  macio: { nome: "Macio", cor: "#e8202a", pico: 1.38, vida: 2.8, aquece: 1.7, perdaAntes: 0.03, molhado: 0.5 },
+  medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 3.8, aquece: 1.1, perdaAntes: 0.03, molhado: 0.5 },
+  duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.32, vida: 4.8, aquece: 0.85, perdaAntes: 0.02, molhado: 0.5 },
   chuva: { nome: "Chuva", cor: "#1e7fd6", pico: 1.126, vida: 7, aquece: 0.5, perdaAntes: 0.02, molhado: 0.9, derrete: 2.8, esquenta: 0.4 },
 };
 const SECOS = ["macio", "medio", "duro"]; // os compostos de pista seca (a estratégia e a tabela de ritmo só conhecem estes)
@@ -40,7 +40,7 @@ function pneuNovo(composto = COMPOSTO_PADRAO) {
   return { composto: PNEUS[composto] ? composto : COMPOSTO_PADRAO, desgaste: 0, temp: TEMP_SAIDA };
 }
 // Um passo do pneu. O desgaste anda pela distância em VOLTAS (`volta` é o comprimento de uma volta): o macio dura uma
-// volta e meia em qualquer corrida. Escorregar, travar a roda e patinar gastam mais. A temperatura vai para um alvo pela
+// distância equivalente à vida do composto em qualquer corrida. Escorregar, travar a roda e patinar gastam mais. A temperatura vai para um alvo pela
 // velocidade e pelo escorregão, mais rápido no macio.
 // d: { dist (andado neste passo), volta (o comprimento de uma volta), slip, travada (0..1), patina (0..1), zebra (0..1, opcional), v, vmax, dt,
 //      fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js), agua (opcional: a água na pista, 0 a 1) }
@@ -289,7 +289,7 @@ function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 
 
 // ---------- o clima ----------
 // Cada GP tem uma PREVISÃO (`previsaoDoGP`, sorteada pela semente do GP): a chance `p` de chuva (a maioria dos GPs fica de 0 a
-// 10%, alguns de 20 a 40%, poucos de 50 a 70% e raros de 80 a 95%: a média é de uns 20%), QUANDO ela vem (largada molhada, começo,
+// 10%, 20 a 40%, 50 a 70% ou 80 a 95%: a média é de uns 51%), QUANDO ela vem (largada molhada, começo,
 // do meio para o fim, perto do fim) e a força (garoa, chuva forte ou garoa que vira chuva forte). A chuva de verdade sai da
 // previsão: cai com a chance `p` (outro sorteio da mesma semente) e, se cai, começa dentro da janela prevista (`sortearClima`).
 // Se chove, a classificação e a corrida ganham cada uma o seu roteiro (a mesma chuva do fim de semana, mas cada sessão com o seu
@@ -299,7 +299,7 @@ function estrategia(voltas, nivel = "medio", semente = 1, pista = null, fator = 
 // para qualquer hora, a força da chuva (`chuvaEm`) e a água na pista (`aguaEm`, `climaEm`): sobe com a chuva (de 0 seco a 1
 // encharcado) e desce devagar quando ela para. É uma conta pura do tempo, sem estado: o servidor, o navegador e os robôs
 // chegam ao mesmo valor (a tabela guardada em `dadosDoClima` é só um atalho da mesma conta).
-const CHANCE_CHUVA = 0.2, GAROA = 0.45, CHUVA_FORTE = 1; // (CHANCE_CHUVA: a média das previsões)
+const CHANCE_CHUVA = 0.51, GAROA = 0.45, CHUVA_FORTE = 1; // (CHANCE_CHUVA: a média aproximada das previsões)
 const AGUA_SOBE_S = 75;   // segundos de chuva para a pista ir de seca a encharcada (a garoa para no teto dela, GAROA)
 const AGUA_SECA_S = 240;  // segundos para uma pista encharcada secar de vez, sem chuva (quatro minutos de corrida)
 const RAMPA_S = 25;       // a chuva entra, sai e muda de força em rampas suaves desse tamanho
@@ -312,8 +312,8 @@ const seco = (dur) => ({ chove: false, t0: 0, dur: Math.round(dur), agua0: 0, tr
 // ----- a previsão -----
 const OPCOES_DE_CLIMA = ["aleatorio", "seco", "chuva", "variavel"]; // a opção da sala casual: Aleatório (a previsão), Seco, Chuva, Variável
 const ROTULO_CLIMA = { aleatorio: "Aleatório", seco: "Seco", chuva: "Chuva", variavel: "Variável" };
-// [peso, de, ate]: a faixa de chance de chuva e o quanto dos GPs cai nela (média: 0,6·5 + 0,25·30 + 0,11·60 + 0,04·87,5 = 20,6%)
-const FAIXAS_DE_CHUVA = [[0.60, 0, 0.10], [0.25, 0.20, 0.40], [0.11, 0.50, 0.70], [0.04, 0.80, 0.95]];
+// [peso, de, ate]: média das previsões ~51%, preservando previsões diferentes para cada GP.
+const FAIXAS_DE_CHUVA = [[0.15, 0, 0.10], [0.25, 0.20, 0.40], [0.35, 0.50, 0.70], [0.25, 0.80, 0.95]];
 // quando a chuva pode começar: `de`..`ate` (fração da sessão em que ela começa de verdade) e `janela` (o que a previsão anuncia)
 // (a chuva vem cedo: o "variável" e a maioria das aleatórias chovem a partir de 1/4 a 1/3 da corrida, para dar tempo de trocar para o pneu de chuva)
 const QUANDO = {
@@ -557,19 +557,18 @@ function efeitoDoDano(dano) {
 }
 
 // ---------- o vácuo da F1 ----------
-// Atrás de outro carro na reta o ar empurra menos: um pouco de velocidade final (bem menos que o DRS, que é o que decide
-// a ultrapassagem) e um pouco de aceleração. Nas curvas é o contrário, o ar sujo: o carro de trás perde aderência e
-// escorrega, e por isso é difícil seguir colado. Sem o "estilingue" do modo arcade. `draft` vai de 0 (longe) a 1 (colado).
-// (o DRS aberto: +8% de velocidade final pelo arrasto menor; o ERS em uso: +15% de potência; o vácuo colado: até +5% de final. Antes eram
-// 5%, 9% e 3%, e quase não se sentia; na F1 o DRS dá uns 10 a 15 km/h e o ERS ~120 kW de ~750)
-const VACUO_FINAL = 0.05, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.15, DRS_GANHO = 0.08, ERS_POTENCIA = 0.22;
+// Atrás de outro carro o vácuo aumenta a velocidade final e reduz a aderência em curva.
+// DRS e vácuo podem ser combinados; o teto também inclui uma pequena contribuição do ERS.
+const VACUO_FINAL = 0.20, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.90, DRS_GANHO = 0.50, ERS_POTENCIA = 0.22;
+// A velocidade da física é convertida para km/h pelo velocímetro (0,75 × u/s).
+const vacuoPermitido = (v, quali = false) => !quali && v * 0.75 >= 100;
 function vacuoF1(draft, curva) {
   const d = limite(draft || 0, 0, 1);
   return { final: VACUO_FINAL * d, acel: VACUO_ACEL * d, aderencia: 1 - (curva ? AR_SUJO * d : 0) };
 }
 
 const api = { PONTO_VOLTA_RAPIDA, pontosDe, PNEUS, SECOS, COMPOSTO_PADRAO, PENHASCO, PERDA_FIM, vidaEmVoltas, vidaRestante, sessoesDeClassificacao, ordenarClassificacao, fecharSessao, gridDaClassificacao, PONTOS, classificacaoFinal, pneuNovo, gastarPneu, aderencia, frio,
-  zonaDRS, drsHabilitado, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, DRS_GANHO, ERS_POTENCIA, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
+  zonaDRS, drsHabilitado, vacuoPermitido, vacuoF1, VACUO_FINAL, VACUO_ACEL, AR_SUJO, AERO_MAX, DRS_GANHO, ERS_POTENCIA, ersNovo, carregarErs, gastarErs, usarErsAuto, ERS_MAX_RECARGA, ERS_GASTO, ERS_GASTO_SUAVE,
   LIMITADOR, PARADA_BASE, PARADA_ERRO, UM_COMPOSTO, RAPIDO, RAMPA, GARAGENS, sorteio, tempoDeParada, PARADAS, classeDaParada, textoDaParada, BATIDA_MIN, BATIDA_MEDIA, BATIDA_FORTE, BATIDA_MAX, BATIDA_INTERVALO, batida, COLISAO_LEVE, COLISAO_MEDIA, COLISAO_GRAVE, PUNICAO_LEVE_S, PUNICAO_MEDIA_S, STOPGO_S, STOPGO_VOLTAS, STOPGO_CONVERSAO_S, gravidadeDaBatida, nivelDaPunicao, batidaProposital, DSQ_PROPOSITAIS, AVISO_PROPOSITAIS, stopGoCabe, efeitoDoDano, corredor, garagemDe, saidaDoCorredor, tempoNoBox, registrarParada, usouDoisCompostos, JOGOS_POR_COMPOSTO, jogosUsados, jogosRestantes, podeUsar, compostoParaParada, recomendarParada, ESCOLHA_BOX_S, penalidadeUmComposto, acrescimoDeFinal, estrategia, melhoresPlanos,
   CHANCE_CHUVA, GAROA, CHUVA_FORTE, AGUA_SOBE_S, AGUA_SECA_S, RAMPA_S, CHUVA_MIN_S, AVISO_S, AGUA_MOLHADA, AGUA_ENCHARCADA, AGUA_QUALI_CHUVA, OPCOES_DE_CLIMA, ROTULO_CLIMA, previsaoDoGP, descreverPrevisao, sortearClima, chuvaEm, aguaEm, proximaMudanca, climaEm, fatorAgua, compostoDaClassificacao, tempoMolhado, compostoPorAgua };
 if (typeof module !== "undefined" && module.exports) module.exports = api;

@@ -10,21 +10,6 @@ const SECOS = ["macio", "medio", "duro"]; // do mais rápido ao mais durável
 function escolherSeco({ F, jogos, voltasRestantes, fator = 1, evitar = [], ritmo = null, pista = null, voltasTotais = voltasRestantes }) {
   const tem = (c) => !jogos || jogos[c] == null || jogos[c] > 0, vida = (c) => F.vidaEmVoltas(c, fator);
   const cands = SECOS.filter((c) => tem(c) && !evitar.includes(c)); if (!cands.length) return null;
-  // Em GPs curtos compara o tempo total, inclusive uma possível segunda parada, em vez de forçar o pneu que dura até o fim.
-  const original = ritmo && pista && ritmo.tabelaDe(pista);
-  if (original && voltasRestantes >= 1 && voltasRestantes <= 5) {
-    const tab = { ...original, compostos: Object.fromEntries(SECOS.filter((c) => original.compostos[c]).map((c) => [c, original.compostos[c]])) };
-    const usados = SECOS.filter((c) => jogos && jogos[c] != null && jogos[c] < F.JOGOS_POR_COMPOSTO);
-    let melhor = null;
-    for (const p of ritmo.planos(tab, voltasRestantes, { maxParadas: 1, fator })) {
-      const sequencia = [p.largada, ...p.paradas.map((x) => x.composto)];
-      if (!cands.includes(p.largada) || sequencia.some((c) => jogos && jogos[c] != null && sequencia.filter((x) => x === c).length > jogos[c])) continue;
-      const seca = new Set(sequencia), todos = new Set([...usados, ...sequencia]);
-      const tempo = p.tempo - (seca.size === 1 && voltasRestantes >= 2 ? ritmo.penalidadeUmComposto(voltasRestantes) : 0) + (todos.size < 2 ? ritmo.penalidadeUmComposto(voltasTotais) : 0);
-      if (!melhor || tempo < melhor.tempo) melhor = { composto: p.largada, tempo };
-    }
-    if (melhor) return melhor.composto;
-  }
   const aguenta = cands.find((c) => vida(c) >= voltasRestantes);
   return aguenta || cands.slice().sort((a, b) => vida(b) - vida(a))[0];
 }
@@ -53,24 +38,36 @@ function sugerirBox(e) {
   // Se a chuva já está perto e o pneu aguenta, espera para não fazer uma troca seca seguida de outra molhada.
   if (chuvaProxima && !iminente && e.pneu.desgaste <= F.PENHASCO && !(e.stopGo && e.stopGo.v != null && e.stopGo.v <= 1)) return null;
 
+  // O prazo do stop-and-go é independente da necessidade de trocar pneus.
+  if (e.stopGo && e.stopGo.v != null && e.stopGo.v <= 1) return mk(e.pneu.desgaste < 0.5 ? atual : seu([]), "stop-and-go no prazo", "stopgo", 3);
+  // Projeta o desgaste restante e compara o tempo de seguir com o custo da parada.
+  const taxa = e.taxaPneu > 0 ? e.taxaPneu : F.PENHASCO / F.vidaEmVoltas(atual, e.fator || 1);
+  const chega = e.pneu.desgaste + taxa * restam <= F.PENHASCO;
+  if (chega && !obrigatoria) return null;
+  const tab = e.ritmo && e.pista && e.ritmo.tabelaDe(e.pista), novo = seu([]);
+  if (!obrigatoria && tab && tab.compostos[atual] && tab.compostos[novo] && restam > 0) {
+    let d = e.pneu.desgaste, seguir = 0;
+    for (let i = 0; i < restam; i++) { const fim = Math.min(1, d + taxa); seguir += e.ritmo.tempoDaVolta(tab.compostos[atual], d, fim); d = fim; }
+    const trocar = e.ritmo.tempoDoTrecho(tab, novo, restam, e.fator || 1) + tab.parada;
+    if (seguir <= trocar) return null;
+  }
+
   // 2) o pneu passou do penhasco
   if (e.pneu.desgaste > F.PENHASCO) return mk(seu(obrigatoria ? usados : []) || seu([]), "pneu no fim", "pneu", 3);
   // 3) a uma volta (ou dentro) da janela ideal
   const j = e.janela;
   if (j && j.precisa && e.voltaAtual >= j.abre - 1) {
     if (obrigatoria) return mk(seu(usados) || seu([]), "falta o 2º composto", "dois", 2);
-    return mk(seu([atual]) || seu([]), "pneu gasto, janela de box", "pneu", 2);
+    return mk(seu([]), "pneu gasto, janela de box", "pneu", 2);
   }
-  // 4) stop-and-go pendente perto do prazo: cumpre na mesma parada (o pneu atual só se ainda está bom)
-  if (e.stopGo && e.stopGo.v != null && e.stopGo.v <= 1) return mk(e.pneu.desgaste < 0.5 ? atual : seu([]), "stop-and-go no prazo", "stopgo", 3);
   return null;
 }
 
-// Quando mostrar: a sugestão dura `duracao` ms; se ninguém confirma, some e só volta se a situação muda (outra chave) ou depois de uma volta.
+// Quando mostrar: a sugestão dura `duracao` ms; sem confirmação, só volta quando a situação muda.
 // est: estado guardado entre chamadas ({ ativa: { chave, desde }, recusas: { chave: volta } }); devolve { est, mostrar, restante (ms), sug }.
 function gerirSugestao(est, sug, { agora, volta }, duracao = 10000) {
   const e = { ativa: est && est.ativa ? est.ativa : null, recusas: { ...((est && est.recusas) || {}) } };
-  if (!sug) { if (e.ativa) { e.recusas[e.ativa.chave] = volta; e.ativa = null; } return { est: e, mostrar: false, restante: 0, sug: null }; }
+  if (!sug) { e.ativa = null; e.recusas = {}; return { est: e, mostrar: false, restante: 0, sug: null }; }
   if (e.ativa && e.ativa.chave !== sug.chave) { e.recusas[e.ativa.chave] = volta; e.ativa = null; } // a situação mudou: a antiga sai
   if (e.ativa) {
     const resta = duracao - (agora - e.ativa.desde);
@@ -78,7 +75,7 @@ function gerirSugestao(est, sug, { agora, volta }, duracao = 10000) {
     return { est: e, mostrar: true, restante: resta, sug };
   }
   const r = e.recusas[sug.chave];
-  if (r != null && volta <= r) return { est: e, mostrar: false, restante: 0, sug }; // já foi mostrada nesta volta: sem spam
+  if (r != null) return { est: e, mostrar: false, restante: 0, sug }; // espera a situação mudar antes de sugerir de novo
   e.ativa = { chave: sug.chave, desde: agora };
   return { est: e, mostrar: true, restante: duracao, sug };
 }

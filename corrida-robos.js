@@ -845,12 +845,16 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   // robô entrar na curva a tempo em vez de cortar por dentro
   // (em Mônaco, na disputa, o limite é o de cada ponto adiante, não o do meu)
   const latAdiante = (j) => { const margemExtra = room.config.pista === "monaco" ? (ia.ult ? ALEM_MONACO : 8) : 0; const limite = Math.min(margemExtra ? tr.W / 2 - 9 : limiteAtual, pf.teto ? pf.teto[j] + margemExtra : Infinity); return entre(linhaEm(j, car.prog + (j - i + n) % n) * saidaGrid + ia.lat0 * (1 - saidaGrid) + ia.desvio, limite); };
-  const vac = F1.vacuoF1(tf.draft, curva);
-  if (alvo < topo * 0.97) alvo *= Math.sqrt(pneu.grip * dano.grip * vac.aderencia) * (1 - 0.05 * cl.agua) * cautela; // só as curvas dependem da aderência (no molhado, mais 5% de cautela)
-  alvo = Math.min(alvo, spec.vmax * pneu.final * dano.final);
+  const vac = F1.vacuoF1(F1.vacuoPermitido(car.v, room.phase === "quali") ? tf.draft : 0, curva);
+  const reta = alvo >= topo * 0.97;
+  if (!reta) alvo *= Math.sqrt(pneu.grip * dano.grip * vac.aderencia) * (1 - 0.05 * cl.agua) * cautela; // só as curvas dependem da aderência (no molhado, mais 5% de cautela)
+  const drs = p.drsZona >= 0 && p.drsZona === F1.zonaDRS(i / n, tr.t.drs) && !room.direcao?.safety && !room.direcao?.amarelo;
+  const ganhoReta = (1 + (drs ? F1.DRS_GANHO * (spec.drs ?? 1) : 0)) * (1 + vac.final);
+  if (reta) alvo *= ganhoReta;
+  alvo = Math.min(alvo, spec.vmax * pneu.final * dano.final * (reta ? ganhoReta : 1));
   // Enquanto há pista livre ao lado, o ERS ajuda a passar. Se a porta fecha, o limite de tráfego manda frear.
   // (o próprio carro que estou passando ao meu lado não tira o empurrão: era justamente aí, lado a lado, que ele sumia e a disputa morria em 7 s)
-  if (ia.ult && (!(tf.bloqPos || tf.bloqNeg) || !tf.ladoDeOutro)) alvo = Math.min(spec.vmax, alvo * (room.config.pista === "monaco" ? 1.06 : 1.04));
+  if (ia.ult && (!(tf.bloqPos || tf.bloqNeg) || !tf.ladoDeOutro)) alvo = Math.min(spec.vmax * (reta ? ganhoReta : 1), alvo * (room.config.pista === "monaco" ? 1.06 : 1.04));
   // dividir a pista (Mônaco): quem está sendo atacado por um carro já emparelhado (o bico dele passou da minha traseira) não briga com ele no
   // acelerador: mantém a linha e cede um pouco de ritmo, como o piloto que aceita a disputa lado a lado em vez de jogar o outro no muro
   if (room.config.pista === "monaco") for (const oid of room.order) { const q = room.players[oid]; if (!q || q === p || !q.ia || !q.ia.ult || q.ia.ult.id !== p.id || !q.pos || !p.pos) continue;
@@ -960,7 +964,7 @@ function passo(room, dt, setor, emit) {
       let alvo = Math.min(pf.lim[i], pf.lim[(i + olha) % pf.n]) * ia.nivel * el * (1 - Math.min(1, Math.abs(ia.desvio) / 40) * 0.06);
       // regras de F1: nas curvas, a velocidade vai com a raiz da aderência (o pneu gasto ou frio, o dano e o ar sujo de quem vem
       // colado atrás): o robô freia antes e não escorrega
-      const curva = pf.linha.k[i] > 1 / 600, vac = aderencia ? F1.vacuoF1(tf ? tf.draft : 0, curva) : null;
+      const curva = pf.linha.k[i] > 1 / 600, vac = aderencia ? F1.vacuoF1(tf && F1.vacuoPermitido(ia.v, room.phase === "quali") ? tf.draft : 0, curva) : null;
       if (aderencia && pf.lim[i] < c.vmax * 0.97) alvo *= Math.sqrt(aderencia.grip * dano.grip * vac.aderencia);
       if (aderencia) alvo = Math.min(alvo, c.vmax * aderencia.final * dano.final);
       if (!f1) for (const oid of room.order) {
