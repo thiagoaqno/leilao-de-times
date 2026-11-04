@@ -1,10 +1,10 @@
-# Corrida F1: ritmo em Mônaco e pausas do servidor
+# Torre de posições e largada da corrida
 
-Em Mônaco, os robôs aproveitam mais a largura da pista e não recebem os limites extras de velocidade que os deixavam lentos em alguns trechos. Em pista livre podem aliviar o acelerador antes de frear. As cinco voltas humanas mais rápidas da pista passam a fornecer traçado, inclusive voltas com batida e de classificação, também em salas sem robôs; voltas com recolocação do carro continuam excluídas.
+As trocas de posição aparecem nas próprias linhas da torre: cada piloto desliza até sua nova posição e recebe uma seta verde ao subir ou vermelha ao descer. A indicação funciona nas torres compacta e completa; com movimento reduzido, a seta permanece sem o deslocamento. O cartão de ultrapassagem fora da torre foi removido.
 
-A otimização inicial do traçado de F1 passa para uma thread separada, para não interromper as atualizações das outras salas quando uma pista é carregada pela primeira vez. O servidor registra atrasos relevantes no laço de eventos para ajudar a investigar outras pausas. Essa mudança reduz uma causa identificada, mas não garante eliminar todo lag de rede ou de processamento.
+A contagem da largada agora começa depois da preparação do grid e dos robôs. Um pedido de largada repetido durante a preparação ou com a corrida já iniciada deixa de informar incorretamente que só o organizador pode largar.
 
 ## Verificação
 
-- Conferência de sintaxe, do diff e medição local da preparação de Mônaco na thread separada.
-- Sem testes novos; validação automatizada pelo GitHub. Ritmo e classificação precisam de validação em corrida.
+- Conferência visual da torre em uma corrida local e verificações de sintaxe e do diff.
+- Sem testes novos; as verificações automatizadas ficam no GitHub.
