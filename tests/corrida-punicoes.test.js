@@ -120,6 +120,25 @@ test("stop-and-go: cumprido some; sem voltas vira +20 s; passou de 3 voltas é b
   assert.equal(a.stopGo, null); assert.equal(a.penal, 20); assert.ok(!a.dsq);
 });
 
+test("linha de chegada no corredor não pune stop-and-go em andamento", () => {
+  for (const bot of [false, true]) for (const voltas of [8, 5]) {
+    const room = sala(voltas, 1), a = room.players.a;
+    Direcao.aplicarStopGo(room, a, "teste", semLog);
+    const box = { fase: "parada", stopGo: true, volta: 4 };
+    if (bot) a.ia = { sim: { box } }; else a.sim = { c: { box } };
+    a.laps = 4;
+    assert.equal(Direcao.voltaFechada(room, a, semLog), false);
+    assert.ok(a.stopGo); assert.ok(!a.dsq); assert.equal(a.penal || 0, 0);
+    assert.equal(Direcao.cumprirStopGo(room, a, semLog), true);
+    assert.equal(a.stopGo, null);
+  }
+  const room = sala(8, 1), a = room.players.a;
+  Direcao.aplicarStopGo(room, a, "teste", semLog);
+  a.sim = { c: { box: { fase: "entra", stopGo: false, volta: 4 } } };
+  a.laps = 4;
+  assert.equal(Direcao.voltaFechada(room, a, semLog), true);
+});
+
 test("stop-and-go pendente mantém 8 segundos quando há outra punição", () => {
   const room = sala(8, 1), a = room.players.a;
   Direcao.aplicarStopGo(room, a, "primeira", semLog);

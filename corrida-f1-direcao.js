@@ -47,6 +47,10 @@ function cumprirStopGo(room, p, log) {
 // Devolve true se o piloto foi desclassificado (quem chama confere se a corrida acabou).
 function voltaFechada(room, p, log) {
   const sg = p.stopGo; if (!sg || p.dsq) return false;
+  // A linha pode atravessar o corredor: a visita iniciada no prazo ainda está
+  // em andamento, e seu cumprimento só é registrado na saída do box.
+  const box = p.sim?.c?.box || p.ia?.sim?.box;
+  if (box?.fase && box.stopGo && box.volta <= sg.ate) return false;
   if (!F1.stopGoCabe(p.laps, room.config.voltas)) {
     p.stopGo = null; penalizar(p, F1.STOPGO_CONVERSAO_S, 'stop-and-go não cumprido e sem voltas para cumprir', log); return false;
   }
