@@ -179,7 +179,10 @@ module.exports = function attachCorrida(io) {
     room.preparandoTracado = true;
     Robos.prepararTracado(pista).then(() => {
       room.preparandoTracado = false;
-      if ((!registrada || rooms.get(room.code) === room) && room.phase === fase && room.config.pista === pista) continuar();
+      if ((!registrada || rooms.get(room.code) === room) && room.phase === fase && room.config.pista === pista) {
+        continuar();
+        broadcast(room); // a largada adiada também precisa avisar todos que aguardam no lobby
+      }
     }).catch((e) => { room.preparandoTracado = false; console.warn("Corrida: falha ao preparar traçado", e.message); });
     return true;
   }
