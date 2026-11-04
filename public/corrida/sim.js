@@ -115,7 +115,7 @@ function desempacotar(n, saida = {}) {
 // Logo atrás de outro carro (até ~17 m, na mesma linha e na mesma direção) o ar empurra menos. Devolve 0..1 (1 = colado).
 // outros: [{ x, y, z, a, dnf, fant }]
 function vacuoAlvo(c, outros) {
-  if (c.air || c.v <= 120 || !outros) return 0;
+  if (c.air || !F1.vacuoPermitido(c.v) || !outros) return 0;
   const fx = Math.cos(c.a), fy = Math.sin(c.a);
   let d = 0;
   for (const o of outros) {
@@ -173,8 +173,10 @@ function passo(c, ent, amb, tr, ev) {
   const fr0 = quadro(tr, c.x, c.y, c.idx), superficie = tr.t.superficieEscape ? P.superficieEscape(tr, c.idx, fr0.lat) : (Math.abs(fr0.lat) <= tr.W / 2 + 6 ? "asfalto" : "grama"), estrada = superficie === "asfalto";
   const fx = Math.cos(c.a), fy = Math.sin(c.a);
   // o vácuo e o ar sujo
-  const alvo = vacuoAlvo(c, amb.outros);
-  c.draft += (alvo - c.draft) * Math.min(1, dt * 4);
+  const permitido = F1.vacuoPermitido(c.v, amb.quali);
+  const alvo = permitido ? vacuoAlvo(c, amb.outros) : 0;
+  if (permitido) c.draft += (alvo - c.draft) * Math.min(1, dt * 4);
+  else c.draft = 0;
   const pn = F1.aderencia(c.pneu, amb.agua), dano = F1.efeitoDoDano(amb.dano);
   const curva = (tr.pts[c.idx].k || 0) > 1 / 600, vac = F1.vacuoF1(c.draft, curva);
   c.arSujo = 1 - vac.aderencia;
