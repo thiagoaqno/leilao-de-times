@@ -289,7 +289,7 @@ function listaDePaginas(ctx) {
 // ---------- a sugestão de box (estrategia-box.js decide; aqui só aparece o cartão) ----------
 // Quando a hora chega (a 1 volta da janela, pneu no fim, chuva chegando ou parando, falta o 2º composto, stop-and-go no prazo) o MFD abre sozinho com
 // "BOX SUGERIDO: <composto>" e 10 s de contagem; Enter (ou A, ou o botão confirmar da tela Controles) pede a parada com aquele composto. Sem confirmar, some
-// e só volta se a situação mudar ou depois de uma volta (nada de spam).
+// e só volta se a situação mudar (nada de spam).
 let sugEst = null, sugAtual = null, sugVisivel = false;
 function dadosDaSugestao(ctx) {
   const m = ctx.m, B = race.box, EB = window.EstrategiaBox, F = F1U();
@@ -298,7 +298,7 @@ function dadosDaSugestao(ctx) {
   const mud = S.clima && S.clima.chove && F.proximaMudanca && clima.t >= 0 ? F.proximaMudanca(S.clima, clima.t) : null;
   const e = { F, ritmo: window.F1PneusRitmo, pista: S.config.pista, pneu: race.pneu, voltaAtual: Math.min(voltas, (m.laps || 0) + 1), voltas, jogos, janela: ctx.janela,
     compostosUsados: ["macio", "medio", "duro"].filter((c) => jogos[c] != null && jogos[c] < F.JOGOS_POR_COMPOSTO).length,
-    agua: clima.agua, chuva: clima.chuva, mudanca: mud, tempoVolta: m.last || m.best || 0, stopGo: m.stopGo || null, pedido: B.pedido, emBox: !!B.fase, fator: (carOf(m) || {}).desgaste || 1 };
+    agua: clima.agua, chuva: clima.chuva, mudanca: mud, tempoVolta: m.last || m.best || 0, taxaPneu: ctx.tp && ctx.tp.taxa, stopGo: m.stopGo || null, pedido: B.pedido, emBox: !!B.fase, fator: (carOf(m) || {}).desgaste || 1 };
   return { e, EB };
 }
 function atualizarSugestao(ctx, agora) {

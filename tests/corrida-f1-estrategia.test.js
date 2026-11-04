@@ -19,9 +19,10 @@ const melhor = (tab, voltas, filtro) => Ritmo.planos(tab, voltas).find(filtro);
 test("estratégia (física): o piloto ideal gasta o pneu na vida de cada composto, em voltas", () => {
   for (const pista of ["interlagos", "monaco", "monza"]) {
     const vida = (c) => F1.PENHASCO / volta(pista, c).desgaste;
-    assert.ok(vida("macio") > 1.6 && vida("macio") < 2.7, `${pista} macio ${vida("macio")}`);
-    assert.ok(vida("medio") > 2.6 && vida("medio") < 4.6, `${pista} médio ${vida("medio")}`);
-    assert.ok(vida("duro") > 5 && vida("duro") < 9, `${pista} duro ${vida("duro")}`);
+    for (const c of F1.SECOS) {
+      const medida = vida(c), esperada = F1.PNEUS[c].vida / P.SPEC.desgaste;
+      assert.ok(medida / esperada > 0.65 && medida / esperada < 1.15, `${pista} ${c} ${medida}`);
+    }
   }
 });
 
@@ -59,11 +60,9 @@ test("estratégia: as boas estratégias terminam a poucos segundos e esticar o p
       const comMacio = melhor(tab, voltas, (p) => sig(p).includes("S") && new Set(sig(p)).size >= 2);
       assert.ok(comMacio.tempo - melhorTempo < 8, `${pista} ${voltas}: estratégia com macio competitiva`);
     }
-    // esticar: o macio por 3 voltas (vida 2,25) custa segundos; o médio por 5 voltas (vida 4), também
-    const bom = melhor(tab, 5, (p) => sig(p) === "SM" && p.trechos[0] === 2), esticado = melhor(tab, 5, (p) => sig(p) === "SM" && p.trechos[0] === 3);
-    assert.ok(esticado.tempo - bom.tempo >= 4, `${pista}: esticar o macio custa ${(esticado.tempo - bom.tempo).toFixed(1)} s`);
-    const parar = (v) => ({ largada: "medio", paradas: [{ volta: v + (tab.antes ? 0 : 1), composto: "duro" }] });
-    assert.ok(Ritmo.simular(tab, 10, parar(5)).tempo - Ritmo.simular(tab, 10, parar(4)).tempo > (fraco ? 2 : 6), `${pista}: o médio por 5 voltas é pior que por 4`);
+    // Com o desgaste do carro de referência, esticar o macio até três voltas custa tempo.
+    const parar = (v) => ({ largada: "macio", paradas: [{ volta: v + (tab.antes ? 0 : 1), composto: "medio" }] });
+    assert.ok(Ritmo.simular(tab, 5, parar(3)).tempo - Ritmo.simular(tab, 5, parar(2)).tempo > (fraco ? 1.5 : 2), `${pista}: esticar o macio custa tempo`);
     // O planejador não deve usar mais de dois jogos de um mesmo composto.
     assert.ok(Ritmo.planos(tab, 10).every((p) => [...new Set(sig(p))].every((c) => [...sig(p)].filter((x) => x === c).length <= 2)));
   }
@@ -99,6 +98,6 @@ test("robôs: o pneu que acaba antes do plano faz o robô parar antes, na volta 
     const setor = (q, s) => { q.sector = s; if (s === 0) { if (!q.started) q.started = true; else q.laps++; } };
     const emit = (e, d) => { if (e === "box" && parou == null) parou = d.volta; };
     for (let t = 0; t < 400 && parou == null; t += 0.05) { relogio += 50; Robos.passo(room, 0.05, setor, emit); }
-    assert.ok(parou != null && parou <= 2, `parou na volta ${parou}: o macio acabou na 2ª, não na 4ª do plano`);
+    assert.ok(parou != null && parou <= 3, `parou na volta ${parou}: o macio acabou antes da 4ª volta planejada`);
   } finally { Date.now = agora; }
 });

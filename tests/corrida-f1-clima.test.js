@@ -7,7 +7,7 @@ const F = require("../public/corrida/f1-regras.js");
 const CORRIDA = 435; // ~5 voltas
 const sementes = (n) => Array.from({ length: n }, (_, i) => `gp${i}:2026:${i % 8}`);
 
-test("a previsão é fixa pela semente, de 5 em 5%, e a média de chuva fica perto de 20%", () => {
+test("a previsão é fixa pela semente, de 5 em 5%, e a média de chuva fica perto de 40%", () => {
   const lista = sementes(4000), prev = lista.map((s) => F.previsaoDoGP(s));
   assert.deepEqual(F.previsaoDoGP(lista[7]), F.previsaoDoGP(lista[7]));
   for (const p of prev) {
@@ -17,12 +17,12 @@ test("a previsão é fixa pela semente, de 5 em 5%, e a média de chuva fica per
     assert.ok(["garoa", "forte", "vira"].includes(p.forca));
   }
   const media = prev.reduce((s, p) => s + p.p, 0) / prev.length;
-  assert.ok(media > 0.17 && media < 0.25, `média ${media}`);
+  assert.ok(media > 0.37 && media < 0.43, `média ${media}`);
   const baixa = prev.filter((p) => p.p <= 0.1).length / prev.length, alta = prev.filter((p) => p.p >= 0.8).length / prev.length;
-  assert.ok(baixa > 0.5, "a maioria dos GPs fica de 0 a 10%");
-  assert.ok(alta > 0.01 && alta < 0.08, "os de 80% para cima são raros");
+  assert.ok(baixa > 0.20 && baixa < 0.30, "há previsões baixas");
+  assert.ok(alta > 0.10 && alta < 0.20, "há previsões altas");
   const choveu = lista.filter((s) => F.sortearClima(s, { corrida: CORRIDA, quali: 300 }).chuva).length / lista.length;
-  assert.ok(choveu > 0.17 && choveu < 0.25, `chove em ${choveu}`);
+  assert.ok(choveu > 0.37 && choveu < 0.43, `chove em ${choveu}`);
 });
 
 test("a chuva cai dentro da janela prevista e a previsão e o sorteio batem", () => {

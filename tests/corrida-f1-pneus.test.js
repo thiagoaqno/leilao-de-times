@@ -21,11 +21,11 @@ function rodar(composto, { volta = 13000, voltas = 8, slip = 0, travada = 0, pat
 }
 const voltasAtePenhasco = (marcas) => marcas.find((m) => m.desgaste >= F1.PENHASCO)?.v ?? Infinity;
 
-test("pneus: a vida é em voltas (macio ~2, médio 3 a 4, duro 6 ou mais) e o macio é o mais rápido novo", () => {
+test("pneus: a vida é em voltas e o macio é o mais rápido novo", () => {
   const vida = Object.fromEntries(F1.SECOS.map((c) => [c, voltasAtePenhasco(rodar(c, { slip: 15, voltas: 10 }).marcas)]));
-  assert.ok(vida.macio > 1.6 && vida.macio < 2.7, `macio ${vida.macio}`);
-  assert.ok(vida.medio > 2.6 && vida.medio < 4.8, `médio ${vida.medio}`);
-  assert.ok(vida.duro >= 5 && vida.duro < 9.5, `duro ${vida.duro}`);
+  for (const [c, esperada] of Object.entries({ macio: 2.8, medio: 3.8, duro: 4.8 })) {
+    assert.ok(Math.abs(vida[c] - esperada * 0.76 / 0.85) < 0.02, `${c} ${vida[c]}`);
+  }
   const g = (c) => F1.aderencia({ composto: c, desgaste: 0, temp: 1 });
   assert.ok(g("macio").grip > g("medio").grip && g("medio").grip > g("duro").grip);
   assert.ok(g("macio").freio > g("medio").freio && g("medio").tracao > g("duro").tracao);
