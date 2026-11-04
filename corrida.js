@@ -203,7 +203,8 @@ module.exports = function attachCorrida(io) {
     room.luzes = f1 ? { espera: Math.round((0.4 + F1.sorteio(`luzes:${room.semente}`)() * 2.4) * 100) / 100 } : null;
     // a transmissão de TV vem antes de tudo: `tvAte` é quando ela acaba e as luzes só começam depois (LUZES_MS + as cinco luzes)
     const tvMs = !f1 ? 0 : process.env.CORRIDA_TV_MS ? Math.max(0, Number(process.env.CORRIDA_TV_MS) || 0) : room.temporada ? TV_TEMPORADA_MS : TV_AVULSA_MS;
-    room.tvAte = tvMs ? Date.now() + tvMs : null; room.tvPulos = new Set(); room.tv = tvMs ? room.tvTemporada || {} : null;
+    const inicioPreparoGrid = Date.now();
+    room.tvAte = tvMs ? inicioPreparoGrid + tvMs : null; room.tvPulos = new Set(); room.tv = tvMs ? room.tvTemporada || {} : null;
     room.startAt = (room.tvAte || Date.now()) + (f1 ? Math.round(LUZES_MS + (4 + room.luzes.espera) * 1000) : COUNTDOWN_MS);
     room.endAt = null;
     room.clima = room.sorteioClima ? { ...room.sorteioClima.corrida, t0: room.startAt } : null; // o relógio da chuva começa na largada
@@ -220,6 +221,11 @@ module.exports = function attachCorrida(io) {
     for (const id of ids) { const p = room.players[id]; Object.assign(p, { paradas: [], compostos: [p.pneu || F1.COMPOSTO_PADRAO], pneuAtual: p.pneu || F1.COMPOSTO_PADRAO, acrescimo: 0, box: null, boxFant: 0 }); }
     Itens.start(room);
     Robos.largar(room);
+    // A preparação pode demorar em uma pista fria: a contagem só começa depois que o grid está pronto.
+    const tempoPreparoGrid = Date.now() - inicioPreparoGrid;
+    room.startAt += tempoPreparoGrid;
+    if (room.tvAte) room.tvAte += tempoPreparoGrid;
+    if (room.clima) room.clima.t0 = room.startAt;
     if (room.grupo) for (const id of room.order) { const p = room.players[id]; if (!p.bot && !p.sockets.size) TRobo.assumir(room, p, (s) => log(room, s)); } // temporada em grupo: quem não chegou à largada tem o carro levado por um robô
     if (room.config.regras === "f1") {
       Direcao.iniciar(room);
@@ -634,7 +640,8 @@ module.exports = function attachCorrida(io) {
           log(room, `${p.name} saiu da sala.`); return;
         }
         if (type === "start") {
-          if (!isHost || room.phase === "race" || room.phase === "quali") return "Só o organizador dá a largada.";
+          if (!isHost) return "Só o organizador dá a largada.";
+          if (room.phase === "race" || room.phase === "quali" || room.preparandoTracado) return; // um segundo clique não vira erro de permissão
           if (room.config.regras === "f1" && room.config.classificacao !== "pular") iniciarClassificacao(room); else startRace(room);
           return;
         }

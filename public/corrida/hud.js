@@ -149,7 +149,7 @@ function montarTorre() {
   const el = $("hTorre"); if (el.dataset.ok) return; el.dataset.ok = 1;
   el.innerHTML = `<div class="tt-topo">${LOGO_F1}<b class="tt-modo">RACE</b><button type="button" class="tt-alt" id="tAlt" aria-label="Alternar torre compacta e completa" title="Torre: compacta ou completa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div class="tt-volta"><span>VOLTA</span> <b id="tVolta">1</b><span id="tVoltaTot"> / 1</span></div><div id="tLinhas"></div>`;
   const box = $("tLinhas");
-  for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = `<span class="n"></span><i class="eq"></i><b class="sg"></b><u class="pn"></u><small class="ic"></small><em class="df"></em><span class="vrx">${ICONE_RELOGIO}</span>`; box.appendChild(d); }
+  for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "tl hidden"; d.innerHTML = `<span class="n"></span><i class="eq"></i><b class="sg"></b><u class="pn"></u><small class="ic"></small><em class="df"></em><span class="vrx">${ICONE_RELOGIO}</span><span class="troca" role="img"></span>`; box.appendChild(d); }
   $("tAlt").addEventListener("click", alternarTorre);
   montarCentro(); montarTempo(); montarCrono(); montarMfd();
 }
@@ -259,11 +259,25 @@ function hudF1(m, st, now) {
   const max = compacta ? COMPACTA_N : Math.max(6, Math.min(22, Math.floor((innerHeight - (peq ? 200 : 250)) / (peq ? 22 : 28)))), eu = linhas.findIndex((l) => l.eu);
   set($("hTorre"), "c", "hud" + (compacta ? " compacta" : " completa")); set($("tAlt"), "aria-pressed", String(!compacta));
   if (E.S.phase === "race" && eu >= 0 && window.Radio && m && m.started && !m.dnf && m.finish == null) { window.Radio.posicao(linhas[eu].pos, String(race.startAt)); race.radioCtx = { cors, m, cron, agoraS }; radioRivais(cors, m, cron, agoraS); }
-  if (E.S.phase === "race" && eu >= 0 && m && m.started && !m.dnf && m.finish == null) ultrapassagem(linhas, eu);
   const ver = T.recortar(linhas.length, eu, max), box = $("tLinhas").children;
+  // Guarda a posição visual anterior antes de reutilizar as linhas da torre.
+  const posAnt = race.torrePos, indicacoes = race.torreIndicacoes || (race.torreIndicacoes = new Map());
+  const anterior = new Map(), mudou = !!posAnt && [...box].some((d, k) => (d._piloto || null) !== (ver[k] != null ? linhas[ver[k]].id : null));
+  if (mudou) for (const d of box) {
+    if (d._piloto) anterior.set(d._piloto, { y: d.getBoundingClientRect().top, altura: d.getBoundingClientRect().height });
+    if (d._movimento) { d._movimento.cancel(); d._movimento = null; }
+  }
+  if (posAnt && E.S.phase === "race" && now >= race.startAt) for (const l of linhas) {
+    const antes = posAnt.get(l.id);
+    if (antes != null && antes !== l.pos) indicacoes.set(l.id, { subiu: l.pos < antes, ate: t0 + 2600 });
+  }
+  race.torrePos = new Map(linhas.map((l) => [l.id, l.pos]));
+  for (const [id, aviso] of indicacoes) if (aviso.ate <= t0) indicacoes.delete(id);
   for (let k = 0; k < box.length; k++) {
     const d = box[k], l = ver[k] != null ? linhas[ver[k]] : null;
-    set(d, "c", l ? "tl" + (l.eu ? " eu" : "") + (l.pos === 1 ? " p1" : "") + (l.volta ? " vmr" : "") + (l.dif.tipo === "out" ? " out" : "") : "tl hidden");
+    const aviso = l && indicacoes.get(l.id);
+    set(d, "c", l ? "tl" + (l.eu ? " eu" : "") + (l.pos === 1 ? " p1" : "") + (l.volta ? " vmr" : "") + (l.dif.tipo === "out" ? " out" : "") + (aviso ? " trocou" : "") : "tl hidden");
+    d._piloto = l ? l.id : null;
     if (!l) continue;
     const c = d.children; // n, eq, sg, pn, ic, df, vrx
     set(c[0], "t", l.pos); set(c[1], "bg", l.cor); set(c[2], "t", l.sigla);
@@ -271,6 +285,18 @@ function hudF1(m, st, now) {
     const ic = l.dif.tipo === "out" ? (l.dsq ? "DSQ" : "DNF") : l.noBox ? "BOX" : l.acabou ? "FIM" : l.sg ? "SG" : l.penal > 0 ? `+${l.penal}s` : ""; // fora (ou desclassificado), no box, bandeirado, com stop-and-go a cumprir ou punido
     set(c[4], "t", ic); set(c[4], "c", "ic" + (ic === "DNF" || ic === "DSQ" ? " dnf" : ic === "BOX" ? " box" : ic === "FIM" ? " fim" : ic ? " pen" : ""));
     set(c[5], "t", l.dif.texto); set(c[5], "c", "df " + l.dif.tipo); set(c[6], "d", l.volta ? "" : "none");
+    set(c[7], "t", aviso ? (aviso.subiu ? "▲" : "▼") : "");
+    set(c[7], "c", "troca" + (aviso ? (aviso.subiu ? " sobe" : " desce") : ""));
+    set(c[7], "aria-label", aviso ? (aviso.subiu ? "Subiu de posição" : "Perdeu posição") : "");
+    set(c[7], "aria-hidden", String(!aviso));
+  }
+  // FLIP: o piloto vai da posição anterior à nova; mudanças rápidas começam da posição visível.
+  if (mudou && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) for (let k = 0; k < box.length; k++) {
+    const d = box[k], l = ver[k] != null ? linhas[ver[k]] : null, antiga = l && anterior.get(l.id);
+    if (!antiga || !posAnt.has(l.id) || posAnt.get(l.id) === l.pos) continue;
+    let deslocamento = antiga.y - d.getBoundingClientRect().top;
+    if (!deslocamento && l.eu) deslocamento = Math.sign(posAnt.get(l.id) - l.pos) * antiga.altura;
+    if (deslocamento) d._movimento = d.animate([{ transform: `translateY(${deslocamento}px)` }, { transform: "translateY(0)" }], { duration: 260, easing: "cubic-bezier(0.77, 0, 0.175, 1)" });
   }
   // o mostrador central: bateria, marcha, velocidade, rotação e o modo do ERS
   const lider = st[0], v = Math.abs(m ? race.car.v : (lider && race.ghosts.get(lider.id)?.v) || 0), kmh = Math.round(v * T.KMH_POR_U);
@@ -431,23 +457,6 @@ export function radioRivais(cors, m, cron, agoraS, pedido = null) {
   }
   if (pedido === "frente" && !fr) return R.frase([R.pedaco("lider"), ...(tr && iv.tras.seg != null ? [R.pedaco("tras"), nome(tr), F.pecaDoGap(iv.tras.seg)] : [])], "rival", { forcar: true });
   return null;
-}
-// A animação de ultrapassagem (como no jogo da F1): quando a minha posição muda e fica 0,6 s no lugar novo, o cartão `#hUltra` entra com a posição
-// nova grande, a seta (verde subindo, vermelha descendo), quantas posições e quem eu passei (ou quem me passou). Os primeiros 8 s da largada
-// ficam de fora (a confusão do começo); `prefers-reduced-motion` só troca o texto, sem animar (hud-f1.css).
-function ultrapassagem(linhas, eu) {
-  const pos = linhas[eu].pos, agora = performance.now(), U = race.ultra || (race.ultra = { pos, cand: null, desde: 0, ini: agora });
-  if (agora - U.ini < 8000) { U.pos = pos; return; }
-  if (pos === U.pos) { U.cand = null; return; }
-  if (U.cand !== pos) { U.cand = pos; U.desde = agora; return; }
-  if (agora - U.desde < 600) return;
-  const ganhou = pos < U.pos, n = Math.abs(pos - U.pos), outro = linhas[ganhou ? eu + 1 : eu - 1];
-  U.pos = pos; U.cand = null;
-  let el = $("hUltra");
-  if (!el) { el = document.createElement("div"); el.id = "hUltra"; el.className = "hud"; el.setAttribute("aria-live", "polite"); $("race").appendChild(el); }
-  el.className = "hud " + (ganhou ? "sobe" : "desce");
-  el.innerHTML = `<b class="hu-seta">${ganhou ? "▲" : "▼"}</b><b class="hu-pos">P${pos}</b><span class="hu-txt"><em>${ganhou ? "+" : "−"}${n}</em>${outro ? `<small>${ganhou ? "passou" : "perdeu para"} ${h(outro.sigla || outro.nome || "")}</small>` : ""}</span>`;
-  void el.offsetWidth; el.classList.add("on"); clearTimeout(U.timer); U.timer = setTimeout(() => el.classList.remove("on"), 2600);
 }
 // o dano de uma batida nova: aparece na hora, uma vez só
 function avisoDeBatida(m) {
