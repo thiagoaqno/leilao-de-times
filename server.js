@@ -90,6 +90,10 @@ app.get("/api/recordes-corrida", (req, res) => {
     res.json({ pistas: Object.entries(T.PISTAS).map(([id, p]) => ({ id, nome: p.name, top: rec[id] || [] })) });
   } catch (e) { res.status(500).json({ erro: "O placar não abriu." }); }
 });
+// a tela inicial da Corrida: quem está online, as salas abertas e o desafio da semana
+app.get("/api/corrida/menu", (req, res) => {
+  try { res.json(require("./corrida-menu.js").resumo(io, require("./bd.js"))); } catch (e) { res.status(500).json({ erro: "O menu não abriu." }); }
+});
 app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
 // Escudos da Carreira guardados no Git. O mesmo endereço serve a tela e o canvas das notícias, sem chamar a API em jogo.
 const escudosApi = (() => { try { return require("./public/carreira/escudos-api.json"); } catch { return {}; } })();

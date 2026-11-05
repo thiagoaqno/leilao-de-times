@@ -5,10 +5,11 @@ test.use({ viewport: { width: 480, height: 270 } });
 test('a entrada da Carreira F1 cria sala, passa pelas etapas da sala, escolhe Mônaco e larga', async ({ page }) => {
   await page.goto('/corrida/#debug');
   await expect(page.locator('#home')).toBeVisible();
-  await expect(page.locator('#logosEquipes .equipe-mini')).toHaveCount(11);
-  await expect(page.locator('#logosEquipes img')).toHaveCount(11);
-  await expect.poll(() => page.locator('#logosEquipes img').evaluateAll((imgs) => imgs.every((img) => img.complete && img.naturalWidth > 0))).toBe(true);
+  await page.locator('#mn [data-painel="garagem"]').click();
+  await expect(page.locator('#mnEquipes img')).toHaveCount(11);
+  await expect.poll(() => page.locator('#mnEquipes img').evaluateAll((imgs) => imgs.every((img) => img.complete && img.naturalWidth > 0))).toBe(true);
   await expect(page.locator('a[href="/corrida/drag/"]')).toBeVisible();
+  await page.locator('#mnMulti').click();
   await page.locator('#hName').fill('Piloto');
   await page.locator('#btnCreate').click();
   await expect(page.locator('#lobby')).toBeVisible();

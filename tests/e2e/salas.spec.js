@@ -19,6 +19,7 @@ for (const jogo of JOGOS) {
       const p = await (await browser.newContext({ viewport: TELA(jogo) })).newPage();
       p.on("pageerror", (e) => erros.push(`${nome}: ${e}`));
       await p.goto(`/${jogo}/`);
+      if (jogo === "corrida") await p.click("#mnMulti"); // na Corrida, os campos ficam no painel Multiplayer do menu
       await p.fill("#hName", nome);
       if (!pags.length) await p.click("#btnCreate");
       else { await p.fill("#hCode", await pags[0].locator("#rCode").textContent()); await p.click("#btnJoin"); }

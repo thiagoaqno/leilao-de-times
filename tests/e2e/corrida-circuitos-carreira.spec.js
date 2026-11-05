@@ -6,19 +6,21 @@ test('carreira mostra a ficha de GP da sala e destaca a curva escolhida', async 
   await page.locator('#nome').fill('Piloto');
   await page.locator('#tamanho').selectOption('15');
   await page.locator('#nova button[type=submit]').click();
-  await page.locator('[data-aba="circuitos"]').click();
-  const ficha = page.locator('.circuito[open]');
+  await page.locator('[data-cx-aba="calendario"]').click();
+  await page.locator('.cx-gp[data-gp="0"]').click();
+  const ficha = page.locator('#cxSobreDlg');
   await expect(ficha.locator('.sn-sobre-svg .sn-marca')).toHaveCount(17);
   await ficha.locator('[data-curva="3"]').click();
   await expect(ficha.locator('[data-n="3"]')).toHaveClass(/hi/);
   await expect(ficha.locator('[data-curva="3"]')).toHaveClass(/hi/);
-  await page.locator('.circuito').nth(1).locator('summary').click();
-  await expect(page.locator('.circuito').nth(1).locator('.sn-sobre-svg')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.locator('.cx-gp[data-gp="1"]').click();
+  await expect(ficha.locator('.sn-sobre-svg')).toBeVisible();
 });
 
 test('a tela Sobre o GP da sala continua abrindo e destacando curvas', async ({ page }) => {
   await page.goto('/corrida/');
-  await page.locator('#hName').fill('Piloto'); await page.locator('#btnCreate').click();
+  await page.locator('#mnMulti').click(); await page.locator('#hName').fill('Piloto'); await page.locator('#btnCreate').click();
   await page.locator('#snEtapas [data-etapa-ir="gp"]').click();
   await page.locator('[data-sobre]').click();
   const sobre = page.locator('#snSobre');

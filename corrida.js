@@ -14,6 +14,7 @@ const Sim = require("./public/corrida/sim.js");
 const Parados = require("./corrida-parados.js"); // o carro parado na pista vira fantasma e é recolocado (sem engavetamento)
 const Quali = require("./corrida-f1-classificacao.js"); // a classificação (Q1, Q2, Q3) que define o grid das regras de F1
 const Robos = require("./corrida-robos.js"); // os robôs (rodam aqui no servidor)
+const Analise = require("./corrida-analise.js"); // as voltas, os setores e as posições que a aba Análise da carreira mostra
 const Setores = require("./corrida-setores.js"); // a conta dos setores sem travar a volta por um aviso perdido
 const Humanos = require("./corrida-humanos.js"); // os humanos nas regras de F1: o servidor anda o carro com as entradas do piloto (autoridade)
 const Contato = require("./corrida-contato.js"); // as batidas entre carros (e quem está fantasma por causa do box)
@@ -59,6 +60,7 @@ module.exports = function attachCorrida(io) {
       ers: f1 && c.ers === "manual" ? "manual" : "auto",
       clima: f1 && F1.OPCOES_DE_CLIMA.includes(c.clima) ? c.clima : "aleatorio", // F1: aleatório (a previsão do GP), seco, chuva ou variável (começa seco e chove no meio)
       nivel: Robos.NIVEIS[c.nivel] ? c.nivel : "medio",
+      contrarrelogio: f1 && c.contrarrelogio === true, // sozinho na pista, com o fantasma da sua melhor volta correndo junto (jogo.js)
     };
   };
   // Uma sala nova (o botão "Abrir sala nova", que não manda config) nasce em Mônaco, com as regras de F1, 5 voltas, grid de 20 (19 robôs
@@ -93,8 +95,8 @@ module.exports = function attachCorrida(io) {
     const menor = Math.min(...ids.map((id) => humanosDa(room, id).length)), ls = ids.filter((id) => humanosDa(room, id).length === menor);
     return ls[Math.floor(Math.random() * ls.length)];
   };
-  function entrarNaEquipe(room, p) {
-    const id = equipeLivre(room), eq = id && Pilotos.EQUIPES[id]; if (!eq) return;
+  function entrarNaEquipe(room, p, preferida) { // `preferida`: a equipe escolhida na garagem da tela inicial, se ela existe
+    const id = Pilotos.EQUIPES[preferida] && Equipes.EQUIPES[preferida] ? preferida : equipeLivre(room), eq = id && Pilotos.EQUIPES[id]; if (!eq) return;
     p.equipe = id; if (T.MODS.pintura[eq.pintura]) p.mods = { ...p.mods, pintura: eq.pintura }; // a pintura da equipe (dá para trocar depois)
   }
   const humanosDa = (room, equipe) => room.order.filter((id) => room.players[id] && !room.players[id].bot && room.players[id].equipe === equipe);
@@ -194,6 +196,7 @@ module.exports = function attachCorrida(io) {
     clearTimeout(room.endTimer);
     clearInterval(room.itemTimer); clearInterval(room.botTimer); clearInterval(room.f1Timer); clearInterval(room.humanosTimer);
     Quali.cancelar(room);
+    Analise.limpar(room);
     room.phase = "race";
     for (const id of room.order) delete room.players[id].sim; // cada largada começa com o carro no grid
     require("./corrida-contato.js").limpar(room);
@@ -408,14 +411,16 @@ module.exports = function attachCorrida(io) {
   function fecharSetor(room, p, s, now) {
     if (p.finish != null) return false;
     p.sector = s;
-    if (s !== 0) return true;
+    if (s !== 0) { Analise.setor(p, s, now); return true; }
     if (!p.started) { p.started = true; p.lapStart = room.startAt; return true; }
     const lap = (now - p.lapStart) / 1000;
     if (lap < T.PISTAS[room.config.pista].minLap) return false; // rápido demais: atalho (a volta não conta, mas o setor segue o do navegador, senão a volta seguinte morria)
     // a volta é "suja" se o carro bateu (no muro ou em outro carro: `p.batidas`, corrida-f1-direcao.js) ou ficou fantasma nela (batida,
     // muro ou recolocado na pista: `p.fantAte`): essa não ensina os robôs (o "volta" abaixo recusa)
     p.voltaSuja = (p.batidas || 0) > (p.batidasNaVolta || 0) || (p.fantAte || 0) > p.lapStart; p.batidasNaVolta = p.batidas || 0;
+    const inicioDaVolta = p.lapStart;
     p.laps++; p.last = lap; p.best = p.best == null ? lap : Math.min(p.best, lap); p.lapStart = now;
+    if (room.config.regras === "f1") Analise.volta(room, p, lap, inicioDaVolta);
     // o quadro de recordes da Vila só leva volta de corrida com as regras de F1 e com robôs na pista
     if (!p.bot && room.config.regras === "f1" && room.order.some((id) => room.players[id]?.bot)) registrarRecorde(room, p, lap);
     // stop-and-go pendente: sem voltas para cumprir vira +20 s; passou das 3 voltas sem cumprir, bandeira preta (desclassificado)
@@ -544,12 +549,16 @@ module.exports = function attachCorrida(io) {
       const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig(data.config || CONFIG_SALA_NOVA), players: {}, order: [], finishOrder: [], log: [], t: Date.now(), ...(data.config ? {} : { salaNova: true }) };
       rooms.set(room.code, room);
       const p = addPlayer(room, name, data.skin);
-      if (room.salaNova && room.config.regras === "f1") entrarNaEquipe(room, p);
+      // `inicio` vem da tela inicial (Corrida rápida e Contrarrelógio): a equipe da garagem, o pneu e, com `largar`, a corrida já começa
+      const inicio = data.inicio && typeof data.inicio === "object" ? data.inicio : null, f1 = room.config.regras === "f1";
+      if (f1 && (room.salaNova || inicio)) entrarNaEquipe(room, p, inicio?.equipe);
+      if (f1 && inicio && Object.hasOwn(F1.PNEUS, String(inicio.pneu))) { p.pneu = inicio.pneu; p.pneuEscolhido = true; }
       room.host = p.id;
       bind(room, p.id);
       log(room, `Box aberto por ${name}.`);
       ok(cb, { code: room.code, id: p.id, token: p.token });
       broadcast(room);
+      if (inicio?.largar === true) { if (f1 && room.config.classificacao !== "pular") iniciarClassificacao(room); else startRace(room); }
     });
 
     socket.on("join", (data = {}, cb) => {

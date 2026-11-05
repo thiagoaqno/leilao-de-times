@@ -26,6 +26,7 @@ function guardar(r) {
 }
 function marca(id) { return `<img src="/api/corrida/logo/${encodeURIComponent(id)}" alt="" onerror="this.style.display='none'">`; }
 function telaInicial() {
+  window.Central?.sair();
   window.F1Garagem?.fundoDoGP(null);
   const opcoes = Object.entries(Pilotos.EQUIPES).map(([id, e]) => `<option value="${h(id)}">${h(e.nome)}</option>`).join("");
   const primeira = Object.keys(Pilotos.EQUIPES)[0];
@@ -52,7 +53,7 @@ function tabela(rows, tipo, meu, rival = null) {
 function renderizar() {
   if (!estado?.dados) return telaInicial();
   const G = window.F1Garagem, s = estado.dados, eq = equipe(s.equipe), t = estado.tabelas || Regras.tabelas(s), terminou = s.gp >= s.tamanho;
-  const prox = s.calendario[s.gp], ativo = estado.ativo, aba = G.abaAtual(), previsao = terminou ? null : G.previsaoDoGP(s.semente, s.ano, s.gp);
+  const prox = s.calendario[s.gp], ativo = estado.ativo, previsao = terminou ? null : G.previsaoDoGP(s.semente, s.ano, s.gp);
   const ultimo = s.resultados.filter((r) => r.ano === s.ano).at(-1);
   const im = Regras.imersao(s), rival = im.rival && piloto(im.rival.id), eu = ultimo?.linhas.find((r) => r.piloto === "voce");
   const resultadoTexto = eu ? (eu.dnf ? "abandonou" : eu.nc ? "não foi classificado" : `terminou em ${eu.pos}º`) : "";
@@ -63,27 +64,19 @@ function renderizar() {
     <article><small>NOTÍCIAS DO PADDOCK</small><p>${eu ? `${h(s.nome)} ${resultadoTexto} no GP de ${h(s.calendario[ultimo.gp]?.nome || ultimo.pista)}.${rival ? ` A disputa com ${h(rival.nome)} segue em destaque.` : " A temporada começa a ganhar forma."}` : "O grid se prepara para a primeira etapa da temporada."}</p></article>
     <article><small>RIVAL DA TEMPORADA</small><p>${rival ? `<b>${h(rival.nome)}</b> · ${im.rival.encontros} disputa${im.rival.encontros === 1 ? "" : "s"} próxima${im.rival.encontros === 1 ? "" : "s"} na chegada. Você terminou à frente ${im.rival.venceu} vez${im.rival.venceu === 1 ? "" : "es"} e atrás ${im.rival.perdeu}.` : "Seu rival aparecerá depois de disputas próximas na chegada."}</p></article></div></section>`;
   document.documentElement.style.setProperty("--eq", eq.cor);
-  G.fundoDoGP(terminou ? null : prox.pista); // a foto real do circuito do próximo GP no fundo da página
-  const campeao = terminou ? `<div class="campeao"><b>🏆 Temporada ${s.ano} encerrada</b><p>Campeão de pilotos: ${h(t.pilotos[0].nome)} · Construtores: ${h(t.equipes[0].nome)}. O caixa e o carro seguem para o próximo ano.</p></div>` : "";
+  G.fundoDoGP(null); // (o fundo da Central é a garagem 3D, central.js)
   const pilotosMercado = Pilotos.PILOTOS.filter((p) => p.id !== s.piloto2 && !(p.equipe === s.equipe && p.id === Pilotos.PILOTOS.filter((x) => x.equipe === s.equipe)[1].id)).map((p) => `<option value="${h(p.id)}">${h(p.nome)} · ${h(equipe(p.equipe).nome)} · ${dinheiro(Math.max(5, Math.round((p.ritmo - 70) * .7)))}</option>`).join("");
-  const botao = `<button class="primary grande btn-continuar" id="gp">${terminou ? "Próximo ano" : ativo ? "Voltar ao GP" : "Continuar"}</button>`;
-  const hero = `${G.vitrineHero({ equipe: s.equipe, montagem: s.montagem, etapa: terminou ? "Bandeirada final" : `Etapa ${s.gp + 1} de ${s.tamanho}`, titulo: terminou ? "Temporada concluída" : h(prox.nome), sub: terminou ? "O próximo ano mantém o caixa e o desenvolvimento." : `${h(prox.pista.toUpperCase())} · classificação + ${s.voltas} voltas · grid de 20 carros`, botao,
-      cartoes: [{ rot: "Seus pontos", valor: t.pilotos.find((x) => x.id === "voce")?.pontos || 0, un: "pts" }, { rot: "Pontos da equipe", valor: t.equipes.find((x) => x.id === s.equipe)?.pontos || 0, un: "pts" }, { rot: `Gastos no ano · teto ${Regras.teto}`, valor: dinheiro(s.gasto) }] })}
-    ${terminou ? "" : G.mapaGP(prox.pista, s.gp + 1, ativo, previsao, s.voltas)}<div class="garagem-hero vt-grade">${G.painelEquipe(s.equipe, s.montagem)}
-      ${G.colunaDireita({ titulo: "Calendário", cal: s.calendario, gp: s.gp, rotuloProx: ativo ? "Em curso" : "Próximo", previsao, botao: "", nota: terminou ? "O campeonato está fechado. Confira as tabelas." : ativo ? "O box está aberto: volte ao GP em andamento." : !Equipes.custoDaMontagem(s.montagem) ? "Seu carro ainda está sem pontos. Distribua o orçamento na aba Carro · Pontos antes do GP." : "Acerto pronto? A classificação começa quando você entra na pista." })}</div>${caixaMensagens}`;
-  const carro = `${G.pontosHTML({ equipe: s.equipe, bonus: s.bonus, montagem: s.montagem, pode: !ativo && !terminou, motivo: ativo ? "O GP está aberto: a montagem espera o fim da corrida." : "A temporada acabou." })}
-    <section class="bloco"><header><h2>Desenvolvimento</h2><small>${s.bonus}/4 melhorias</small></header><p class="boxnota">O prêmio de cada GP vai para o caixa. Com o dinheiro você amplia o orçamento do carro em um ponto para distribuir como quiser; o acerto vale para os dois carros e segue para a próxima temporada.</p>
-      <div class="row"><button id="desenvolver" ${s.bonus >= 4 || ativo || terminou ? "disabled" : ""}>Desenvolver +1 ponto · ${dinheiro(12 + s.bonus * 6)}</button></div></section>`;
-  const classif = `<div class="duas"><section class="bloco"><header><h2>Pilotos</h2><small>Campeonato ${s.ano}</small></header>${tabela(t.pilotos, "Piloto", "voce", rival?.id)}</section><section class="bloco"><header><h2>Construtores</h2><small>Campeonato ${s.ano}</small></header>${tabela(t.equipes, "Equipe", s.equipe)}</section></div>
-    ${ultimo ? `<section class="bloco ultimo"><header><h2>Último GP · ${h(s.calendario[ultimo.gp].nome)}</h2><small>${h(ultimo.pista)}</small></header><div class="duas"><table class="placar"><thead><tr><th>Pos.</th><th>Piloto</th><th>Pontos</th></tr></thead><tbody>${ultimo.linhas.slice().sort((a, b) => a.pos - b.pos).slice(0, 10).map((r) => `<tr class="${r.piloto === "voce" ? "eu" : ""}"><td>${r.dnf ? "DNF" : r.nc ? "NC" : r.pos}</td><td><i class="faixa" style="--c:${h(equipe(r.equipe)?.cor || "#fff")}"></i><b>${h(r.piloto === "voce" ? s.nome : piloto(r.piloto)?.nome || r.piloto)}</b></td><td>${r.pontos}</td></tr>`).join("")}</tbody></table><div class="fecho"><strong>Seu resultado: ${h(ultimo.linhas.find((r) => r.piloto === "voce")?.dnf ? "DNF" : `${ultimo.linhas.find((r) => r.piloto === "voce")?.pos}º`)}</strong><p>Patrocínio ${dinheiro(ultimo.financas?.patrocinio)} · prêmio ${dinheiro(ultimo.financas?.premio)} · salários ${dinheiro(ultimo.financas?.salarios)}.</p></div></div></section>` : ""}`;
+  // o botão do fim de semana (o mesmo #gp da sede antiga)
+  const botao = `<button type="button" class="cx-bt" id="gp">${terminou ? "Próximo ano" : ativo ? "Voltar ao GP" : "Avançar para o fim de semana"} <svg class="cx-seta" viewBox="0 0 24 14" aria-hidden="true"><path d="M1 7h21M15 1l7 6-7 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg></button>`;
   const mercado = `<section class="bloco"><header><h2>Mercado & box</h2><small>Teto anual ${dinheiro(Regras.teto)}</small></header><div class="mercado-grid"><div><label for="piloto2">Companheiro · ${h(piloto(s.piloto2)?.nome)}</label><select id="piloto2">${pilotosMercado}</select><div class="row"><p>Contratos são pagos à vista.</p><button id="contratarPiloto" ${ativo || terminou ? "disabled" : ""}>Contratar</button></div></div>
       ${Object.entries(Regras.ENGENHEIROS).map(([area, lista]) => `<div><label for="${area}">${area === "mecanico" ? "Mecânicos" : "Estrategista"} · ${h(lista[s.engenheiros[area]].nome)}</label><select id="${area}">${lista.map((item, i) => `<option value="${i}" ${i <= s.engenheiros[area] ? "disabled" : ""}>${h(item.nome)} · ${dinheiro(item.custo - lista[s.engenheiros[area]].custo)}</option>`).join("")}</select><div class="row"><p>${area === "mecanico" ? "Paradas mais rápidas" : "Decisões mais rápidas no box"} na apuração.</p><button data-engenheiro="${area}" ${ativo || terminou || s.engenheiros[area] === 2 ? "disabled" : ""}>Contratar</button></div></div>`).join("")}</div><p class="boxnota">Patrocínio ${dinheiro(s.patrocinio)} por GP, prêmios por pontos e salários debitados após cada corrida.</p></section>`;
-  const painel = aba === "circuitos" ? G.circuitosHTML(s.calendario, s.gp) : ({ geral: hero, carro, classif, equipe: mercado }[aba] || hero);
-  app.innerHTML = `<div class="cr-topo"><div class="cr-id">${marca(s.equipe)}<div><small>Temporada ${s.ano} · ${h(s.nome)}</small><h1>${h(eq.nome)}</h1></div></div><div class="cr-caixa"><small>Caixa da equipe</small><b>${dinheiro(s.caixa)}</b></div><button class="ghost" data-radio-botao aria-label="Voz do engenheiro"></button></div>
-    ${codigo ? `<div class="campeao" role="status"><b>Guarde seu código</b><p>Ele recupera a temporada em outro navegador. Ao recuperar, o token anterior deixa de valer.</p><div class="codebox">${h(codigo)}</div><button id="copiar">Copiar código</button><button id="esconder">Já guardei</button></div>` : ""}
-    ${campeao}${G.abasHTML()}<div class="painel-aba" role="tabpanel">${painel}</div>
-    <div class="recuperacao"><span>Save automático no servidor · ${h(s.nome)}</span><button id="novoCodigo">Gerar novo código de recuperação</button><span>O código antigo deixa de valer.</span><button id="excluirCarreira" class="discreto">Excluir carreira</button></div>`;
-  G.encaixar(s.equipe);
+  const gps = s.resultados.filter((r) => r.ano === s.ano);
+  const codigoHTML = codigo ? `<div class="campeao" role="status"><b>Guarde seu código</b><p>Ele recupera a temporada em outro navegador. Ao recuperar, o token anterior deixa de valer.</p><div class="codebox">${h(codigo)}</div><button id="copiar">Copiar código</button><button id="esconder">Já guardei</button></div>` : "";
+  const C = window.Central;
+  C.usarRender(renderizar);
+  const ctx = { s, t, eq, im, prox, ativo, terminou, previsao, botao, gps, rival: im.rival, mercado, caixaMensagens, codigoHTML, nMensagens: 4, dinheiro, minhas: C.estatisticas(gps) };
+  app.innerHTML = C.html(ctx);
+  C.depois(ctx);
   if (window.Radio) { window.Radio.desenharBotoes(); window.Radio.uma("sede", () => { window.Radio.dizer("boasvindas"); if (!terminou) setTimeout(() => window.Radio.dizer("proximogp"), 7000); }); }
 }
 // ---------- excluir a carreira ----------
@@ -137,8 +130,10 @@ app.addEventListener("click", async (e) => {
   const b = e.target.closest("button"); if (!b || !estado?.dados) return;
   const s = estado.dados;
   if (b.id === "gp") { if (s.gp >= s.tamanho) return pedir("proximaTemporada"); const r = await pedir("iniciarGP"); if (r?.ok) irAoGP(r.acesso); }
-  if (b.dataset.aba) { window.F1Garagem.definirAba(b.dataset.aba); return renderizar(); }
+  if (window.Central.clique(b, renderizar)) return;
   const nova = window.F1Garagem.cliquePonto(b, s.montagem, s.equipe, s.bonus); if (nova) { const r = await pedir("montagem", { montagem: nova }); if (r && r.ok && window.Radio) window.Radio.dizer("pecas"); }
+  if (b.dataset.renovar) { const r = await pedir("renovar", { anos: Number(b.dataset.renovar) }); if (r?.ok) falar("Contrato renovado."); return; }
+  if (b.dataset.proposta) { if (confirm("Trocar de equipe? O carro novo começa sem pontos distribuídos.")) { const r = await pedir("aceitarProposta", { equipe: b.dataset.proposta }); if (r?.ok) falar("Contrato assinado. Bem-vindo à equipe nova!"); } return; }
   if (b.id === "desenvolver") await pedir("desenvolver");
   if (b.id === "contratarPiloto") await pedir("piloto", { id: document.getElementById("piloto2").value });
   if (b.dataset.engenheiro) await pedir("engenheiro", { area: b.dataset.engenheiro, nivel: document.getElementById(b.dataset.engenheiro).value });
@@ -148,6 +143,7 @@ app.addEventListener("click", async (e) => {
   if (b.id === "esconder") { codigo = null; renderizar(); }
 });
 socket.on("estado", (r) => { if (estado) { estado = r; renderizar(); } });
-socket.on("connect", async () => { if (window.SedeGrupo.ativo) return; if (token) { const r = await pedir("abrir", { token }); if (r?.ok) guardar(r); else { token = null; localStorage.removeItem(chave); telaInicial(); } } else telaInicial(); });
-if (socket.connected && !window.SedeGrupo.ativo) socket.emit("abrir", { token }, (r) => { if (r?.ok) guardar(r); else telaInicial(); });
+const soAmigos = new URLSearchParams(location.search).has("amigos"); // o atalho "Temporada com os amigos" do menu mostra a porta de entrada mesmo com um save solo
+socket.on("connect", async () => { if (window.SedeGrupo.ativo) return; if (soAmigos) return telaInicial(); if (token) { const r = await pedir("abrir", { token }); if (r?.ok) guardar(r); else { token = null; localStorage.removeItem(chave); telaInicial(); } } else telaInicial(); });
+if (socket.connected && !window.SedeGrupo.ativo && !soAmigos) socket.emit("abrir", { token }, (r) => { if (r?.ok) guardar(r); else telaInicial(); });
 if (window.SedeGrupo.ativo) window.SedeGrupo.iniciar(); // ?sala=CÓDIGO: a temporada em grupo (grupo.js)

@@ -239,11 +239,11 @@ const MIN_S = 7; // com menos que isso para o fim da transmissão, não vale com
 let ultimo = null;
 export function pularTV() {
   const race = ultimo; if (!race || !race.tv || race.tv.espera) return;
-  const tv = race.tv; tv.el.remove(); race.tv = { espera: true, chip: criarChip(tv.el.parentNode) };
+  const tv = race.tv, pai = tv.el.parentNode; tv.el.remove(); race.tv = { espera: true, chip: criarChip(pai) }; // (o pai antes de remover: depois ele é null)
   if (window.Narrador) window.Narrador.parar(); // pular a transmissão corta o narrador
   act("tvpular");
 }
-function criarChip(pai) { const c = document.createElement("div"); c.className = "tvEspera"; c.textContent = "Esperando os outros pilotos pularem a transmissão…"; pai.appendChild(c); return c; }
+function criarChip(pai) { const c = document.createElement("div"); c.className = "tvEspera"; c.textContent = "Esperando os outros pilotos pularem a transmissão…"; pai?.appendChild(c); return c; }
 function acabar(race) {
   const tv = race.tv; if (tv) { if (tv.el) tv.el.remove(); if (tv.chip) tv.chip.remove(); }
   // fim natural: a fala do narrador continua por cima do grid parado, até as luzes; fim antecipado (todos pularam): corta

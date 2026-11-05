@@ -3,7 +3,7 @@ test.use({ viewport: { width: 1280, height: 720 } });
 test('MFD na corrida', async ({page}, info) => {
  const errors=[]; page.on('pageerror', e=>errors.push(e.stack)); page.on('console', m => { if (m.type() === 'error' && /shader|WebGLProgram/i.test(m.text())) errors.push(m.text()); });
  await page.goto('/corrida/#debug');
- await page.locator('#hName').fill('Piloto'); await page.locator('#btnCreate').click(); await expect(page.locator('#lobby')).toBeVisible();
+ await page.locator('#mnMulti').click(); await page.locator('#hName').fill('Piloto'); await page.locator('#btnCreate').click(); await expect(page.locator('#lobby')).toBeVisible();
  await page.locator('#snEtapas [data-etapa-ir="gp"]').click();
  await page.locator('#gpMais summary').click(); await page.locator('[data-quali="pular"]').click();
  await page.locator('#snEtapas [data-etapa-ir="grid"]').click(); await page.locator('#btnStart').click();
