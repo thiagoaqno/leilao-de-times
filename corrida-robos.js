@@ -3,6 +3,29 @@
 // gravada, seguem o traçado de corrida calculado (abre antes da curva, corta no ápice) com a velocidade que a curva
 // permite. Pegam caixas e usam os itens. Para os navegadores eles são pilotos como os outros: a posição sai pelo
 // mesmo evento "ghost" e as voltas contam pelos mesmos setores.
+// ---------- o teto de curva do traçado (o volante de linha) ----------
+// O pneu dentro da vida útil anda na dirigibilidade arcade (dinamica.js, `lateralArcade`): a curva
+// segura `gripU × rel` u/s² de lado e a guinada não passa de `turn` rad/s. O perfil de velocidade
+// (perfilF1) sai do modelo físico com margem e nível, e numa curva fechada pede mais do que isso; o
+// volante antigo sobrevivia cortando a curva (raio maior), o de linha segue o traçado e escorregava.
+// Aqui, para cada ponto: a curvatura de VERDADE da linha (sem a suavização larga do perfil),
+// v ≤ √(a/κ) e v ≤ turn/κ, e depois a frenagem para trás. Vale para o pneu de referência (médio novo,
+// `rel` do aderRef); em passoF1 escala pela raiz da aderência do momento.
+const TETO_LINHA = { margem: 0.97, freio: 0.92, m: 4, janela: 1 };
+function tetoDaLinha(pf) {
+  if (pf.tetoLinha) return pf.tetoLinha;
+  const n = pf.n, p = D.parametros(pf.c), ref = aderRef();
+  const aLat = p.gripU * (ref.rel || 0.72) * TETO_LINHA.margem, topo = topoDe(pf);
+  const lat = Float64Array.from({ length: n }, (_, i) => pf.lat[(i + 2) % n] * pf.fator);
+  const k = curvaturaDoCaminho(pf.pts, lat, TETO_LINHA.m, TETO_LINHA.janela);
+  const v = new Float64Array(n);
+  for (let i = 0; i < n; i++) v[i] = k[i] > 1e-6 ? Math.min(topo, Math.sqrt(aLat / k[i]), p.turn / k[i]) : topo;
+  for (let volta = 0; volta < 2; volta++) for (let q = n - 1; q >= 0; q--) {
+    const j = (q + 1) % n;
+    v[q] = Math.min(v[q], Math.sqrt(v[j] * v[j] + 2 * D.frenagemMaxima(pf.c, v[j], 0, { freio: ref.freio, grip: ref.grip }) * TETO_LINHA.freio));
+  }
+  return (pf.tetoLinha = v);
+}
 const T = require("./public/corrida/pistas.js");
 const Linha = require("./corrida-linha.js"); // a linha de corrida por otimização (curvatura mínima)
 const { Worker } = require("node:worker_threads");
@@ -908,6 +931,15 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   if (room.config.pista === "monaco") for (const oid of room.order) { const q = room.players[oid]; if (!q || q === p || !q.ia || !q.ia.ult || q.ia.ult.id !== p.id || !q.pos || !p.pos) continue;
     const d = Math.hypot(q.pos.x - p.pos.x, q.pos.y - p.pos.y); if (d < L_CARRO * 1.1) { alvo *= 0.96; break; } }
   alvo = Math.min(alvo, tf.freio);
+  // o teto de curva do traçado: o volante de linha segue a linha (não pode pedir mais do que o pneu segura nela)
+if (VOLANTE_LINHA) {
+  const teto = tetoDaLinha(pf);
+  const escala = Math.sqrt(((pneu.rel || aderRef().rel) * dano.grip * vac.aderencia) / aderRef().rel) * cautela;
+  let vt = Infinity;
+  const ate = Math.max(2, Math.ceil(Math.max(car.v, 30) * 0.12 / STEP));
+  for (let k = 0; k <= ate; k++) vt = Math.min(vt, teto[(i + k) % n]);
+  if (vt < topo * 0.97) alvo = Math.min(alvo, vt * escala);
+}
   // a batida abala o robô como a quem joga: a física já tira a aderência (car.inst, por 0,2 a 2 s); aqui ele também perde o ritmo (tira
   // o pé e dirige com mais cuidado) por mais um tempo, mais nos níveis fáceis e menos nos difíceis
   const ins = car.inst > 0 ? car.inst : 0;
