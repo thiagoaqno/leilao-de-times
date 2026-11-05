@@ -170,7 +170,7 @@ function pilotoAutomatico(c, tr, spec, vAlvo, latAlvo, saida = {}, fatorOlhar = 
 // gasKp = 0.5 → full gás até 2 u/s abaixo, 50% a 1 u/s, coast no alvo. O freio mantém a histerese de 4% do
 // `pilotoAutomatico` (para não ficar piscando em cima do alvo). Imita o pé de verdade: ~64% gás cheio,
 // ~22% rolando, ~5% freando numa volta boa.
-const PILOTO_LINHA = { w: 3.2, z: 0.9, previa: 0.1, m: 4, gasKp: 0.5 };
+const PILOTO_LINHA = { w: 3.2, z: 0.9, previa: 0.1, m: 4, gasKp: 0.8 };
 const _lx = new Float64Array(3), _ly = new Float64Array(3);
 function pontoDaLinha(tr, latAlvo, j, k) { const q = tr.pts[j], la = typeof latAlvo === "function" ? latAlvo(j) : latAlvo; _lx[k] = q.x + q.nx * la; _ly[k] = q.y + q.ny * la; }
 // curvatura com sinal (1/u) da linha no ponto j, pelo círculo de três pontos a m de distância
