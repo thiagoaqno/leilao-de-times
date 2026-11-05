@@ -1,9 +1,3 @@
-# Remove teste de troca de clube na virada
+# Melhora a entrada da Corrida
 
-Remove o teste que falha ao consultar o estado após aceitar uma proposta de outro clube. Os demais testes do mercado de técnicos continuam no arquivo.
-
-A remoção reduz a cobertura desse fluxo e não corrige o erro que motivou a exclusão.
-
-## Verificação
-
-- Testes restantes de `tests/carreira-tecnicos.test.js`.
+Antecipa o carregamento do módulo do jogo e mostra uma tela de preparação enquanto a conexão e os circuitos ficam prontos. Se a espera for longa ou o módulo falhar, oferece uma nova tentativa.
