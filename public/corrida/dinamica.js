@@ -17,7 +17,7 @@
 // continua sendo a descrição do carro: `parametros(spec)` converte nos números físicos.
 (function (root) {
   // o ganho do DRS aberto na velocidade final e o do ERS na potência: os mesmos de f1-regras.js (DRS_GANHO, ERS_POTENCIA)
-  const DRS_GANHO = 0.50, ERS_POTENCIA = 0.22;
+  const DRS_GANHO = 0.40, ERS_POTENCIA = 0.22;
 
 const ESC = 0.75 / 3.6;      // metros por unidade da pista
 const G = 9.81, G_U = G / ESC; // gravidade (m/s² e u/s²)

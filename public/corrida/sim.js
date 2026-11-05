@@ -81,7 +81,7 @@ function novo(tr, o = {}) {
   const v = vagaDoGrid(tr.pts, o.grid || 0, tr.W, o.f1 !== false);
   const c = D.novoCarro(v.x, v.y, v.a);
   Object.assign(c, { z: tr.pts[v.idx].h, vz: 0, gvz: 0, air: false, idx: v.idx, prog: v.idx - tr.n, sector: SECTORS - 1, perdeu: -1, wrong: 0, sp: null,
-    draft: 0, tick: o.tick || 0, fant: false, offroad: false, drsAtivo: false, ersAtivo: false, arSujo: 0, gridIdx: v.idx,
+    draft: 0, tick: o.tick || 0, fant: false, offroad: false, drsAtivo: false, drsFim: 0, drsUsada: -1, ersAtivo: false, arSujo: 0, gridIdx: v.idx,
     pneu: o.pneu || F1.pneuNovo(), ers: F1.ersNovo(), box: o.box && tr.corredor ? caixaDoBox(tr) : null });
   return c;
 }
@@ -109,6 +109,19 @@ function desempacotar(n, saida = {}) {
   const pd = ((n >> 4) & 3) | (((n >> 19) & 1) << 2); saida.pedido = pd ? COMPOSTOS[pd - 1] : null;
   saida.marcha = (n >> 6) & 15; saida.steer = (((n >> 10) & 511) - 255) / 255;
   return saida;
+}
+
+// O DRS começa ao entrar numa zona autorizada e dura até cinco segundos, mesmo após sair dela.
+// Freio ou bandeira encerram o uso; a mesma passagem pela zona não pode reativá-lo.
+const DRS_PASSOS = Math.round(5 / PASSO);
+function atualizarDRS(c, zona, autorizada, bloqueado) {
+  if (zona < 0) c.drsUsada = -1;
+  if (zona >= 0 && zona === autorizada && c.drsUsada !== zona) {
+    c.drsUsada = zona;
+    if (!bloqueado) c.drsFim = c.tick + DRS_PASSOS;
+  }
+  if (bloqueado) c.drsFim = 0;
+  return c.drsFim > c.tick;
 }
 
 // ---------- o vácuo ----------
@@ -182,7 +195,7 @@ function passo(c, ent, amb, tr, ev) {
   c.arSujo = 1 - vac.aderencia;
   // DRS e ERS
   const zona = F1.zonaDRS(c.idx / n, tr.t.drs);
-  const drs = !!(amb.drsZona === zona && zona >= 0 && !ent.brake && !amb.amarela && !amb.safety);
+  const drs = atualizarDRS(c, zona, amb.drsZona, !!(ent.brake || amb.amarela || amb.safety || amb.quali));
   F1.carregarErs(c.ers, dt, !!ent.brake && c.v > 40, !ent.gas, amb.laps || 0);
   const usarErs = !!(ent.gas && !amb.safety && (amb.ersAuto !== false ? F1.usarErsAuto(c.ers.carga, c.v, spec.vmax, (tr.pts[c.idx].k || 0) < 1 / 1500, c.draft > 0.25) : ent.ers));
   const ersAtivo = F1.gastarErs(c.ers, dt, usarErs, amb.ersAuto === false || c.draft > 0.25); // (overtake: colado no da frente, ou o botão no modo manual; senão o gasto suave da reta)
@@ -518,13 +531,14 @@ function serializar(c) {
   const s = { x: R(c.x, 100), y: R(c.y, 100), z: R(c.z, 100), a: R(c.a, 10000), v: R(c.v, 100), vl: R(c.vl, 100), r: R(c.r, 1000), st: R(c.steer, 1000), gp: R(c.gasP, 100), bp: R(c.brkP, 100), sl: R(c.slip, 100), us: R(c.uso || 0, 1000),
     m: c.marcha, tt: R(c.trocaT, 1000), ds: R(c.desceT || 0, 1000), ax: R(c.axL, 100), vz: R(c.vz, 10), air: c.air ? 1 : 0, gvz: R(c.gvz || 0, 10), ix: c.idx, pg: R(c.prog, 10), sc: c.sector, dr: R(c.draft, 1000), tk: c.tick, fa: c.fant ? 1 : 0,
     pn: [c.pneu.composto, R(c.pneu.desgaste, 100000), R(c.pneu.temp, 10000)], er: [R(c.ers.carga, 10000), R(c.ers.recarga, 10000), c.ers.volta] };
+  s.da = [c.drsFim || 0, c.drsUsada ?? -1];
   if (c.inst > 0 || c.rIns) s.ni = [R(c.inst || 0, 1000), R(c.instK || 0, 1000), R(c.rIns || 0, 1000)]; // (a instabilidade da batida)
   if (c.box) { const B = c.box; s.bx = [B.fase, R(B.u, 1000), R(B.lat0, 100), R(B.t, 1000), R(B.parada, 100), R(B.garagem, 1000), B.composto, B.volta, B.n, B.tick0 ?? 0, B.pedido, B.stopGo ? 1 : 0, B.troca ? [R(B.troca.parada, 100), R(B.troca.t, 1000)] : null, R(B.sg || 0, 100), B.escolher ? 1 : 0, B.rec || null, R(B.tt || 0, 100), B.manter ? 1 : 0, R(B.uEntrada || 0, 1000), R(B.desvioEntrada || 0, 100)]; }
   return s;
 }
 function aplicar(c, s, tr) {
   c.x = s.x; c.y = s.y; c.z = s.z; c.a = s.a; c.v = s.v; c.vl = s.vl; c.r = s.r; c.steer = s.st; c.gasP = s.gp; c.brkP = s.bp; c.slip = s.sl ?? 0; c.uso = s.us ?? 0; c.marcha = s.m; c.trocaT = s.tt; c.desceT = s.ds ?? 0; c.axL = s.ax; c.vz = s.vz; c.air = !!s.air; c.gvz = s.gvz;
-  c.idx = s.ix; c.prog = s.pg; c.sector = s.sc; c.draft = s.dr; c.tick = s.tk; c.fant = !!s.fa; c.idxAnt = s.ix;
+  c.idx = s.ix; c.prog = s.pg; c.sector = s.sc; c.draft = s.dr; c.tick = s.tk; c.drsFim = s.da?.[0] || 0; c.drsUsada = s.da?.[1] ?? -1; c.drsAtivo = c.drsFim > c.tick; c.fant = !!s.fa; c.idxAnt = s.ix;
   const ca = Math.cos(c.a), sa = Math.sin(c.a); c.vx = c.v * ca - c.vl * sa; c.vy = c.v * sa + c.vl * ca;
   c.pneu.composto = s.pn[0]; c.pneu.desgaste = s.pn[1]; c.pneu.temp = s.pn[2];
   c.ers.carga = s.er[0]; c.ers.recarga = s.er[1]; c.ers.volta = s.er[2];
@@ -593,7 +607,7 @@ function reconciliar(c, st, tr, ctx) {
   return { erro, dentro, dx: ox - c.x, dy: oy - c.y, da };
 }
 
-const api = { PASSO, ATRASO, EXTRAPOLA, EXTRAPOLA_MAX, extrapolar, amostraEm, ERRO_SALTO, TEMPO_DO_DESVIO, decairDesvio, gastarTempo, reconciliar, pneuDaLargada, criarPista, preparar, quadro, alturaDoChao, procurar, vagaDoGrid, novo, empacotar, desempacotar, vacuoAlvo, pilotoAutomatico, passo, voltarParaPista, faseDoBox, contatoPasso, impulsoExterno, culpaEntre, K_CULPADO, K_VITIMA, FORCA_EV, novoRegistro, aplicarContato, forcaEntre, massaDe, baterNosOutros, DIMENSOES, dimensoes, serializar, aplicar, COMPOSTOS };
+const api = { PASSO, ATRASO, EXTRAPOLA, EXTRAPOLA_MAX, extrapolar, amostraEm, ERRO_SALTO, TEMPO_DO_DESVIO, decairDesvio, gastarTempo, reconciliar, pneuDaLargada, criarPista, preparar, quadro, alturaDoChao, procurar, vagaDoGrid, novo, empacotar, desempacotar, vacuoAlvo, atualizarDRS, DRS_PASSOS, pilotoAutomatico, passo, voltarParaPista, faseDoBox, contatoPasso, impulsoExterno, culpaEntre, K_CULPADO, K_VITIMA, FORCA_EV, novoRegistro, aplicarContato, forcaEntre, massaDe, baterNosOutros, DIMENSOES, dimensoes, serializar, aplicar, COMPOSTOS };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Sim = api;
 })(typeof window !== "undefined" ? window : globalThis);

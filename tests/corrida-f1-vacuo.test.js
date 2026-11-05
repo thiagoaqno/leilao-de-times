@@ -25,10 +25,10 @@ test("vácuo só atua a partir de 100 km/h e nunca na classificação", () => {
   assert.ok(c.draft > 0, "na corrida acima do limite o vácuo funciona");
 });
 
-test("vácuo da F1: 20% na reta, DRS de 50% e sem vácuo longe", () => {
+test("vácuo da F1: 20% na reta, DRS de 40% e sem vácuo longe", () => {
   const longe = F1.vacuoF1(0, false), colado = F1.vacuoF1(1, false);
   assert.equal(longe.final, 0); assert.equal(longe.acel, 0); assert.equal(longe.aderencia, 1);
-  assert.equal(colado.final, 0.20); assert.equal(F1.DRS_GANHO, 0.50);
+  assert.equal(colado.final, 0.20); assert.equal(F1.DRS_GANHO, 0.40);
   assert.equal(colado.aderencia, 1, "na reta não tira aderência");
   // colado no vácuo, abrir o DRS ainda ganha velocidade (o teto não come o DRS)
   assert.ok(Math.min(F1.AERO_MAX, colado.final + F1.DRS_GANHO) > colado.final + F1.DRS_GANHO - 0.01);
