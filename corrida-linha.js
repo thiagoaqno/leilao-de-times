@@ -14,6 +14,7 @@ function otimizar(pts, max0) {
   const n = pts.length, nx = new Float64Array(n), ny = new Float64Array(n), cx = new Float64Array(n), cy = new Float64Array(n);
   for (let i = 0; i < n; i++) { nx[i] = -pts[i].ty; ny[i] = pts[i].tx; cx[i] = pts[i].x; cy[i] = pts[i].y; }
   const dx = new Float64Array(n), dy = new Float64Array(n);
+  // o gradiente de J(l) = soma |d_i|^2, d_i = X[i-1] - 2 X[i] + X[i+1], X = centro + normal * l
   const grad = (l, g) => {
     for (let i = 0; i < n; i++) {
       const a = (i - 1 + n) % n, b = (i + 1) % n;
@@ -27,27 +28,10 @@ function otimizar(pts, max0) {
   };
   const l = new Float64Array(n), prisao = new Int8Array(n); // prisao: 0 livre, +1/-1 preso na beira
   const g = new Float64Array(n), g0 = new Float64Array(n), r = new Float64Array(n), p = new Float64Array(n), Ap = new Float64Array(n), tmp = new Float64Array(n);
-  const lAntes = new Float64Array(n);
   grad(l, g0); // g(l) = A l + g0 (a função é quadrática)
   const A = (v, out) => { grad(v, tmp); for (let i = 0; i < n; i++) out[i] = tmp[i] - g0[i]; };
-  // ---------- item 3: a convergência do otimizador ----------
-  // O diagnóstico ("a linha fica perto do meio") vem daqui. O algoritmo é de conjunto ativo: a cada iteração
-  // externa, resolve o QP nos pontos livres (por gradiente conjugado) e prende na beira os que ultrapassaram, ou
-  // solta os que o gradiente puxa para dentro. O limite de 40 iterações externas era curto demais: em Mônaco,
-  // com pontos de 6 u e curvas fechadas, há 100-200 pontos que precisam ficar presos na beira para a linha abrir
-  // de verdade. Com 40, só uns 40 pontos chegavam lá, e a linha ficava perto do meio.
-  //
-  // As mudanças são duas, ambas dentro do otimizador (a assinatura continua a mesma, então o worker e o caminho
-  // síncrono seguem funcionando):
-  //  1) o limite externo vai para `min(4 * n, 500)` (12,5x mais que antes);
-  //  2) a convergência passa a exigir DUAS coisas: o conjunto ativo estável (nenhum ponto mudou de preso/livre)
-  //     E a solução estável (a maior variação de `lat` entre iterações é < 1e-3 u). O `!mudou` sozinho poderia
-  //     parar em ciclo de active set; o `maxDelta` sozinho poderia parar com a solução ainda se movendo dentro
-  //     do mesmo conjunto ativo. Os dois juntos cobrem os dois casos.
-  const MAX_EXTERNA = Math.min(4 * n, 500);
-  for (let externa = 0; externa < MAX_EXTERNA; externa++) {
+  for (let externa = 0; externa < 40; externa++) {
     let mudou = false;
-    lAntes.set(l);
     // gradiente conjugado nos pontos livres: min 1/2 d·A d + g·d com d só nos livres
     grad(l, g);
     for (let i = 0; i < n; i++) { r[i] = prisao[i] ? 0 : -g[i]; p[i] = r[i]; }
@@ -71,12 +55,7 @@ function otimizar(pts, max0) {
     for (let i = 0; i < n; i++) if (!prisao[i] && Math.abs(l[i]) > M(i)) { l[i] = Math.sign(l[i]) * M(i); prisao[i] = Math.sign(l[i]); mudou = true; }
     grad(l, g);
     for (let i = 0; i < n; i++) if (prisao[i] && g[i] * prisao[i] > 0) { prisao[i] = 0; mudou = true; } // o gradiente de J cresce para fora: volta para dentro
-    // convergência: o conjunto ativo não mudou E a solução não se moveu o bastante para valer a pena continuar
-    if (!mudou) {
-      let maxDelta = 0;
-      for (let i = 0; i < n; i++) { const d = Math.abs(l[i] - lAntes[i]); if (d > maxDelta) maxDelta = d; }
-      if (maxDelta < 1e-3) break;
-    }
+    if (!mudou && externa > 0) break;
   }
   return l;
 }

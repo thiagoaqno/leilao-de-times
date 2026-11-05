@@ -4,7 +4,6 @@
 // permite. Pegam caixas e usam os itens. Para os navegadores eles são pilotos como os outros: a posição sai pelo
 // mesmo evento "ghost" e as voltas contam pelos mesmos setores.
 const T = require("./public/corrida/pistas.js");
-const VOLTA_MONACO = require("./public/corrida/monaco-volta-referencia.json");
 const Linha = require("./corrida-linha.js"); // a linha de corrida por otimização (curvatura mínima)
 const { Worker } = require("node:worker_threads");
 const path = require("node:path");
@@ -26,9 +25,6 @@ const RITMO = { facil: 1.12, medio: 1.03, dificil: 0.98 };
 const STEP = 6;
 const FOLGA_LINHA = 4; // (pouca folga: no ápice e na saída o robô põe meio carro em cima da zebra, como quem joga)
 const _FOLGA_LINHA_ANTIGA = 18; // a linha de F1 fica a esta distância (u) da beira da pista, de centro a centro: sobra meia largura do carro e um respiro
-// (provisório, para medir o volante antigo contra o novo; some quando o novo virar padrão)
-const VOLANTE_LINHA = process.env.ROBO_VOLANTE !== "antigo";
-const SUAVIZAR_VOLANTE = 1 - Math.exp(-Sim.PASSO / 0.012);
 // O robô de F1 segue a linha de corrida (o elástico de `tracado`) por inteiro, menos uma folga: o suficiente para abrir as curvas e
 // encostar nos ápices sem raspar no zebra. A velocidade que ele mira sai da curvatura DESSE caminho (`curvaturaDoCaminho`), não da do
 // elástico cru, que tinha quinas de raio quase zero.
@@ -91,16 +87,11 @@ function tracado(pista, f1 = false, linhaPronta = null) {
 }
 // Expõe apenas um traçado já pronto; nunca inicia uma otimização pelo pedido do navegador.
 const LINHAS_PUBLICAS = new Map();
-let referenciaMonacoCache;
-function referenciaFixaMonaco() {
-  if (referenciaMonacoCache === undefined) referenciaMonacoCache = processar("monaco", VOLTA_MONACO);
-  return referenciaMonacoCache;
-}
 function linhaF1Pronta(pista) {
   if (!tracadoPronto(pista)) return null;
   if (!LINHAS_PUBLICAS.has(pista)) {
-    const linha = tracado(pista, true), referencia = pista === "monaco" ? referenciaFixaMonaco() : null, lat = referencia ? Float64Array.from(referencia.lat, (_, i) => referencia.lat[(i + 2) % linha.n]) : linha.lat, k = curvaturaDoCaminho(linha.pts, lat, 12, 6);
-    LINHAS_PUBLICAS.set(pista, { lat: Array.from(lat, (v) => Math.round(v * 100) / 100), k: Array.from(k, (v) => Math.round(v * 1e7) / 1e7) });
+    const linha = tracado(pista, true), k = curvaturaDoCaminho(linha.pts, linha.lat, 12, 6);
+    LINHAS_PUBLICAS.set(pista, { lat: Array.from(linha.lat, (v) => Math.round(v * 100) / 100), k: Array.from(k, (v) => Math.round(v * 1e7) / 1e7) });
   }
   return LINHAS_PUBLICAS.get(pista);
 }
@@ -186,7 +177,7 @@ function aprender(pista, volta) {
 // a pista amostrada, a linha e a velocidade de referência em cada ponto, para um carro
 function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinco carros ou um `spec` (a montagem de uma equipe de F1, com `chave`)
   const chave = pista + ":" + (carro.chave ? "spec-" + carro.chave : carro) + ":" + tracadoId; if (CACHE.has(chave)) return CACHE.get(chave);
-  const t = T.PISTAS[pista], c = carro.chave ? carro : T.CARROS[carro], f1 = !!carro.chave && !PISTAS_FANTASIA.has(pista), linha = tracado(pista, f1), pts = linha.pts, n = pts.length, perfis = aprendido(pista), referenciaMonaco = f1 && pista === "monaco" ? referenciaFixaMonaco() : null, ap = referenciaMonaco || perfis[tracadoId % perfis.length];
+  const t = T.PISTAS[pista], c = carro.chave ? carro : T.CARROS[carro], f1 = !!carro.chave && !PISTAS_FANTASIA.has(pista), linha = tracado(pista, f1), pts = linha.pts, n = pts.length, perfis = aprendido(pista), ap = perfis[tracadoId % perfis.length];
   let lim, lat;
   const curva = Array.from(linha.k, (k) => (k > 1e-4 ? Math.min(c.turn / k * 1.1, Math.sqrt(c.grip / k) * 1.2, c.vmax) : c.vmax));
   if (linha.teto) for (let i = 0; i < n; i++) if (linha.teto[i] < 30) curva[i] = Math.min(curva[i], c.vmax * (0.3 + 0.7 * Math.max(0, linha.teto[i]) / 30)); // entre as barreiras da Cidade Velha (Baku) a pista estreita: mais devagar, sem bater
@@ -197,7 +188,7 @@ function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinc
     lat = linha.lat;
   }
   const fator = f1 ? 1 : FATOR_LINHA, latF1 = Float64Array.from({ length: n }, (_, i) => lat[(i + 2) % n] * fator); // o caminho do robô de F1 (passoF1 usa a mesma conta)
-  const out = { pista, pts, n, lim, lat, t, c, linha, teto: linha.teto, aprendeu: !!ap, referenciaMonaco: !!referenciaMonaco, corredor: F1.corredor(t, n, t.width), fator, velHumana: ap ? ap.vel : null, kf: curvaturaDoCaminho(pts, latF1, f1 ? 12 : 4, f1 ? 6 : 2) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
+  const out = { pista, pts, n, lim, lat, t, c, linha, teto: linha.teto, aprendeu: !!ap, corredor: F1.corredor(t, n, t.width), fator, velHumana: ap ? ap.vel : null, kf: curvaturaDoCaminho(pts, latF1, f1 ? 12 : 4, f1 ? 6 : 2) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
 }
 // O tempo de uma volta lançada andando no limite do perfil vezes `escala`, com a arrancada do carro (a mesma conta do
 // passo, sem tráfego). Serve para achar a escala que fecha a volta no tempo que o robô mira.
@@ -288,31 +279,6 @@ function ritmoDaSala(room) {
 let ADER_REF = null;
 const aderRef = () => ADER_REF || (ADER_REF = F1.aderencia({ composto: "medio", desgaste: 0, temp: 1 }));
 function idealDe(pista, spec) { return tempoDaVolta(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren")), 1, aderRef()); }
-// ---------- o teto de curva do traçado (o volante de linha) ----------
-// O pneu dentro da vida útil anda na dirigibilidade arcade (dinamica.js, `lateralArcade`): a curva segura
-// `gripU × rel` u/s² de lado e a guinada não passa de `turn` rad/s. O perfil de velocidade (perfilF1) sai do
-// modelo físico com margem e nível, e numa curva fechada pede mais do que isso; o volante antigo sobrevivia
-// cortando a curva (raio maior), o de linha segue o traçado e escorregava. Aqui, para cada ponto: a curvatura
-// de VERDADE da linha (sem a suavização larga do perfil), v ≤ √(a/κ) e v ≤ turn/κ, e depois a frenagem para
-// trás. Vale para o pneu de referência (médio novo, `rel` do aderRef); em passoF1 escala pela raiz da
-// aderência do momento.
-const TETO_LINHA = { margem: 0.97, freio: 0.92, m: 4, janela: 1 };
-function tetoDaLinha(pf, treinoMonaco = false) {
-  // Mantém tabelas separadas para o perfil experimental e as demais condições.
-  const chave = treinoMonaco ? "tetoLinhaMonaco" : "tetoLinha";
-  if (pf[chave]) return pf[chave];
-  const n = pf.n, p = D.parametros(pf.c), ref = aderRef();
-  const aLat = p.gripU * (ref.rel || 0.72) * TETO_LINHA.margem * (treinoMonaco ? 1.25 : 1), topo = topoDe(pf);
-  const lat = Float64Array.from({ length: n }, (_, i) => pf.lat[(i + 2) % n] * pf.fator);
-  const k = curvaturaDoCaminho(pf.pts, lat, TETO_LINHA.m, TETO_LINHA.janela);
-  const v = new Float64Array(n);
-  for (let i = 0; i < n; i++) v[i] = k[i] > 1e-6 ? Math.min(topo, Math.sqrt(aLat / k[i]), p.turn / k[i]) : topo;
-  for (let volta = 0; volta < 2; volta++) for (let q = n - 1; q >= 0; q--) {
-    const j = (q + 1) % n;
-    v[q] = Math.min(v[q], Math.sqrt(v[j] * v[j] + 2 * D.frenagemMaxima(pf.c, v[j], 0, { freio: ref.freio, grip: ref.grip }) * TETO_LINHA.freio * (treinoMonaco ? STEP * 0.7 / TETO_LINHA.freio : 1)));
-  }
-  return (pf[chave] = v);
-}
 // Folga sobre o ideal do carro: difícil 0, médio 1,5% e fácil 5,5%, além da pequena diferença do piloto.
 // O tráfego e o controle dos pedais ainda custam tempo na corrida real.
 const FOLGA_F1 = { facil: 0.04, medio: 0, dificil: 0 };
@@ -530,9 +496,7 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
   // a folga lateral entre carros acompanha a largura da pista: nas de 104 ou mais vale a de sempre; numa mais estreita (Mônaco, 84) a faixa em que o robô anda (maxLat = W/2 - 18) cabe menos, e uma folga de 44 jogava o carro de lado contra o muro
   const margemNormal = niv.margem * Math.min(1, (T.PISTAS[room.config.pista].width - 36) / 68);
   const monaco = room.config.pista === "monaco";
-  // Em Mônaco exige pelo menos 32 u de centro a centro (= 6 u de folga entre as carrocerias): com 28,4 (o valor anterior)
-  // os dois carros ficavam a 2,4 u um do outro lado a lado e se tocavam de raspão.
-  const MARG = monaco ? Math.max(W_CARRO + 6, W_CARRO + Math.max(0, margemNormal - W_CARRO) * 0.5) : margemNormal;
+  const MARG = monaco ? W_CARRO + Math.max(0, margemNormal - W_CARRO) * 0.5 : margemNormal;
   const dFreio = plano.dFreio ?? Infinity, dentro = plano.dentro || 0, meu = ia.sim;
   const tx = ponto.tx, ty = ponto.ty, vlatMeu = meu ? meu.vx * -ty + meu.vy * tx : 0;
   const out = { desvio: 0, freio: Infinity, encontrou: false, bloqPos: false, bloqNeg: false, draft: 0, limMin: -Infinity, limMax: Infinity, tras: null };
@@ -583,9 +547,7 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
       // reserva espaço para o freio progressivo da física (o pedal leva ~0,2 s para subir) e para o da frente frear mais forte que o previsto
       // (na largada o pelotão sai junto: a reserva de espaço cresce aos poucos, de quase nada no grid, onde os carros estão a 4 u um do outro, até
       // a de sempre; senão a fila de trás esperava cada carro da frente andar, uma fileira de cada vez)
-      // Mônaco, seguindo (não atacando): +22 u de gap. Sem isso o bot colava no da frente a 31 u de distância
-      // (0,7 carro) e qualquer freada do líder virava toque em cadeia — o engavetamento do diagnóstico.
-      const folga = frente - L_CARRO - (32 + Math.min(40, k[i] * 2500) + aproxima * 0.3) * arranque - 1 - (monaco && !alvoDaManobra ? 22 : 0);
+      const folga = frente - L_CARRO - (32 + Math.min(40, k[i] * 2500) + aproxima * 0.3) * arranque - 1;
       const desacel = D.frenagemMaxima(c, ia.v, 0, plano.aderenciaFreio) * 0.5;
       let lim = folga <= 0 ? ovPlano * 0.82 : Math.sqrt(Math.max(0, ovPlano * ovPlano + 2 * desacel * folga));
       // Já decidiu ultrapassar este carro mas ainda está na faixa dele: um fio de velocidade (sem encostar) para o volante ter o que virar
@@ -624,18 +586,14 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
       }
     }
     const limiteLento = 40; // o tratamento especial de um carro quase parado não é um limite de velocidade para atacar
-    // (a `curvaDisputavel` agora também exige diferença de velocidade: em Mônaco sem delta real, o bot entrava em "modo
-    // disputa" só porque tinha alguém adiante numa curva, e mergulhava por dentro sem caber — daí o toque no muro de fora)
-    const curvaDisputavel = monaco && !!alvo && (Math.max(ia.v, vLivre) - alvo.ov) > estilo.diferencaMinima * 1.2;
+    const curvaDisputavel = monaco && !!alvo;
     if (!ia.ult && !emergenciaSemEspaco && alvo && now > (ia.ultAte || 0) && (!monaco || alvo.dist < ATAQUE_PERTO_MONACO) && (monaco || reta || alvo.ov < limiteLento || (preso && leve) || dFreio === Infinity)) {
       // Usa a velocidade que teria com pista livre: depois de alcançar o carro o freio de trânsito já reduziu ia.v.
       const fecha = Math.max(ia.v, vLivre) - alvo.ov, lento = alvo.ov < limiteLento;
       // quanto tempo até emparelhar (o bico no meio do outro carro; a mudança de linha leva ~0,9 s em paralelo) contra o tempo até frear
       const tAlcance = Math.max(0.9, (alvo.frente - L_CARRO * 0.5) / Math.max(fecha, 10)), tFreio = dFreio / Math.max(ia.v, 30);
       const chega = lento || dFreio === Infinity || tAlcance < tFreio * estilo.antec || curvaDisputavel, foraDaFreada = lento || dFreio > 30 || curvaDisputavel;
-      // Mônaco: exigia só metade da diferença de velocidade para atacar (0,5×diferencaMinima). Subiu para 1,15× — o bot
-      // ainda abre a porteira se o da frente está parado (ia.v < 12 e alvo.ov < 12), mas não mergulha por 8 u/s de delta.
-      const querPassar = monaco ? (fecha > estilo.diferencaMinima * 1.15 || (ia.v < 12 && alvo.ov < 12)) : ((fecha > estilo.diferencaMinima && ia.v > 30) || (preso && (ia.v > 30 || lento)) || (ia.v < 12 && alvo.ov < 12));
+      const querPassar = monaco ? (fecha > estilo.diferencaMinima * 0.5 || (ia.v < 12 && alvo.ov < 12)) : ((fecha > estilo.diferencaMinima && ia.v > 30) || (preso && (ia.v > 30 || lento)) || (ia.v < 12 && alvo.ov < 12));
       if (querPassar && chega && foraDaFreada) {
         // O lado leva em conta a sequência de curvas; em Mônaco também pode disputar por fora quando a faixa está livre.
         const lados = ordemDaPassagem(pf, i, alvo.latOutro, MARG, baseLat, dentro);
@@ -685,15 +643,7 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
       // (sem prazo: a disputa pode durar várias curvas; acaba se passou, se ele abriu mais de ~6 carros, se não cabe mais ou se o lado fechou)
       let acabou = !tem || frente < -L_CARRO * 1.6 || frente > L_CARRO * 6 || Math.abs(alvoLat) > limite || (!livre(ia.ult.lado) && Math.abs(frente) < L_CARRO);
       // na freada não mergulha: quem ainda está atrás do outro (o bico não chegou ao meio dele) desiste e fica no vácuo; por dentro, já encostado na lateral dele, segue
-      // Mônaco: se a ult foi aberta por "curva disputável" mas ainda estamos atrás do alvo (frente > 0,7 carro),
-      // desiste ao entrar na curva. Antes o `!ia.ult.curva` mantinha a manobra viva até o fim da curva, e o bot
-      // chegava lado a lado com o alvo na saída — em Mônaco isso é quase sempre toque no muro de fora.
-      const desisteNaFreada = !acabou && !ia.ult.lento && !ia.ult.curva && dFreio < 30 && frente > L_CARRO * (ia.ult.lado === dentro ? 0.9 : 0.45);
-      const desisteNaCurvaMonaco = monaco && !acabou && !ia.ult.lento && ia.ult.curva && frente > L_CARRO * 0.7;
-      if (desisteNaFreada || desisteNaCurvaMonaco) {
-        acabou = true;
-        ia.ultAte = now + (monaco ? Math.max(estilo.espera, 3000) : estilo.espera);
-      }
+      if (!acabou && !ia.ult.lento && !ia.ult.curva && dFreio < 30 && frente > L_CARRO * (ia.ult.lado === dentro ? 0.9 : 0.45)) { acabou = true; ia.ultAte = now + estilo.espera; }
       if (acabou) ia.ult = null; else out.desvio = alvoLat - linhaDele;
     }
     // defesa: UMA porta fechada por atacante e por volta, antes da freada, e nunca contra quem já emparelhou
@@ -909,7 +859,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, fis[(i + k) % n]);
   // Mirabeau e o grampo de Mônaco exigem mais margem na chuva, inclusive na aproximação.
   const f = i / n, margemMolhada = room.config.pista === "monaco" ? Math.max(0, Math.min(1, (f - 0.29) / 0.03, (0.44 - f) / 0.02)) : 0;
-  const cautela = 1 - 0.10 * cl.agua * margemMolhada;
+  const cautela = 1 - 0.20 * cl.agua * margemMolhada;
   const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) * cautela : alvo); // a velocidade do robô sem ninguém na frente
   // Colado, o limite de trânsito não deixa o DRS virar velocidade: para decidir o ataque conta metade do ganho que ele teria ao sair da faixa (a velocidade leva tempo para chegar).
   const drsPronto = alvo >= topo * 0.97 && (car.drsAtivo || (p.drsZona >= 0 && p.drsZona === F1.zonaDRS(i / n, tr.t.drs)));
@@ -940,17 +890,6 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   if (room.config.pista === "monaco") for (const oid of room.order) { const q = room.players[oid]; if (!q || q === p || !q.ia || !q.ia.ult || q.ia.ult.id !== p.id || !q.pos || !p.pos) continue;
     const d = Math.hypot(q.pos.x - p.pos.x, q.pos.y - p.pos.y); if (d < L_CARRO * 1.1) { alvo *= 0.96; break; } }
   alvo = Math.min(alvo, tf.freio);
-  // o teto de curva do traçado: o volante de linha segue a linha (não pode pedir mais do que o pneu segura nela)
-  // Em pista livre e seca, a mesma linha usa o teto e a frenagem calculados para cada carro.
-  const treinoMonaco = room.config.pista === "monaco" && pf.referenciaMonaco && pneu.arcade && car.pneu?.composto === "macio" && !cl.agua && !p.dano && !tf.encontrou && !room.direcao?.safety && !room.direcao?.amarelo;
-  if (VOLANTE_LINHA) {
-    const teto = tetoDaLinha(pf, treinoMonaco);
-    const escala = Math.sqrt(((pneu.rel || aderRef().rel) * dano.grip * vac.aderencia) / aderRef().rel) * cautela;
-    let vt = Infinity;
-    const ate = Math.max(2, Math.ceil(Math.max(car.v, 30) * 0.12 / STEP));
-    for (let k = 0; k <= ate; k++) vt = Math.min(vt, teto[(i + k) % n]);
-    if (vt < topo * 0.97) alvo = Math.min(alvo, vt * escala);
-  }
   // a batida abala o robô como a quem joga: a física já tira a aderência (car.inst, por 0,2 a 2 s); aqui ele também perde o ritmo (tira
   // o pé e dirige com mais cuidado) por mais um tempo, mais nos níveis fáceis e menos nos difíceis
   const ins = car.inst > 0 ? car.inst : 0;
@@ -983,10 +922,6 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     car.x += q.nx * lat; car.y += q.ny * lat; car.sp = { x: car.x, y: car.y };
     ia.desvio = 0; ia.ult = null; ia.erro = null; ia.recuperacoes = (ia.recuperacoes || 0) + 1;
   }
-  // A margem de Mônaco entra e sai gradualmente, sem um degrau de velocidade no limite do trecho.
-  const entrada = Math.max(0, Math.min(1, (f - 0.19) / 0.02)), saida = Math.max(0, Math.min(1, (0.29 - f) / 0.02));
-  const trecho = 1 - 0.05 * Math.min(entrada, saida);
-  const alvoGuiado = treinoMonaco ? alvo * ({ facil: 0.82, medio: 0.89, dificil: 1 }[room.config.nivel] || 1) * trecho : alvo;
   for (let s = 0, passos = Math.round(dt / Sim.PASSO); s < passos; s++) {
     ev.length = 0;
     // o volante e os pedais são calculados a cada passo da física (120 Hz), como quem joga: o robô sente o carro escorregar
@@ -995,8 +930,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     const chicaneMonaco = room.config.pista === "monaco" && !tr.t.muros && ((f > 0.625 && f < 0.655) || (f > 0.805 && f < 0.835));
     const chicaneLivre = chicaneMonaco && !tf.encontrou && !amb.safety && !amb.amarela && !p.azul && !cl.agua &&
       (car.pneu?.desgaste || 0) < 0.5 && (p.dano || 0) < 10 && !car.inst;
-    if (VOLANTE_LINHA) Sim.pilotoLinha(car, tr, spec, alvoGuiado, latAdiante, ent);
-    else Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent, chicaneLivre ? 1.15 : 1);
+    Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent, chicaneLivre ? 1.15 : 1);
     if (chicaneLivre && car.v < alvo * 1.20) ent.brake = 0;
     // Em ar limpo, uma pequena sobra de velocidade pode ser corrigida tirando o pé.
     if (room.config.pista === "monaco" && !tf.encontrou && !amb.safety && !amb.amarela && !cl.agua && car.v <= alvo * 1.10) ent.brake = 0;
@@ -1004,10 +938,6 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     const exc = Math.abs(car.alF) - ALFA_FRENTE; // a frente já passou do pico do pneu (anda de frente): mais volante só piora, alivia até ela voltar a pegar
     if (exc > 0 && car.alF * ent.steer < 0) ent.steer *= Math.max(0, 1 - exc * K_FRENTE);
     if (medo > 0.01) ent.steer = (ia.volante || 0) + (ent.steer - (ia.volante || 0)) * (1 - 0.85 * Math.min(1, medo)); // com o carro abalado o volante vai mais devagar
-    if (VOLANTE_LINHA) {
-      const anterior = ia.volante || 0;
-      ent.steer = anterior + (ent.steer - anterior) * SUAVIZAR_VOLANTE;
-    }
     ia.volante = ent.steer;
     if (ent.brake && car.travada > TRAVA_ABS) ent.brake = 0; // a roda da frente travou: solta o freio um instante (o ABS de quem sabe frear)
     ent.ers = !!ia.ult && !ia.ult.emergencia;
