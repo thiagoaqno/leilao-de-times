@@ -147,12 +147,9 @@
 </div>
 <script>
 window.falhaPreparoCorrida = function () { document.getElementById("preparoMensagem").textContent = "Não foi possível iniciar a corrida. Confira sua conexão e tente novamente."; document.getElementById("preparoTentar").hidden = false; };
-window.inicioPreparoCorrida = performance.now();
 window.preparoPronto = function () {
-  if (window.preparoAgendado) return;
-  window.preparoAgendado = true;
-  const espera = Math.max(0, 15000 - (performance.now() - window.inicioPreparoCorrida));
-  setTimeout(function () { clearTimeout(window.timerPreparoCorrida); document.getElementById("preparoCorrida")?.remove(); }, espera);
+  clearTimeout(window.timerPreparoCorrida);
+  document.getElementById("preparoCorrida")?.remove();
 };
 window.timerPreparoCorrida = setTimeout(function () { document.getElementById("preparoMensagem").textContent = "Está demorando mais que o esperado. Confira sua conexão ou tente novamente."; document.getElementById("preparoTentar").hidden = false; }, 45000);
 </script>

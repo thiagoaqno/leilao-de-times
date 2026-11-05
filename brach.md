@@ -1,6 +1,6 @@
 # Auxílio de frenagem e entrada da Corrida
 
-A entrada mostra uma capa nova por pelo menos 15 segundos e espera o primeiro desenho da garagem. A linha de auxílio, desligada por padrão e configurável no menu ou na corrida, muda de cor conforme a velocidade e as curvas adiante. O minimapa ficou 40% maior. A tela em tela cheia antes da corrida rápida e do contrarrelógio foi removida.
+A entrada mostra uma capa nova até o primeiro desenho da garagem, sem espera artificial. A linha de auxílio, desligada por padrão e configurável no menu ou na corrida, muda de cor conforme a velocidade e as curvas adiante. O minimapa ficou 40% maior. A tela em tela cheia antes da corrida rápida e do contrarrelógio foi removida.
 
 As faixas de velocidade relativa para punição de colisão sobem 10%. O causador recebe 12%, 20% ou 35% de dano nas infrações leve, média ou com stop-and-go; a proteção do atingido continua igual.
 
