@@ -151,12 +151,12 @@ function montarCorpoNovo(k) {
     // a tela e as luzes de troca do volante: só o carro do jogador (op.volante) tem textura e liga; nos outros ficam apagadas e paradas
     const volanteVivo = k.volanteVivo;
     if (D.tela) {
-      const mt = new THREE.MeshBasicMaterial({ color: 0x050607, toneMapped: false, side: THREE.DoubleSide }); mats.set("tela", mt); peca("tela", D.tela.geo, mt, piv);
+      const mt = new THREE.MeshBasicMaterial({ color: 0x050607, toneMapped: false, side: THREE.DoubleSide, userData: { bloom: 1 } }); mats.set("tela", mt); peca("tela", D.tela.geo, mt, piv);
       k.tela = { mat: mt, cv: null, tex: null, ult: "", prox: 0, cargaAnt: 0, colheAte: 0 };
       if (volanteVivo) iniciarTela(k.tela);
     }
     if (D.leds) {
-      const mt = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.DoubleSide }); mats.set("leds", mt); const o = peca("leds", D.leds.geo, mt, piv); o.castShadow = false;
+      const mt = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.DoubleSide, userData: { bloom: 1 } }); mats.set("leds", mt); const o = peca("leds", D.leds.geo, mt, piv); o.castShadow = false;
       k.leds = { geo: D.leds.geo, n: -1 }; apagarLeds(k.leds);
     }
     k.olho = { z: D.volante.centro.z + D.olho.dz, y: D.volante.centro.y + D.olho.dy }; k.olhoBaixo = D.olho.baixo || 0; // atrás do volante, na altura do capacete
