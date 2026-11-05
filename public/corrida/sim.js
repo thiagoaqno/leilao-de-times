@@ -167,7 +167,7 @@ function pilotoAutomatico(c, tr, spec, vAlvo, latAlvo, saida = {}, fatorOlhar = 
 // volante é a guinada; nos outros, a guinada vira ângulo de roda pelo mesmo caminho do `pilotoAutomatico`.
 //
 // Acelerador modulado (item 1): full gás quando bem abaixo do alvo, rampa linear até coast (=0) no alvo.
-// gasKp = 0.5 → full gás até 2 u/s abaixo, 50% a 1 u/s, coast no alvo. O freio mantém a histerese de 4% do
+// gasKp = 0.8 → full gás até 1,25 u/s abaixo, 50% a 0,6 u/s abaixo, coast no alvo. O freio mantém a histerese de 4% do
 // `pilotoAutomatico` (para não ficar piscando em cima do alvo). Imita o pé de verdade: ~64% gás cheio,
 // ~22% rolando, ~5% freando numa volta boa.
 const PILOTO_LINHA = { w: 3.2, z: 0.9, previa: 0.1, m: 4, gasKp: 0.8 };
