@@ -313,6 +313,8 @@ test("servidor: sair da temporada devolve o carro ao robô e o anfitrião encerr
     const aberto = await chamar(a, "encerrar"); assert.equal(aberto.ok, false); assert.match(aberto.error, /GP está aberto/);
     assert.equal((await chamar(c, "sairDaTemporada")).ok, false, "também não sai com o GP aberto");
     const sala = srv.corrida.salaGP(srv.grupo.ativos.get(codigo).code);
+    assert.ok(sala.campeonatoPilotos.pilotos.length >= 20, "a disputa usa a tabela completa");
+    assert.equal(sala.campeonatoPilotos.restam, sala.tvTemporada.total - sala.tvTemporada.gp);
     Quali.cancelar(sala); sala.phase = "results"; // o GP acabou (a sala da Corrida já está na tela de resultado)
     let aviso = null; c.on("encerrada", (d) => { aviso = d; });
     const fim = await chamar(a, "encerrar"); assert.equal(fim.ok, true, fim.error);
