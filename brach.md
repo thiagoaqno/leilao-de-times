@@ -1,14 +1,14 @@
-# Auxílio de frenagem e entrada da Corrida
+# Usa uma referência única em Mônaco e amplia o grid para 22
 
-A entrada mostra uma capa nova até o primeiro desenho da garagem, sem espera artificial. A linha de auxílio, desligada por padrão e configurável no menu ou na corrida, usa o traçado otimizado dos robôs, fica fixa e 80% transparente, e diferencia aceleração, alívio e frenagem conforme a velocidade e as curvas adiante. O minimapa ficou 40% maior. A tela em tela cheia antes da corrida rápida e do contrarrelógio foi removida; ao escolher Largar, o menu permanece visível até a corrida ou classificação começar, sem exibir a sala intermediária.
+Em Mônaco, os carros de F1 seguem a volta de 48,4195 s como referência comum, com variações dos pilotos e freada ajustada ao carro. Em pista seca, livre e com macio, os níveis usam limites calibrados; na chuva a mesma linha recebe margens mais conservadoras. A volta recente de 52,95 s com McLaren padrão é uma segunda referência com condições conhecidas, ainda não usada para treinamento.
 
-As faixas de velocidade relativa para punição de colisão sobem 10%. O causador recebe 12%, 20% ou 35% de dano nas infrações leve, média ou com stop-and-go; a proteção do atingido continua igual.
+Nas duas voltas de macio da bancada, com os 22 pilotos simulados individualmente, houve quatro contatos e nenhuma saída em 44 voltas. O teste é em pista livre, não garante resultado em tráfego nem configurações desenvolvidas. Os tempos ainda estão acima das voltas humanas.
 
-A Central da carreira abre sobre uma foto, prepara uma garagem 3D mais leve quando o navegador está ocioso e mostra a chegada do carro quando pronto. O desenho da cidade e os rótulos do Desenvolvimento foram otimizados. Em Interlagos, os objetos de cenário são divididos em regiões menores para cortar mais geometria e sombras fora da câmera.
+A corrida rápida e as carreiras passam a comportar 22 carros. A temporada preenche as vagas após contratações e aceita o fechamento de GPs antigos com 20 carros. A classificação, a marcação visual do grid e as telas acompanham a nova quantidade.
 
 ## Verificação
 
-- Testes focados de punições: `node --test tests/corrida-punicoes.test.js` (19 aprovados).
-- Entrada e capa conferidas no navegador; opção de linha presente no menu e desligada por padrão.
-- Medição de cena em Interlagos: 303.914 → 246.969 triângulos visíveis e 92.560 → 39.335 triângulos de sombra, com 198 → 223 chamadas na vista medida.
-- A suíte completa não foi executada, conforme solicitado. A linha e sua transparência foram conferidas em um teste de navegador com o traçado real; a condução ainda precisa de calibração em uma corrida real.
+- `node --test tests/corrida-monaco-referencia.test.js`
+- `node --test --test-name-pattern "Mônaco molhado" tests/corrida-monaco-chuva.test.js` (22 carros)
+- Testes focados de sala nova, classificação e temporadas solo e em grupo.
+- Suíte completa não executada, conforme pedido.

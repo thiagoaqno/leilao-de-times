@@ -50,7 +50,7 @@ const gerador = (semente) => { // mulberry32 (a mesma de f1-regras.js `sorteio`)
   let a = 2166136261; for (const c of String(semente)) { a ^= c.charCodeAt(0); a = Math.imul(a, 16777619); } a = (a >>> 0) || 1;
   return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 };
-// `n` pilotos para os robôs (o grid tem 20 carros e os titulares são 22: quem sobra sai pelo sorteio da semente), na
+// `n` pilotos para os robôs (o grid tem até 22 carros e os titulares são 22), na
 // ordem da tabela. Nunca repete e nunca passa de 22. `ocupadas` ({ equipe: quantos humanos }): cada humano numa equipe
 // ocupa o lugar de um dos titulares dela (o segundo da tabela primeiro), que não corre como robô.
 function escolher(n, semente = 1, ocupadas = {}) {

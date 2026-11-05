@@ -113,15 +113,13 @@ function pilotosNoGrid(s) {
   const companheiro = Pilotos.PILOTOS.find((p) => p.id === s.piloto2);
   const removidos = new Set([titulares[1].id, companheiro.id]);
   const disponiveis = Pilotos.PILOTOS.filter((p) => !removidos.has(p.id) && p.equipe !== s.equipe);
-  // 20 carros: humano, companheiro e 18 rivais. O corte é fixo durante o ano.
-  const sorteio = ((Number(s.semente) >>> 0) % disponiveis.length);
-  const cortados = new Set();
-  for (let i = 0; cortados.size < disponiveis.length - 18; i++) {
-    const p = disponiveis[(sorteio + i * 7) % disponiveis.length];
-    cortados.add(p.id);
+  // Se o companheiro veio de outra equipe, o titular deslocado ocupa a vaga deixada por ele.
+  const rivais = disponiveis.slice();
+  if (companheiro.equipe !== s.equipe) {
+    const deslocado = titulares.find((p) => p.id !== companheiro.id);
+    if (deslocado) rivais.push({ ...deslocado, equipe: companheiro.equipe });
   }
-  const grid = disponiveis.filter((p) => !cortados.has(p.id));
-  return [{ ...companheiro, equipe: s.equipe }, ...grid].slice(0, 19);
+  return [{ ...companheiro, equipe: s.equipe }, ...rivais].slice(0, 21);
 }
 // Metas dependem da força inicial da equipe, não do resultado que acabou de acontecer.
 function metas(s) {
@@ -156,10 +154,11 @@ function imersao(s) {
 }
 function registrarResultado(s, linhas, analise = null) {
   if (s.gp >= s.tamanho) throw Error("A temporada terminou.");
-  if (!Array.isArray(linhas) || linhas.length !== 20) throw Error("Resultado incompleto.");
+  if (!Array.isArray(linhas) || ![20, 22].includes(linhas.length)) throw Error("Resultado incompleto.");
+  const total = linhas.length; // aceita também GPs de 20 que já estavam em andamento
   const ids = new Set(linhas.map((r) => r.piloto));
   const posicoes = new Set(linhas.map((r) => r.pos));
-  if (ids.size !== 20 || !ids.has("voce") || posicoes.size !== 20 || linhas.some((r) => !inteiro(r.pos) || r.pos < 1 || r.pos > 20 || r.pontos !== (r.dnf || r.nc ? 0 : (PONTOS[r.pos - 1] || 0) + (r.voltaRapida ? 1 : 0))) || linhas.filter((r) => r.voltaRapida).length > 1) throw Error("Resultado inválido.");
+  if (ids.size !== total || !ids.has("voce") || posicoes.size !== total || linhas.some((r) => !inteiro(r.pos) || r.pos < 1 || r.pos > total || r.pontos !== (r.dnf || r.nc ? 0 : (PONTOS[r.pos - 1] || 0) + (r.voltaRapida ? 1 : 0))) || linhas.filter((r) => r.voltaRapida).length > 1) throw Error("Resultado inválido.");
   const gp = s.calendario[s.gp];
   const objetivo = metas(s);
   const resultado = { ano: s.ano, gp: s.gp, pista: gp.pista, objetivoGP: objetivo.gp, objetivoTemporada: objetivo.temporada, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc, voltaRapida: !!r.voltaRapida })) };
@@ -176,13 +175,13 @@ function registrarResultado(s, linhas, analise = null) {
 }
 function tabelas(s) {
   const pilotos = new Map(), equipes = new Map();
-  for (const p of Pilotos.PILOTOS) pilotos.set(p.id, { id: p.id, nome: p.nome, equipe: p.equipe, pontos: 0, vitorias: 0, colocacoes: Array(20).fill(0) });
+  for (const p of Pilotos.PILOTOS) pilotos.set(p.id, { id: p.id, nome: p.nome, equipe: p.equipe, pontos: 0, vitorias: 0, colocacoes: Array(22).fill(0) });
   if (pilotos.has(s.piloto2)) pilotos.get(s.piloto2).equipe = s.equipe;
-  pilotos.set("voce", { id: "voce", nome: s.nome, equipe: s.equipe, pontos: 0, vitorias: 0, colocacoes: Array(20).fill(0) });
-  for (const [id, eq] of Object.entries(Pilotos.EQUIPES)) equipes.set(id, { id, nome: eq.nome, pontos: 0, vitorias: 0, colocacoes: Array(20).fill(0) });
+  pilotos.set("voce", { id: "voce", nome: s.nome, equipe: s.equipe, pontos: 0, vitorias: 0, colocacoes: Array(22).fill(0) });
+  for (const [id, eq] of Object.entries(Pilotos.EQUIPES)) equipes.set(id, { id, nome: eq.nome, pontos: 0, vitorias: 0, colocacoes: Array(22).fill(0) });
   for (const gp of s.resultados.filter((r) => r.ano === s.ano)) for (const r of gp.linhas) {
     const p = pilotos.get(r.piloto); if (!p) continue;
-    p.pontos += r.pontos; p.vitorias += r.pos === 1 && !r.nc && !r.dnf ? 1 : 0;
+    p.equipe = r.equipe; p.pontos += r.pontos; p.vitorias += r.pos === 1 && !r.nc && !r.dnf ? 1 : 0;
     if (!r.dnf && !r.nc) p.colocacoes[r.pos - 1]++;
     const e = equipes.get(r.equipe); if (e) { e.pontos += r.pontos; e.vitorias += r.pos === 1 && !r.nc && !r.dnf ? 1 : 0; if (!r.dnf && !r.nc) e.colocacoes[r.pos - 1]++; }
   }

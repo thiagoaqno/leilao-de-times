@@ -36,13 +36,13 @@ test('escolher(n) dá n pilotos diferentes, sempre os mesmos para a mesma sement
   assert.equal(Pilotos.escolher(30, 1).length, 22); assert.equal(Pilotos.escolher(0, 1).length, 0);
 });
 
-test('o grid de 20 carros: robôs com os pilotos reais no lugar dos nomes inventados', () => {
-  const room = { config: { pista: 'monaco', regras: 'f1', voltas: 3, robos: 19, nivel: 'medio' }, semente: 7,
+test('o grid de 22 carros: robôs com os pilotos reais no lugar dos nomes inventados', () => {
+  const room = { config: { pista: 'monaco', regras: 'f1', voltas: 3, robos: 21, nivel: 'medio' }, semente: 7,
     players: { h: { id: 'h', name: 'Thiago', sockets: new Set(), color: '#fff' } }, order: ['h'] };
   Robos.preparar(room, ['#e63946'], () => 'x');
-  assert.equal(room.order.length, 20);
+  assert.equal(room.order.length, 22);
   const bots = room.order.filter((id) => room.players[id].bot).map((id) => room.players[id]);
-  assert.equal(bots.length, 19);
+  assert.equal(bots.length, 21);
   for (const b of bots) {
     assert.ok(b.piloto && b.equipe && b.numero, b.name);
     assert.ok(b.sockets instanceof Set && b.mods && b.laps === 0 && b.sector === T.SECTORS - 1, "o robô tem os campos de qualquer piloto");
@@ -50,10 +50,10 @@ test('o grid de 20 carros: robôs com os pilotos reais no lugar dos nomes invent
     assert.equal(b.color, Pilotos.EQUIPES[b.equipe].cor);
     assert.ok(!['Faísca', 'Pistão', 'Graxa', 'Biela', 'Vácuo', 'Turbo', 'Chicane'].includes(b.name));
   }
-  // com dois humanos, o grid continua em 20
+  // com dois humanos, o grid continua em 22
   const room2 = { ...room, players: { h: room.players.h, g: { id: 'g', name: 'Gui', sockets: new Set() } }, order: ['h', 'g'], config: { ...room.config } };
   Robos.preparar(room2, ['#e63946'], () => 'x');
-  assert.equal(room2.order.length, 20);
+  assert.equal(room2.order.length, 22);
 });
 
 test('as sessões: 20 carros fazem Q1 (20), Q2 (15) e Q3 (10); com menos, menos sessões', () => {

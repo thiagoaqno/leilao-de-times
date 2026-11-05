@@ -123,7 +123,7 @@ export function startRace(st) {
   luzPendente();
   tr.mostrarBoxes = st.config.regras === "f1"; if (tr.boxesGP) tr.boxesGP.userData.mostrar(tr.mostrarBoxes); // o corredor dos boxes só aparece nas regras de F1
   if (tr.drsPlacas) tr.drsPlacas.visible = tr.mostrarBoxes;
-  // regras de F1: o grid de 20 vagas e o pórtico das cinco luzes no lugar do "CORRIDA DA GALERA" (nas pistas de GP)
+  // regras de F1: o grid de 22 vagas e o pórtico das cinco luzes no lugar do "CORRIDA DA GALERA" (nas pistas de GP)
   if (tr.gridGalera) tr.gridGalera.visible = !tr.mostrarBoxes; if (tr.gridF1) tr.gridF1.visible = tr.mostrarBoxes;
   if (tr.portico) { tr.faixaGalera.visible = !tr.mostrarBoxes; tr.portico.topF1.visible = tr.portico.grupo.visible = tr.mostrarBoxes; tr.luzes.set(0); }
   if (tr.boxesGP) {

@@ -53,7 +53,7 @@ test("regras: dois na mesma equipe, mercado disputado, versão da montagem e his
   assert.equal(sala.contratos.perez, null); assert.equal(sala.contratos.bottas, null);
   assert.equal(sala.contratos.leclerc, "ferrari"); assert.equal(sala.contratos.hamilton, null);
   const grid = G.gridDoGP(sala);
-  assert.equal(grid.humanos.length + grid.robos.length, 20);
+  assert.equal(grid.humanos.length + grid.robos.length, 22);
   assert.equal(grid.robos.some((p) => p.equipe === "cadillac"), false);
   // a equipe dividida mexe no mesmo carro: quem fez fica no histórico e a versão avisa de pedido velho
   const v0 = sala.equipes.cadillac.versao, m = { ...sala.equipes.cadillac.montagem };
@@ -68,6 +68,9 @@ test("regras: dois na mesma equipe, mercado disputado, versão da montagem e his
   // mercado: o piloto e o engenheiro só vão para uma equipe
   G.contratarPiloto(sala, "c", "verstappen");
   assert.equal(sala.contratos.leclerc, null, "o antigo companheiro volta ao mercado");
+  const novoGrid = G.gridDoGP(sala), participantes = [...novoGrid.humanos, ...novoGrid.robos];
+  assert.equal(participantes.length, 22);
+  for (const equipe of Object.keys(E.EQUIPES)) assert.equal(participantes.filter((p) => p.equipe === equipe).length, 2, equipe);
   assert.throws(() => G.contratarPiloto(sala, "d", "verstappen"), /não vai para duas equipes/);
   assert.throws(() => G.contratarPiloto(sala, "d", "inexistente"), /indisponível/);
   G.contratarEngenheiro(sala, "c", "mecanico", 1);
@@ -171,7 +174,7 @@ test("servidor: sala, equipes (inclusive a mesma), mercado disputado, GP ao vivo
     const espectador = await srv.ligar("/corrida");
     assert.equal((await chamar(espectador, "join", { code: a.gp.code, watch: true })).ok, false, "sem o acesso da sala, nada de assistir");
     const sala = await esperarAte(() => { const r = srv.corrida.internos.sala(a.gp.code); return r && r.phase === "quali" && r; });
-    assert.equal(sala.order.length, 20);
+    assert.equal(sala.order.length, 22);
     const todos = sala.order.map((id) => sala.players[id]);
     assert.equal(todos.filter((p) => !p.bot).length, 4);
     assert.deepEqual(todos.filter((p) => !p.bot && p.equipe === "cadillac").map((p) => p.name).sort(), ["Ana", "Beto"]);
@@ -188,7 +191,7 @@ test("servidor: sala, equipes (inclusive a mesma), mercado disputado, GP ao vivo
     await esperarAte(() => a.estado && a.estado.resultados.length === 1 && !a.estado.gpAberto);
     await esperarAte(() => [b, c, d].every((s) => s.estado && s.estado.resultados.length === 1 && !s.estado.gpAberto));
     for (const s of [b, c, d]) { assert.deepEqual(s.estado.tabelas, a.estado.tabelas); assert.deepEqual(s.estado.resultados, a.estado.resultados); }
-    assert.equal(a.estado.resultados[0].linhas.length, 20);
+    assert.equal(a.estado.resultados[0].linhas.length, 22);
     assert.equal(a.estado.gp, 1); assert.equal(a.estado.acesso, null);
     const t = a.estado.tabelas;
     assert.equal(t.equipes.find((e) => e.id === "cadillac").pontos, t.pilotos.filter((p) => p.equipe === "cadillac").reduce((s, p) => s + p.pontos, 0));
@@ -283,7 +286,7 @@ test("regras: sair da temporada devolve o carro a um robô", () => {
   assert.equal(sala.equipes.ferrari, undefined);
   assert.equal(sala.contratos.leclerc, "ferrari"); assert.equal(sala.contratos.hamilton, "ferrari");
   const grid = G.gridDoGP(sala);
-  assert.equal(grid.humanos.length, 1); assert.equal(grid.humanos.length + grid.robos.length, 20);
+  assert.equal(grid.humanos.length, 1); assert.equal(grid.humanos.length + grid.robos.length, 22);
   assert.equal(grid.robos.filter((p) => p.equipe === "ferrari").length, 2);
   // o último com carro sai: a sala acaba
   assert.equal(G.dispensar(sala, "b"), "encerrada");

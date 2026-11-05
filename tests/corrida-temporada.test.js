@@ -18,7 +18,7 @@ const chamar = (socket, evento, dados = {}) => new Promise((resolve) => socket.e
 
 function resultado(s, gp) {
   const grid = R.pilotosNoGrid(s);
-  const minha = gp % 2 ? 4 : 1, posicoes = Array.from({ length: 20 }, (_, i) => i + 1).filter((n) => n !== minha);
+  const minha = gp % 2 ? 4 : 1, posicoes = Array.from({ length: 22 }, (_, i) => i + 1).filter((n) => n !== minha);
   return [{ piloto: "voce", equipe: s.equipe, pos: minha, pontos: R.PONTOS[minha - 1] },
     ...grid.map((p, i) => ({ piloto: p.id, equipe: p.equipe, pos: posicoes[i], pontos: R.PONTOS[posicoes[i] - 1] || 0 }))];
 }
@@ -47,7 +47,7 @@ test("mini temporada de quatro GPs: grid, tabelas, finanças e continuidade", ()
   assert.equal(s.calendario.length, 4);
   assert.ok(s.calendario.every((x) => R.PISTAS_TRABALHADAS.includes(x.pista)));
   const ids = R.pilotosNoGrid(s).map((p) => p.id);
-  assert.equal(ids.length, 19); assert.equal(new Set(ids).size, 19);
+  assert.equal(ids.length, 21); assert.equal(new Set(ids).size, 21);
   assert.equal(R.pilotosNoGrid(s)[0].equipe, "cadillac");
   const caixaInicial = s.caixa;
   for (let gp = 0; gp < 4; gp++) R.registrarResultado(s, resultado(s, gp));
@@ -74,7 +74,9 @@ test("mercado, desenvolvimento e teto de gastos são validados no servidor", () 
   R.contratarPiloto(s, "verstappen");
   assert.equal(R.pilotosNoGrid(s)[0].equipe, "cadillac");
   assert.equal(R.pilotosNoGrid(s)[0].id, "verstappen");
-  assert.equal(R.pilotosNoGrid(s).length, 19);
+  assert.equal(R.pilotosNoGrid(s).length, 21);
+  const equipes = R.pilotosNoGrid(s).reduce((acc, piloto) => (acc[piloto.equipe] = (acc[piloto.equipe] || 0) + 1, acc), { [s.equipe]: 1 });
+  assert.ok(Object.values(equipes).every((n) => n === 2), JSON.stringify(equipes));
   R.contratarEngenheiro(s, "mecanico", 1);
   assert.equal(s.engenheiros.mecanico, 1);
   assert.throws(() => R.contratarPiloto(s, "inexistente"), /indisponível/);
@@ -122,7 +124,7 @@ test("sede abre GP privado, fixa companheiro e exige acesso da temporada", { tim
     pista = await conectar(servidor.url, "/corrida");
     const entrou = await chamar(pista, "join", acesso.acesso);
     assert.equal(entrou.ok, true, entrou.error);
-    const estado = await esperarEstado(pista, (s) => s.phase === "quali" && s.players.length === 20);
+    const estado = await esperarEstado(pista, (s) => s.phase === "quali" && s.players.length === 22);
     assert.equal(estado.temporada, true);
     assert.equal(estado.config.pista, criado.dados.calendario[0].pista, "corre a primeira pista do calendário sorteado");
     assert.equal(estado.players.filter((p) => p.bot && p.equipe === "cadillac").length, 1);

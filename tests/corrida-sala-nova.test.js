@@ -1,4 +1,4 @@
-// Corrida: a sala nova nasce em Mônaco, com as regras de F1, 5 voltas, grid de 20 (19 robôs médios), clima variável, classificação pulada,
+// Corrida: a sala nova nasce em Mônaco, com as regras de F1, 5 voltas, grid de 22 (21 robôs médios), clima variável, classificação pulada,
 // o pneu médio de largada e cada piloto já numa equipe (não no carro avulso). Quem manda uma config (a carreira, os outros testes) ou já
 // está numa sala continua com o que escolheu.
 const Pilotos = require("../public/corrida/f1-pilotos-2026.js");
@@ -7,7 +7,7 @@ const assert = require("node:assert/strict");
 const bd = require("../bd.js");
 const { subirServidor, conectar, pedir, esperarEstado } = require("./ajuda.js");
 
-test("sala nova sem config: Mônaco, F1, grid de 20, clima variável, sem classificação, equipe escolhida e pneu médio; a config do organizador vale", { timeout: 30000 }, async () => {
+test("sala nova sem config: Mônaco, F1, grid de 22, clima variável, sem classificação, equipe escolhida e pneu médio; a config do organizador vale", { timeout: 30000 }, async () => {
   bd.fechar(); bd.abrir(":memory:");
   const srv = await subirServidor();
   const a = await conectar(srv.url, "/corrida"), b = await conectar(srv.url, "/corrida");
@@ -18,7 +18,7 @@ test("sala nova sem config: Mônaco, F1, grid de 20, clima variável, sem classi
     assert.equal(st.config.pista, "monaco");
     assert.equal(st.config.voltas, 5);
     assert.equal(st.config.nivel, "medio");
-    assert.equal(st.config.robos, 19, "19 robôs + o organizador = grid de 20");
+    assert.equal(st.config.robos, 21, "21 robôs + o organizador = grid de 22");
     assert.equal(st.config.clima, "variavel");
     assert.equal(st.config.classificacao, "pular");
     assert.equal(st.config.caixas, false);
