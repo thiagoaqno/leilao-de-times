@@ -251,6 +251,8 @@ test("o GP usa o carro desenvolvido das rivais e o mesmo carro para companheiros
   const corrida = require("../corrida.js")({ of: () => nsp });
   const s = R.criar("Thiago", "cadillac", 8, 5, 170); s.gp = 4; s.montagem = E.montagemPadrao("cadillac");
   const acesso = corrida.abrirGP(s, () => {}, () => {}), sala = corrida.salaGP(acesso.code);
+  assert.equal(sala.campeonatoPilotos.restam, 3);
+  assert.deepEqual(sala.campeonatoPilotos.pilotos.map((p) => p.id), R.tabelas(s).pilotos.map((p) => p.id));
   Robos.preparar(sala, ["#a"], () => "x");
   const companheiro = sala.order.map((id) => sala.players[id]).find((p) => p.bot && p.equipe === "cadillac");
   assert.ok(companheiro); assert.equal(companheiro.spec.chave, E.specDaEquipe("cadillac", s.montagem).chave);

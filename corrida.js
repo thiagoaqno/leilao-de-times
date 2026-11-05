@@ -476,6 +476,7 @@ module.exports = function attachCorrida(io) {
       sementeFixa: `${temporada.semente}:${temporada.ano}:${temporada.gp}`, pilotosTemporada: require("./public/corrida/temporada/regras.js").pilotosNoGrid(temporada),
       montagens: { ...rivais.montagens, [temporada.equipe]: temporada.montagem }, bonusMontagem: { ...rivais.bonus, [temporada.equipe]: temporada.bonus }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP, aoMontar,
       tvTemporada: resumoTV(require("./public/corrida/temporada/regras.js").tabelas(temporada), { gp: temporada.gp + 1, total: temporada.tamanho, ano: temporada.ano }, (p) => p.id === "voce", (e) => e.id === temporada.equipe) };
+    room.campeonatoPilotos = { restam: Math.max(0, temporada.tamanho - temporada.gp - 1), pilotos: require("./public/corrida/temporada/regras.js").tabelas(temporada).pilotos.map(({ id, pontos }) => ({ id, pontos })) };
     const eq = Pilotos.EQUIPES[temporada.equipe], id = rid(6), token = rid();
     room.players[id] = { id, name: temporada.nome, token, pawn: "🏎️", color: eq.cor, skin: "padrao", car: "equilibrado", equipe: temporada.equipe,
       mods: { ...T.MODS_PADRAO, pintura: eq.pintura }, pneu: F1.COMPOSTO_PADRAO, grid: 0, laps: 0, sector: T.SECTORS - 1,
@@ -493,6 +494,7 @@ module.exports = function attachCorrida(io) {
       players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, grupo: true, salaTemporada: g.salaTemporada || null, espectadores: new Set(),
       sementeFixa: g.semente, pilotosTemporada: g.robos, montagens: g.montagens || {}, bonusMontagem: g.bonusMontagem || {}, bonusBoxEquipes: g.bonusBox || {}, aoTerminarGP, aoMontar: g.aoMontar,
       tvTemporada: g.tv ? resumoTV(g.tv.tabelas, { gp: g.tv.gp, total: g.tv.total, ano: g.tv.ano }, (p) => p.humano, (e) => e.humana) : null };
+    if (g.tv && g.tv.tabelas) room.campeonatoPilotos = { restam: Math.max(0, g.tv.total - g.tv.gp), pilotos: g.tv.tabelas.pilotos.map(({ id, pontos }) => ({ id, pontos })) };
     const pessoas = {};
     for (const h of g.pessoas) {
       const eq = Pilotos.EQUIPES[h.equipe], id = rid(6), token = rid();
