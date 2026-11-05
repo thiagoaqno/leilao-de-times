@@ -1,0 +1,10 @@
+# Referência única em Mônaco
+
+A linha da McLaren padrão usa como ponto de partida a volta de 48,4195 s salva pelo jogador e reproduzida em `public/corrida/monaco-volta-referencia.json`. Os cinco traçados não são distribuídos para as McLarens padrão em Mônaco: o perfil dos pilotos continua introduzindo variações. A linha de auxílio em Mônaco exibe a mesma geometria. A referência salva não registra montagem, composto ou clima, portanto seu tempo não é comparável diretamente ao carro padrão e não é uma meta comprovadamente atingível.
+
+Em pista seca e livre, sem dano ou bandeiras, com pneu macio na faixa arcade, a McLaren padrão usa um teto de velocidade calibrado e multiplicadores de ritmo para fácil, médio e difícil. Em chuva, trânsito, dano, outras montagens e outros compostos vale o controle anterior. Os demais carros mantêm sua seleção anterior de traçados; a linha exibida serve como referência aproximada para eles, não como trajetória individual.
+
+No ensaio `node ferramentas/medir-monaco.js`, o Norris dirige em pista livre, com McLaren padrão, pneu macio renovado após a volta de aquecimento e mantido nas duas voltas cronometradas. Nas sementes 951–954 foram registradas oito voltas sem contatos em cada nível: fácil 59,55–60,90 s, médio 57,20–60,45 s, difícil 56,95–58,45 s. São simulações de ar limpo, não uma garantia em corrida com tráfego ou outros pilotos. A referência de 48,4195 s segue distante.
+
+Verificação: `node --test tests/corrida-monaco-referencia.test.js` e `node --test --test-name-pattern "Mônaco molhado" tests/corrida-monaco-chuva.test.js`.
+A gravação recente enviada pelo jogador registrou uma volta de aproximadamente 52,95 s com McLaren padrão, macio e pista seca, além de comandos e derrapagem. Ela é uma comparação especialmente útil porque suas condições são conhecidas, embora haja erros declarados e a primeira passagem tenha sido a partir da largada; não substitui a volta de 48,4195 s, escolhida pelo usuário como referência de traçado. O melhor resultado do bot neste ensaio (56,95 s) ainda ficou cerca de 4 s acima dela, mas a comparação não controla todos os efeitos de temperatura, desgaste e incidentes.

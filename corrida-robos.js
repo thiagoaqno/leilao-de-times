@@ -4,6 +4,7 @@
 // permite. Pegam caixas e usam os itens. Para os navegadores eles são pilotos como os outros: a posição sai pelo
 // mesmo evento "ghost" e as voltas contam pelos mesmos setores.
 const T = require("./public/corrida/pistas.js");
+const VOLTA_MONACO = require("./public/corrida/monaco-volta-referencia.json");
 const Linha = require("./corrida-linha.js"); // a linha de corrida por otimização (curvatura mínima)
 const { Worker } = require("node:worker_threads");
 const path = require("node:path");
@@ -89,11 +90,16 @@ function tracado(pista, f1 = false, linhaPronta = null) {
 }
 // Expõe apenas um traçado já pronto; nunca inicia uma otimização pelo pedido do navegador.
 const LINHAS_PUBLICAS = new Map();
+let referenciaMonacoCache;
+function referenciaFixaMonaco() {
+  if (referenciaMonacoCache === undefined) referenciaMonacoCache = processar("monaco", VOLTA_MONACO);
+  return referenciaMonacoCache;
+}
 function linhaF1Pronta(pista) {
   if (!tracadoPronto(pista)) return null;
   if (!LINHAS_PUBLICAS.has(pista)) {
-    const linha = tracado(pista, true), k = curvaturaDoCaminho(linha.pts, linha.lat, 12, 6);
-    LINHAS_PUBLICAS.set(pista, { lat: Array.from(linha.lat, (v) => Math.round(v * 100) / 100), k: Array.from(k, (v) => Math.round(v * 1e7) / 1e7) });
+    const linha = tracado(pista, true), referencia = pista === "monaco" ? referenciaFixaMonaco() : null, lat = referencia ? Float64Array.from(referencia.lat, (_, i) => referencia.lat[(i + 2) % linha.n]) : linha.lat, k = curvaturaDoCaminho(linha.pts, lat, 12, 6);
+    LINHAS_PUBLICAS.set(pista, { lat: Array.from(lat, (v) => Math.round(v * 100) / 100), k: Array.from(k, (v) => Math.round(v * 1e7) / 1e7) });
   }
   return LINHAS_PUBLICAS.get(pista);
 }
@@ -179,7 +185,7 @@ function aprender(pista, volta) {
 // a pista amostrada, a linha e a velocidade de referência em cada ponto, para um carro
 function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinco carros ou um `spec` (a montagem de uma equipe de F1, com `chave`)
   const chave = pista + ":" + (carro.chave ? "spec-" + carro.chave : carro) + ":" + tracadoId; if (CACHE.has(chave)) return CACHE.get(chave);
-  const t = T.PISTAS[pista], c = carro.chave ? carro : T.CARROS[carro], f1 = !!carro.chave && !PISTAS_FANTASIA.has(pista), linha = tracado(pista, f1), pts = linha.pts, n = pts.length, perfis = aprendido(pista), ap = perfis[tracadoId % perfis.length];
+  const t = T.PISTAS[pista], c = carro.chave ? carro : T.CARROS[carro], f1 = !!carro.chave && !PISTAS_FANTASIA.has(pista), linha = tracado(pista, f1), pts = linha.pts, n = pts.length, perfis = aprendido(pista), referenciaMonaco = f1 && pista === "monaco" && c.chave === "4-4-3-3-3-3" ? referenciaFixaMonaco() : null, ap = referenciaMonaco || perfis[tracadoId % perfis.length];
   let lim, lat;
   const curva = Array.from(linha.k, (k) => (k > 1e-4 ? Math.min(c.turn / k * 1.1, Math.sqrt(c.grip / k) * 1.2, c.vmax) : c.vmax));
   if (linha.teto) for (let i = 0; i < n; i++) if (linha.teto[i] < 30) curva[i] = Math.min(curva[i], c.vmax * (0.3 + 0.7 * Math.max(0, linha.teto[i]) / 30)); // entre as barreiras da Cidade Velha (Baku) a pista estreita: mais devagar, sem bater
@@ -190,7 +196,7 @@ function perfil(pista, carro, tracadoId = 0) { // `carro`: o nome de um dos cinc
     lat = linha.lat;
   }
   const fator = f1 ? 1 : FATOR_LINHA, latF1 = Float64Array.from({ length: n }, (_, i) => lat[(i + 2) % n] * fator); // o caminho do robô de F1 (passoF1 usa a mesma conta)
-  const out = { pista, pts, n, lim, lat, t, c, linha, teto: linha.teto, aprendeu: !!ap, corredor: F1.corredor(t, n, t.width), fator, velHumana: ap ? ap.vel : null, kf: curvaturaDoCaminho(pts, latF1, f1 ? 12 : 4, f1 ? 6 : 2) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
+  const out = { pista, pts, n, lim, lat, t, c, linha, teto: linha.teto, aprendeu: !!ap, referenciaMonaco: !!referenciaMonaco, corredor: F1.corredor(t, n, t.width), fator, velHumana: ap ? ap.vel : null, kf: curvaturaDoCaminho(pts, latF1, f1 ? 12 : 4, f1 ? 6 : 2) }; CACHE.set(chave, out); return out; // corredor: o dos boxes, se a pista tem
 }
 // O tempo de uma volta lançada andando no limite do perfil vezes `escala`, com a arrancada do carro (a mesma conta do
 // passo, sem tráfego). Serve para achar a escala que fecha a volta no tempo que o robô mira.
@@ -290,19 +296,21 @@ function idealDe(pista, spec) { return tempoDaVolta(perfil(pista, spec || F1Equi
 // trás. Vale para o pneu de referência (médio novo, `rel` do aderRef); em passoF1 escala pela raiz da
 // aderência do momento.
 const TETO_LINHA = { margem: 0.97, freio: 0.92, m: 4, janela: 1 };
-function tetoDaLinha(pf) {
-  if (pf.tetoLinha) return pf.tetoLinha;
+function tetoDaLinha(pf, treinoMonaco = false) {
+  // Mantém tabelas separadas para o perfil experimental e as demais condições.
+  const chave = treinoMonaco ? "tetoLinhaMonaco" : "tetoLinha";
+  if (pf[chave]) return pf[chave];
   const n = pf.n, p = D.parametros(pf.c), ref = aderRef();
-  const aLat = p.gripU * (ref.rel || 0.72) * TETO_LINHA.margem, topo = topoDe(pf);
+  const aLat = p.gripU * (ref.rel || 0.72) * TETO_LINHA.margem * (treinoMonaco ? 1.25 : 1), topo = topoDe(pf);
   const lat = Float64Array.from({ length: n }, (_, i) => pf.lat[(i + 2) % n] * pf.fator);
   const k = curvaturaDoCaminho(pf.pts, lat, TETO_LINHA.m, TETO_LINHA.janela);
   const v = new Float64Array(n);
   for (let i = 0; i < n; i++) v[i] = k[i] > 1e-6 ? Math.min(topo, Math.sqrt(aLat / k[i]), p.turn / k[i]) : topo;
   for (let volta = 0; volta < 2; volta++) for (let q = n - 1; q >= 0; q--) {
     const j = (q + 1) % n;
-    v[q] = Math.min(v[q], Math.sqrt(v[j] * v[j] + 2 * D.frenagemMaxima(pf.c, v[j], 0, { freio: ref.freio, grip: ref.grip }) * TETO_LINHA.freio));
+    v[q] = Math.min(v[q], Math.sqrt(v[j] * v[j] + 2 * D.frenagemMaxima(pf.c, v[j], 0, { freio: ref.freio, grip: ref.grip }) * TETO_LINHA.freio * (treinoMonaco ? STEP * 0.7 / TETO_LINHA.freio : 1)));
   }
-  return (pf.tetoLinha = v);
+  return (pf[chave] = v);
 }
 // Folga sobre o ideal do carro: difícil 0, médio 1,5% e fácil 5,5%, além da pequena diferença do piloto.
 // O tráfego e o controle dos pedais ainda custam tempo na corrida real.
@@ -932,8 +940,10 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     const d = Math.hypot(q.pos.x - p.pos.x, q.pos.y - p.pos.y); if (d < L_CARRO * 1.1) { alvo *= 0.96; break; } }
   alvo = Math.min(alvo, tf.freio);
   // o teto de curva do traçado: o volante de linha segue a linha (não pode pedir mais do que o pneu segura nela)
+  // Ajuste experimental medido com a McLaren padrão, em pista seca e livre, com macio.
+  const treinoMonaco = room.config.pista === "monaco" && pf.referenciaMonaco && pneu.arcade && car.pneu?.composto === "macio" && !cl.agua && !p.dano && !tf.encontrou && !room.direcao?.safety && !room.direcao?.amarelo;
   if (VOLANTE_LINHA) {
-    const teto = tetoDaLinha(pf);
+    const teto = tetoDaLinha(pf, treinoMonaco);
     const escala = Math.sqrt(((pneu.rel || aderRef().rel) * dano.grip * vac.aderencia) / aderRef().rel) * cautela;
     let vt = Infinity;
     const ate = Math.max(2, Math.ceil(Math.max(car.v, 30) * 0.12 / STEP));
@@ -980,7 +990,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     const chicaneMonaco = room.config.pista === "monaco" && !tr.t.muros && ((f > 0.625 && f < 0.655) || (f > 0.805 && f < 0.835));
     const chicaneLivre = chicaneMonaco && !tf.encontrou && !amb.safety && !amb.amarela && !p.azul && !cl.agua &&
       (car.pneu?.desgaste || 0) < 0.5 && (p.dano || 0) < 10 && !car.inst;
-    if (VOLANTE_LINHA) Sim.pilotoLinha(car, tr, spec, alvo, latAdiante, ent);
+    if (VOLANTE_LINHA) Sim.pilotoLinha(car, tr, spec, treinoMonaco ? alvo * ({ facil: 0.85, medio: 0.93, dificil: 1 }[room.config.nivel] || 1) : alvo, latAdiante, ent);
     else Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent, chicaneLivre ? 1.15 : 1);
     if (chicaneLivre && car.v < alvo * 1.20) ent.brake = 0;
     // Em ar limpo, uma pequena sobra de velocidade pode ser corrigida tirando o pé.
