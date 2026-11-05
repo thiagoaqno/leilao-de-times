@@ -179,22 +179,17 @@ function exigirNome() {
   const n = nomePiloto(); if (n) { store.set("galera:name", n); return n; }
   $("hErr").textContent = "Coloque o seu nome."; $("hName").focus(); return null;
 }
+let criandoSala = false;
 function criar(config, inicio) {
+  if (criandoSala) return;
   const name = exigirNome(); if (!name) return;
   $("hErr").textContent = "";
-  if (inicio?.largar) telaDePreparo(config.pista);
-  socket.emit("create", { name, skin: store.get("galera:skin"), config, inicio }, (r) => { if (!r?.ok) tirarPreparo(); enter(r); });
-}
-// O servidor calcula o traçado da pista antes da primeira largada (até uns 30 s): esta tela cobre a sala até a corrida começar.
-let timerPreparo = 0;
-function tirarPreparo() { clearInterval(timerPreparo); document.getElementById("mnPreparo")?.remove(); }
-function telaDePreparo(pista) {
-  tirarPreparo();
-  const t = PISTAS[pista], foto = G()?.fundoDe(pista), d = document.createElement("div"), inicio = performance.now();
-  d.id = "mnPreparo"; d.setAttribute("role", "status"); d.style.setProperty("--foto", foto ? `url("${foto}")` : "none");
-  d.innerHTML = `<small>Preparando o GP</small><b>${h(t?.name || "")}</b><i aria-hidden="true"></i>`;
-  document.body.appendChild(d);
-  timerPreparo = setInterval(() => { if ((E.S && E.S.phase !== "lobby") || performance.now() - inicio > 90000) tirarPreparo(); }, 200);
+  criandoSala = true;
+  socket.emit("create", { name, skin: store.get("galera:skin"), config, inicio }, (r) => {
+    criandoSala = false;
+    if (r) enter(r);
+    else $("hErr").textContent = "Não foi possível criar a sala. Tente novamente.";
+  });
 }
 const configRapida = () => ({ pista: rapida.pista, regras: "f1", voltas: rapida.voltas, nivel: rapida.nivel, robos: 19, clima: rapida.clima, classificacao: rapida.classificacao });
 function largarRapida(largar) { store.set(CHAVE_RAPIDA, rapida); criar(configRapida(), { equipe: equipeDoCarro(), largar }); }
