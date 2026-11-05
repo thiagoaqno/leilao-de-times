@@ -93,6 +93,7 @@ test('ERS recarrega por volta, fica entre zero e um e só gasta quando ativo', (
   F1.carregarErs(e, 0.1, true, false, 1); assert.ok(e.recarga < recarga);
   for (let i = 0; i < 100; i++) F1.gastarErs(e, 0.1, true);
   assert.equal(e.carga, 0); assert.equal(F1.gastarErs(e, 1, true), false);
+  const cheia = F1.ersNovo(); cheia.carga = 1; F1.carregarErs(cheia, 1, true, false, 0); assert.equal(cheia.recarga, 0, 'bateria cheia não consome o teto de recarga');
 });
 
 test('direção de prova concede DRS na detecção, sorteia amarela e safety car e pune quatro limites', () => {

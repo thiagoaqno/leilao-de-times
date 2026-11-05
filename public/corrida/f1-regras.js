@@ -115,11 +115,11 @@ function drsHabilitado({ volta, intervalo, amarela, safety }) {
 // A bateria varia de verdade ao longo da volta: enche forte na frenagem (até ERS_MAX_RECARGA por volta), gasta devagar na reta no modo automático
 // (ERS_GASTO_SUAVE, só acima de 20%) e gasta forte (ERS_GASTO) só no overtake: colado no carro da frente ou com o botão no modo manual.
 // O gasto suave do automático tem um orçamento por volta (ERS_ORCAMENTO_AUTO): senão ele gastava tudo o que entrava e a bateria ficava parada no piso.
-const ERS_MAX_RECARGA = 0.85, ERS_GASTO = 0.4, ERS_GASTO_SUAVE = 0.3, ERS_PISO_AUTO = 0.2, ERS_PISO_OVERTAKE = 0.05, ERS_ORCAMENTO_AUTO = 0.75;
+const ERS_MAX_RECARGA = 1.5, ERS_GASTO = 0.2, ERS_GASTO_SUAVE = 0.12, ERS_PISO_AUTO = 0.2, ERS_PISO_OVERTAKE = 0.05, ERS_ORCAMENTO_AUTO = 0.75;
 const ersNovo = () => ({ carga: 0.65, recarga: 0, volta: 0 });
 function carregarErs(ers, dt, freando, semGas, volta) {
   if (volta !== ers.volta) { ers.volta = volta; ers.recarga = 0; ers.suave = 0; }
-  const ganho = Math.min(Math.max(0, ERS_MAX_RECARGA - ers.recarga), Math.max(0, dt) * (freando ? 0.3 : semGas ? 0.06 : 0));
+  const ganho = Math.min(Math.max(0, ERS_MAX_RECARGA - ers.recarga), Math.max(0, 1 - ers.carga), Math.max(0, dt) * (freando ? 0.4 : semGas ? 0.15 : 0));
   ers.carga = limite(ers.carga + ganho, 0, 1); ers.recarga += ganho;
   return ganho;
 }
@@ -559,7 +559,7 @@ function efeitoDoDano(dano) {
 // ---------- o vácuo da F1 ----------
 // Atrás de outro carro o vácuo aumenta a velocidade final e reduz a aderência em curva.
 // DRS e vácuo podem ser combinados; o teto também inclui uma pequena contribuição do ERS.
-const VACUO_FINAL = 0.20, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.90, DRS_GANHO = 0.40, ERS_POTENCIA = 0.22;
+const VACUO_FINAL = 0.20, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.90, DRS_GANHO = 0.40, ERS_POTENCIA = 0.45;
 // A velocidade da física é convertida para km/h pelo velocímetro (0,75 × u/s).
 const vacuoPermitido = (v, quali = false) => !quali && v * 0.75 >= 100;
 function vacuoF1(draft, curva) {
