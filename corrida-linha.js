@@ -1,3 +1,10 @@
+// Corrida da Galera — a linha de corrida dos robôs, calculada por otimização sobre os pontos da pista.
+// O caminho de cada pista é o de CURVATURA MÍNIMA entre as beiras (menos a folga do carro): minimiza a soma dos quadrados da segunda
+// diferença do caminho (a curvatura vezes o passo ao quadrado). Isso dá a linha de corrida de verdade: abre no lado de fora antes
+// da curva, encosta na zebra de dentro no ápice e sai abrindo até o lado de fora mais distante; curvas em sequência (chicanes, esses)
+// saem resolvidas juntas, porque o problema é um só para a volta inteira. Com a pista de sempre (pontos de 6 em 6 u) o problema é um
+// QP convexo na posição lateral de cada ponto: resolvido por gradiente conjugado nos pontos livres, prendendo nas beiras os que
+// passam do limite (conjunto ativo), uma vez por pista (o resultado fica em cache).
 "use strict";
 const CACHE = new Map();
 // pts: [{ x, y, tx, ty }] da pista (cíclica); max: o maior deslocamento lateral do centro do carro (u), um número ou um Float64Array por ponto (Baku: a pista estreita
@@ -18,30 +25,25 @@ function otimizar(pts, max0) {
       g[j] = 2 * (nx[j] * (dx[a] + dx[b] - 2 * dx[j]) + ny[j] * (dy[a] + dy[b] - 2 * dy[j]));
     }
   };
-  const l = new Float64Array(n), prisao = new Int8Array(n);
+  const l = new Float64Array(n), prisao = new Int8Array(n); // prisao: 0 livre, +1/-1 preso na beira
   const g = new Float64Array(n), g0 = new Float64Array(n), r = new Float64Array(n), p = new Float64Array(n), Ap = new Float64Array(n), tmp = new Float64Array(n);
   const lAntes = new Float64Array(n);
-  grad(l, g0);
+  grad(l, g0); // g(l) = A l + g0 (a função é quadrática)
   const A = (v, out) => { grad(v, tmp); for (let i = 0; i < n; i++) out[i] = tmp[i] - g0[i]; };
   // ---------- item 3: a convergência do otimizador ----------
-  // O diagnóstico da linha de corrida ("fica perto do meio") vem daqui. O algoritmo é de conjunto ativo:
-  // a cada iteração externa, resolve o QP nos pontos livres (por gradiente conjugado) e prende na beira
-  // os que ultrapassaram, ou solta os que o gradiente puxa para dentro. O limite de 40 iterações externas
-  // era curto demais: em Mônaco, com pontos de 6 u e curvas fechadas, há 100-200 pontos que precisam ficar
-  // presos na beira para a linha abrir de verdade. Com 40, só uns 40 pontos chegavam lá, e a linha ficava
-  // perto do meio (o sintoma que o diagnóstico descreve).
+  // O diagnóstico ("a linha fica perto do meio") vem daqui. O algoritmo é de conjunto ativo: a cada iteração
+  // externa, resolve o QP nos pontos livres (por gradiente conjugado) e prende na beira os que ultrapassaram, ou
+  // solta os que o gradiente puxa para dentro. O limite de 40 iterações externas era curto demais: em Mônaco,
+  // com pontos de 6 u e curvas fechadas, há 100-200 pontos que precisam ficar presos na beira para a linha abrir
+  // de verdade. Com 40, só uns 40 pontos chegavam lá, e a linha ficava perto do meio.
   //
-  // As mudanças são duas, ambas dentro do otimizador (a assinatura continua a mesma, então o worker e o
-  // caminho síncrono seguem funcionando):
-  //  1) o limite externo vai para `min(4 * n, 500)` (12,5x mais que antes; cabe nas ~200-300 iterações que
-  //     Mônaco precisa, com folga para o resto);
+  // As mudanças são duas, ambas dentro do otimizador (a assinatura continua a mesma, então o worker e o caminho
+  // síncrono seguem funcionando):
+  //  1) o limite externo vai para `min(4 * n, 500)` (12,5x mais que antes);
   //  2) a convergência passa a exigir DUAS coisas: o conjunto ativo estável (nenhum ponto mudou de preso/livre)
-  //     E a solução estável (a maior variação de `lat` entre iterações é < 1e-3 u). O `!mudou` sozinho
-  //     poderia parar em ciclo de active set (prende, solta, prende, solta); o `maxDelta` sozinho poderia
-  //     parar com a solução ainda se movendo dentro do mesmo conjunto ativo. Os dois juntos cobrem os dois.
-  //
-  // O CG de dentro continua com `4 * n` iterações máximas e a tolerância de antes: cada subproblema (os pontos
-  // livres) já converge bem apertado; o que faltava era o conjunto ativo ter tempo de estabilizar.
+  //     E a solução estável (a maior variação de `lat` entre iterações é < 1e-3 u). O `!mudou` sozinho poderia
+  //     parar em ciclo de active set; o `maxDelta` sozinho poderia parar com a solução ainda se movendo dentro
+  //     do mesmo conjunto ativo. Os dois juntos cobrem os dois casos.
   const MAX_EXTERNA = Math.min(4 * n, 500);
   for (let externa = 0; externa < MAX_EXTERNA; externa++) {
     let mudou = false;
