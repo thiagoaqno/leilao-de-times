@@ -27,6 +27,7 @@ import { animarVida } from "./vida.js";
 import { ceuPronto, luzPendente } from "./ceu.js";
 import { desenhar, ajustarTela, medirQuadro, comecarMedida, compilarPos, prepararBrilhos, definirEstacao } from "./pos.js";
 import { quadroTV, pularTV } from "./transmissao.js";
+import { criarLinhaFreio } from "./linha-frenagem.js";
 const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
 // ---------- corrida ----------
@@ -143,6 +144,7 @@ export function startRace(st) {
     pneu: f1 ? carro.pneu : null, ers: f1 ? carro.ers : null, box: f1 ? carro.box : null, // regras de F1: pneu, ERS e pit stop
     quali: st.phase === "quali", luzes: st.phase === "race" && st.config.regras === "f1" ? st.luzes : null, luzN: 0,
     tvAte: st.phase === "race" && st.config.regras === "f1" && st.tvAte && st.tv ? st.tvAte : 0 }; // a transmissão de TV antes das luzes // classificação (sem batida nem box) e as cinco luzes da largada
+  race.linhaFreio = criarLinhaFreio(scene);
   $("bBox").classList.toggle("hidden", !race.box || !mine);
   $("bReiniciar").classList.toggle("hidden", !mine || st.host !== mine.id || !!st.temporada); // (corrida avulsa: o organizador recomeça)
   $("bErs").classList.toggle("hidden", !race.ers || !mine);
@@ -153,7 +155,7 @@ export function startRace(st) {
   aquecerPista(tr, ceu);
   if (!raf) raf = requestAnimationFrame(loop);
 }
-function clearRace() { if (!race) return; stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); dropKart(race.safetyKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
+function clearRace() { if (!race) return; race.linhaFreio?.parar(); stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); dropKart(race.safetyKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
 export function stopRace() { clearRace(); race = null; Sound.engine(0, false); limparClima(); }
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
@@ -312,6 +314,7 @@ function draw(dt) {
   const turbo = src === c && (race.boostUntil > now || race.sling > 0 || (me() && me().boostUntil > now));
   const vref = (src === c ? carOf(me()) : CARROS.equilibrado).vmax;
   // (de cima não tem desfoque: o chão inteiro borrado só atrapalha a ver a pista)
+  race.linhaFreio?.atualizar(race, !(race.tvAte && now < race.tvAte));
   desenhar(mode === "cima" || mode === "tv" ? 0 : Math.min(1, Math.max(0, (Math.abs(src.v || 0) / vref - 0.4) / 0.5)) + (turbo ? 0.4 : 0));
 }
 // Transmissão de TV (transmissao.js): nas corridas de F1, antes das luzes e com tempo próprio (`race.tvAte`, vindo do servidor).

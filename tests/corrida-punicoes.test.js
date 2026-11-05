@@ -17,14 +17,16 @@ const sala = (voltas = 5, laps = 2) => {
 const impacto = (room, forca, culpado) => Contato.estado(room).impactos.set("a|b", { t: 5000, forca, culpado, de: "a", pre: {} });
 const semLog = () => {};
 
-test("gravidade pela velocidade de aproximação: ~80 km/h a mais na traseira é grave", () => {
+test("gravidade pela velocidade de aproximação: limiares sobem 10% em relação à escala anterior", () => {
   const kmh = (f) => f * 0.75;
   assert.equal(F1.gravidadeDaBatida(F1.COLISAO_LEVE - 1), null);
   assert.equal(F1.gravidadeDaBatida(F1.COLISAO_LEVE), "leve");
   assert.equal(F1.gravidadeDaBatida(F1.COLISAO_MEDIA - 1), "leve");
   assert.equal(F1.gravidadeDaBatida(F1.COLISAO_MEDIA), "media");
-  assert.equal(F1.gravidadeDaBatida(115 / 0.75), "grave", "115 km/h de diferença");
-  assert.ok(kmh(F1.COLISAO_GRAVE) <= 115 && kmh(F1.COLISAO_GRAVE) > 105);
+  assert.deepEqual([F1.COLISAO_LEVE, F1.COLISAO_MEDIA, F1.COLISAO_GRAVE], [44, 99, 165]);
+  assert.equal(F1.gravidadeDaBatida(115 / 0.75), "media");
+  assert.equal(F1.gravidadeDaBatida(F1.COLISAO_GRAVE), "grave");
+  assert.equal(kmh(F1.COLISAO_GRAVE), 123.75);
 });
 
 test("escala: o nível é só a gravidade (sem reincidência e sem agravante na largada)", () => {
@@ -48,7 +50,7 @@ test("direção de prova: o causador leva +3 s e o dano, o batido não leva puni
   impacto(room, 60, "a");
   Direcao.bater(room, a, 60, "carro", 5000, (s) => log.push(s), "carro:b");
   Direcao.bater(room, b, 60, "carro", 5000, (s) => log.push(s), "carro:a");
-  assert.equal(a.penal, 3); assert.equal(a.acrescimo, 3); assert.equal(a.dano, 1);
+  assert.equal(a.penal, 3); assert.equal(a.acrescimo, 3); assert.equal(a.dano, 12);
   assert.equal(b.penal, 0); assert.equal(b.dano, 0);
   assert.ok(log.some((s) => /Ana: causou uma batida leve, \+3 s/.test(s)), log.join("|"));
   assert.ok(log.some((s) => /Beto.*atingido: sem punição/.test(s)));
@@ -58,22 +60,22 @@ test("direção de prova: média +6 s sempre (a 2ª não sobe); a grave é stop-
   const room = sala(), a = room.players.a, log = [];
   impacto(room, 120, "a");
   Direcao.bater(room, a, 120, "carro", 5000, (s) => log.push(s), "carro:b");
-  assert.equal(a.penal, 6); assert.equal(a.dano, 2);
+  assert.equal(a.penal, 6); assert.equal(a.dano, 20);
   a.batidaPares = {}; impacto(room, 120, "a"); // a segunda média: de novo +6 s, sem stop-and-go
   Direcao.bater(room, a, 120, "carro", 20000, (s) => log.push(s), "carro:b");
   assert.equal(a.penal, 12); assert.equal(a.stopGo, undefined);
   a.batidaPares = {}; impacto(room, 200, "a");
   Direcao.bater(room, a, 200, "carro", 40000, (s) => log.push(s), "carro:b");
-  assert.equal(a.stopGo.s, F1.STOPGO_S); assert.equal(a.stopGo.ate, 2 + F1.STOPGO_VOLTAS);
+  assert.equal(a.dano, 75); assert.equal(a.stopGo.s, F1.STOPGO_S); assert.equal(a.stopGo.ate, 2 + F1.STOPGO_VOLTAS);
   assert.ok(log.some((s) => /Stop-and-go 8 s: cumpra em 3 voltas/.test(s)), log.join("|"));
 });
 
 test("direção de prova: 12 batidas propositais (média ou grave) são bandeira preta, com a contagem no log a partir da 9ª; leves não contam", () => {
   const room = sala(30, 2), a = room.players.a, log = [];
-  for (let n = 1; n <= 20; n++) { a.batidaPares = {}; impacto(room, 60, "a"); Direcao.bater(room, a, 60, "carro", n * 20000, (s) => log.push(s), "carro:b"); }
+  for (let n = 1; n <= 20; n++) { a.dano = 0; a.batidaPares = {}; impacto(room, 60, "a"); Direcao.bater(room, a, 60, "carro", n * 20000, (s) => log.push(s), "carro:b"); }
   assert.equal(a.propositais || 0, 0); assert.ok(!a.dsq, "20 toques leves não desclassificam");
   for (let n = 1; n <= 12; n++) {
-    a.batidaPares = {}; impacto(room, 120, "a");
+    a.dano = 0; a.batidaPares = {}; impacto(room, 120, "a");
     Direcao.bater(room, a, 120, "carro", 1e6 + n * 20000, (s) => log.push(s), "carro:b");
     if (n < 12) assert.ok(!a.dsq, `${n} propositais ainda não`);
   }

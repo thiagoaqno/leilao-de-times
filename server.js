@@ -59,6 +59,14 @@ require("./drag.js")(io); // Drag da Galera: o racha de até 4 pessoas (o resto 
 require("./proibida.js")(io); // Palavra Proibida da Galera: explicar palavras em dois times, canal /proibida
 require("./rumi.js")(io); // Rumi da Galera: o jogo de peças numeradas clássico, 2 a 4 com robôs, canal /rumi
 app.use(express.static(path.join(__dirname, "public")));
+// Traçado calculado para a corrida: não inicia trabalho pesado em resposta a acessos externos.
+app.get("/api/corrida/linha/:pista", (req, res) => {
+  const pistas = require("./public/corrida/pistas.js").PISTAS;
+  if (!Object.hasOwn(pistas, req.params.pista)) return res.sendStatus(404);
+  const linha = require("./corrida-robos.js").linhaF1Pronta(req.params.pista);
+  if (!linha) return res.sendStatus(404);
+  res.set("Cache-Control", "no-store").json(linha);
+});
 // as músicas da Vila: os arquivos de áudio da pasta public/musica (ou MUSICA_DIR), em ordem alfabética
 const PASTA_MUSICA = process.env.MUSICA_DIR || path.join(__dirname, "public", "musica");
 if (process.env.MUSICA_DIR) app.use("/musica", express.static(PASTA_MUSICA));

@@ -5,7 +5,9 @@ body.cx-on::before,body.cx-on::after{display:none}
 body.cx-on .bar{display:none}
 body.cx-on .sede{max-width:none;padding:0;margin:0;position:relative;z-index:1}
 #cxFundo{position:fixed;inset:0;z-index:0;background:#05060a url('/corrida/fundo-carreira-sede.webp') center/cover no-repeat}
-#cxFundo canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
+#cxFundo canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block;opacity:0;transition:opacity .3s ease-out}
+#cxFundo.cx-carro-pronto canvas{opacity:1}
+@media(prefers-reduced-motion:reduce){#cxFundo canvas{transition:none}}
 .cx-veu{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--eq) 30%,#050609f7) 0,color-mix(in srgb,var(--eq) 24%,#050609e6) 42%,color-mix(in srgb,var(--eq) 10%,#05060900) 82%),linear-gradient(0deg,#050609e0,#05060900 26%),linear-gradient(180deg,#05060999,#05060900 18%);transition:opacity .5s}
 body.cx-on:has(.cx[data-aba="desenvolvimento"]) .cx-veu{background:linear-gradient(90deg,#05060966,#05060900 30%,#05060900 60%,#05060999),linear-gradient(0deg,#050609e6,#05060900 24%),linear-gradient(180deg,#050609d9,#05060900 26%)}
 
@@ -229,7 +231,7 @@ body.cx-on:has(.cx[data-aba="desenvolvimento"]) .cx-veu{background:linear-gradie
 .cx-dv-abas button::after{content:"";position:absolute;z-index:-1;inset:0 3px;border-radius:3px;transform:skewX(-10deg) scaleX(0);transform-origin:left;background:linear-gradient(95deg,color-mix(in srgb,var(--eq) 72%,#000),var(--eq));box-shadow:inset 0 -3px var(--eq2);transition:transform .2s var(--cx-t)}
 .cx-dv-abas button:hover::after,.cx-dv-abas button:focus-visible::after{transform:skewX(-10deg) scaleX(1);opacity:.55}.cx-dv-abas button.on::after{transform:skewX(-10deg) scaleX(1);opacity:1}.cx-dv-abas button.on{color:var(--eq-txt);font-weight:900;text-shadow:none}
 .cx-dv-palco{position:relative;flex:1;min-height:0;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;overflow:hidden}.cx-dv-palco:active{cursor:grabbing}
-.cx-linhas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.cx-linhas path{stroke:#fff;stroke-width:1.5;fill:none;opacity:.75}.cx-linhas path.on{stroke:var(--eq2);stroke-width:2.4;opacity:1;filter:drop-shadow(0 0 4px var(--eq2))}.cx-linhas circle{fill:#07080c;stroke:#fff;stroke-width:2}.cx-linhas circle.on{stroke:var(--eq2);fill:var(--eq2);animation:cxPonto 1.4s ease-in-out infinite}
+.cx-linhas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.cx-linhas path{stroke:#fff;stroke-width:1.5;fill:none;opacity:.75}.cx-linhas path.on{stroke:var(--eq2);stroke-width:2.4;opacity:1}.cx-linhas circle{fill:#07080c;stroke:#fff;stroke-width:2}.cx-linhas circle.on{stroke:var(--eq2);fill:var(--eq2);animation:cxPonto 1.4s ease-in-out infinite}
 @keyframes cxPonto{50%{opacity:.5}}
 .cx-rotulo{position:absolute;left:0;top:0;display:flex;align-items:center;gap:0;padding:3px 10px;background:#07080cb0!important;border:0!important;border-bottom:2px solid #fff!important;border-radius:0;color:#fff;font:800 italic clamp(11px,1.05vw,16px)/1.1 var(--display);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
 .cx-rotulo i{display:none}.cx-rotulo:hover,.cx-rotulo:focus-visible{background:var(--eq)!important;color:var(--eq-txt);border-color:var(--eq2)!important}.cx-rotulo.on{border-color:var(--eq2)!important;color:var(--eq2);background:#07080cd9!important}

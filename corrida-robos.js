@@ -85,6 +85,16 @@ function tracado(pista, f1 = false, linhaPronta = null) {
   }
   const out = { pts, n, lat, k, sinal, X, Y, teto }; LINHAS.set(cache, out); return out;
 }
+// Expõe apenas um traçado já pronto; nunca inicia uma otimização pelo pedido do navegador.
+const LINHAS_PUBLICAS = new Map();
+function linhaF1Pronta(pista) {
+  if (!tracadoPronto(pista)) return null;
+  if (!LINHAS_PUBLICAS.has(pista)) {
+    const linha = tracado(pista, true), k = curvaturaDoCaminho(linha.pts, linha.lat, 12, 6);
+    LINHAS_PUBLICAS.set(pista, { lat: Array.from(linha.lat, (v) => Math.round(v * 100) / 100), k: Array.from(k, (v) => Math.round(v * 1e7) / 1e7) });
+  }
+  return LINHAS_PUBLICAS.get(pista);
+}
 // Calcula a otimização em outra thread: outras salas continuam recebendo atualizações.
 const TRACADOS_EM_PREPARO = new Map();
 function tracadoPronto(pista) { return LINHAS.has(pista + ":f1"); }
@@ -1064,4 +1074,4 @@ function passo(room, dt, setor, emit) {
 }
 function possivel(pista, spec) { return perfilF1(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0), 1); }
 possivel.topo = (pista, spec) => topoDe(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0));
-module.exports = { transito, prepararTracado, tracadoPronto, idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };
+module.exports = { transito, prepararTracado, tracadoPronto, linhaF1Pronta, idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };
