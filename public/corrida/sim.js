@@ -158,6 +158,52 @@ function pilotoAutomatico(c, tr, spec, vAlvo, latAlvo, saida = {}, fatorOlhar = 
   return saida;
 }
 
+// ---------- o piloto de linha (os robôs de F1) ----------
+// Segue a linha `latAlvo(j)` de perto, como piloto: em vez de mirar um ponto lá na frente (o `pilotoAutomatico`,
+// que corta a curva e passa do ponto na saída, e entre os muros de Mônaco batia), pede a guinada que a própria
+// linha tem (velocidade × curvatura) um pouco adiante, e corrige o rumo e o de lado como um amortecedor crítico:
+//   guinada = v·κ − 2ζω·(erro de rumo) − ω²·(erro de lado)/v
+// O rumo é o da VELOCIDADE (com o carro escorregando, é para onde ele vai de verdade). No macio (arcade) o
+// volante é a guinada; nos outros, a guinada vira ângulo de roda pelo mesmo caminho do `pilotoAutomatico`.
+//
+// Acelerador modulado (item 1): full gás quando bem abaixo do alvo, rampa linear até coast (=0) no alvo.
+// gasKp = 0.5 → full gás até 2 u/s abaixo, 50% a 1 u/s, coast no alvo. O freio mantém a histerese de 4% do
+// `pilotoAutomatico` (para não ficar piscando em cima do alvo). Imita o pé de verdade: ~64% gás cheio,
+// ~22% rolando, ~5% freando numa volta boa.
+const PILOTO_LINHA = { w: 3.2, z: 0.9, previa: 0.1, m: 4, gasKp: 0.5 };
+const _lx = new Float64Array(3), _ly = new Float64Array(3);
+function pontoDaLinha(tr, latAlvo, j, k) { const q = tr.pts[j], la = typeof latAlvo === "function" ? latAlvo(j) : latAlvo; _lx[k] = q.x + q.nx * la; _ly[k] = q.y + q.ny * la; }
+// curvatura com sinal (1/u) da linha no ponto j, pelo círculo de três pontos a m de distância
+function curvaturaDaLinha(tr, latAlvo, j, m) {
+  const n = tr.n;
+  pontoDaLinha(tr, latAlvo, (j - m + n) % n, 0); pontoDaLinha(tr, latAlvo, j, 1); pontoDaLinha(tr, latAlvo, (j + m) % n, 2);
+  const ax = _lx[1] - _lx[0], ay = _ly[1] - _ly[0], bx = _lx[2] - _lx[1], by = _ly[2] - _ly[1], cx = _lx[2] - _lx[0], cy = _ly[2] - _ly[0];
+  const den = Math.hypot(ax, ay) * Math.hypot(bx, by) * Math.hypot(cx, cy);
+  return den > 1e-6 ? (2 * (ax * by - ay * bx)) / den : 0;
+}
+function pilotoLinha(c, tr, spec, vAlvo, latAlvo, saida = {}, op = PILOTO_LINHA) {
+  const p = D.parametros(spec), n = tr.n, v = Math.max(c.v, 30), i = c.idx, m = op.m;
+  // o rumo da linha no ponto do carro (dois pontos, um antes e um depois)
+  pontoDaLinha(tr, latAlvo, (i - m + n) % n, 0); pontoDaLinha(tr, latAlvo, (i + m) % n, 2);
+  const rumoLinha = Math.atan2(_ly[2] - _ly[0], _lx[2] - _lx[0]);
+  const erroLado = quadro(tr, c.x, c.y, i).lat - (typeof latAlvo === "function" ? latAlvo(i) : latAlvo);
+  const rumo = c.v > 20 ? Math.atan2(c.vy, c.vx) : c.a;
+  let erroRumo = rumo - rumoLinha; erroRumo = Math.atan2(Math.sin(erroRumo), Math.cos(erroRumo));
+  // a curvatura um pouco adiante (a `previa` s compensa o volante que demora)
+  let j = i, acc = 0; const adiante = v * op.previa; while (acc < adiante) { j = (j + 1) % n; acc += 6; }
+  const k = (curvaturaDaLinha(tr, latAlvo, (j - 1 + n) % n, m) + curvaturaDaLinha(tr, latAlvo, j, m) + curvaturaDaLinha(tr, latAlvo, (j + 1) % n, m)) / 3;
+  const w = op.w, r = v * k - 2 * op.z * w * Math.sin(erroRumo) - (w * w * erroLado) / v;
+  if (c.amb && c.amb.pn && c.amb.pn.arcade) saida.steer = D.volanteParaGuinada(p, Math.max(0, c.v), r);
+  else { const delta = Math.atan((p.L * r) / (v * ESC)) + K_TRASEIRA * (c.alR || 0) + K_GUINADA * (r - (c.r || 0)) * p.L / Math.max(v * ESC, 20), dm = D.volanteMaximo(p, Math.max(0, c.v) * ESC); saida.steer = limite(delta / dm, -1, 1); }
+  // Acelerador modulado (item 1): full gás quando bem abaixo do alvo, rampa suave
+  // até coast (=0) no alvo. O freio continua com a histerese de 4% do pilotoAutomatico.
+  saida.brake = c.v > vAlvo * 1.04 ? 1 : 0;
+  const over = c.v - vAlvo;
+  saida.gas = saida.brake ? 0 : (over >= 0 ? 0 : Math.min(1, -over * op.gasKp));
+  saida.ers = 0; saida.respawn = 0; saida.pedido = null; saida.marcha = 0;
+  return saida;
+}
+
 // ---------- um passo ----------
 // amb (o ambiente, que quem chama monta a cada passo):
 //   spec (o carro: carOf), manual (câmbio manual da sala), dano (%), drsZona (a zona liberada pela direção de prova, ou -1),
@@ -608,7 +654,7 @@ function reconciliar(c, st, tr, ctx) {
   return { erro, dentro, dx: ox - c.x, dy: oy - c.y, da };
 }
 
-const api = { PASSO, ATRASO, EXTRAPOLA, EXTRAPOLA_MAX, extrapolar, amostraEm, ERRO_SALTO, TEMPO_DO_DESVIO, decairDesvio, gastarTempo, reconciliar, pneuDaLargada, criarPista, preparar, quadro, alturaDoChao, procurar, vagaDoGrid, novo, empacotar, desempacotar, vacuoAlvo, atualizarDRS, DRS_PASSOS, pilotoAutomatico, passo, voltarParaPista, faseDoBox, contatoPasso, maisEnterrado, impulsoExterno, culpaEntre, K_CULPADO, K_VITIMA, FORCA_EV, novoRegistro, aplicarContato, forcaEntre, massaDe, baterNosOutros, DIMENSOES, dimensoes, serializar, aplicar, COMPOSTOS };
+const api = { PASSO, ATRASO, EXTRAPOLA, EXTRAPOLA_MAX, extrapolar, amostraEm, ERRO_SALTO, TEMPO_DO_DESVIO, decairDesvio, gastarTempo, reconciliar, pneuDaLargada, criarPista, preparar, quadro, alturaDoChao, procurar, vagaDoGrid, novo, empacotar, desempacotar, vacuoAlvo, atualizarDRS, DRS_PASSOS, pilotoAutomatico, pilotoLinha, PILOTO_LINHA, passo, voltarParaPista, faseDoBox, contatoPasso, maisEnterrado, impulsoExterno, culpaEntre, K_CULPADO, K_VITIMA, FORCA_EV, novoRegistro, aplicarContato, forcaEntre, massaDe, baterNosOutros, DIMENSOES, dimensoes, serializar, aplicar, COMPOSTOS };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Sim = api;
 })(typeof window !== "undefined" ? window : globalThis);
