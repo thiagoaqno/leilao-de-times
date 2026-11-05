@@ -3,7 +3,8 @@
 // de 16 bits, para as luzes fortes passarem de 1):
 //   1. a cena (RenderPass; com suavização de serrilhado: 2 amostras na Média, 4 na Alta)
 //   1b. o desfoque de profundidade (FOCO), colado na cena porque lê a profundidade dela: o que está longe da câmera (o horizonte, a
-//      cidade, as montanhas, o céu) sai levemente desfocado e a pista e os carros perto ficam nítidos; ainda em cor linear, antes do
+//      cidade, as montanhas, o céu) sai levemente desfocado e a pista e os carros perto ficam nítidos; aplica uma vinheta suave só no cenário,
+//      preservando carros e céu; ainda em cor linear, antes do
 //      bloom e da correção de cor, então não mexe na cor. Faz também a limpeza de pixels inválidos (NaN/infinito)
 //   2. [Alta] o desfoque radial de velocidade: puxa cada ponto da tela para fora, a partir do centro; o miolo e o carro, embaixo
 //      no meio, ficam nítidos e o cenário dos lados borra mais quanto mais rápido (sem "menos movimento" no sistema)
@@ -11,7 +12,7 @@
 //      no molhado); Média em meia resolução, Alta completo
 //   4. o ajuste de tons do renderer (ACES, com a exposição que clima-visual.js baixa na chuva) e a cor sRGB (OutputPass)
 //   5. a correção de cor (GRADE): saturação, contraste e tom pela chuva, pela água na pista e pela noite, um véu de neblina no
-//      fundo na chuva, o brilho do sol de frente, a vinheta e um pontilhado que esconde as faixas nos escuros
+//      fundo na chuva, o brilho do sol de frente e um pontilhado que esconde as faixas nos escuros
 // Tudo sobre a mesma câmera `cam` (a primeira pessoa, a TV e as outras de cameras.js), então vale para todas. O canvas 2D das
 // gotas na tela fica por cima, fora daqui.
 // Luzes que precisam brilhar (a lanterna LED do carro, o disco de freio em brasa, as lâmpadas dos refletores): os materiais "sem
@@ -66,13 +67,13 @@ const RADIAL = {
 const GRADE = {
   uniforms: {
     tDiffuse: { value: null }, aspecto: { value: 16 / 9 },
-    chuva: { value: 0 }, molhado: { value: 0 }, noite: { value: 0 }, sat: { value: 1 }, contraste: { value: 1 }, vinheta: { value: 0.25 },
+    chuva: { value: 0 }, molhado: { value: 0 }, noite: { value: 0 }, sat: { value: 1 }, contraste: { value: 1 },
     bruma: { value: new THREE.Color(0.6, 0.65, 0.7) }, sol: { value: new THREE.Vector3(0.5, 0.5, 0) },
     tom: { value: new THREE.Vector3(1, 1, 1) }, // o filtro da estação do GP (ESTACOES): multiplica a cor
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float aspecto, chuva, molhado, noite, sat, contraste, vinheta; uniform vec3 bruma, sol, tom; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float aspecto, chuva, molhado, noite, sat, contraste; uniform vec3 bruma, sol, tom; varying vec2 vUv;
     float ruido(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
     void main() {
       vec3 c = texture2D(tDiffuse, vUv).rgb;
@@ -91,8 +92,6 @@ const GRADE = {
       float d = length((vUv - sol.xy) * vec2(aspecto, 1.0));                              // o brilho do sol, de frente
       float g = sol.z * (exp(-d * 6.0) * 0.30 + exp(-d * 1.8) * 0.10);
       c = 1.0 - (1.0 - c) * (1.0 - g * vec3(1.0, 0.93, 0.78));
-      float v = smoothstep(0.38, 1.05, length((vUv - 0.5) * vec2(aspecto, 1.0)));        // a vinheta
-      c *= 1.0 - vinheta * v * v;
       c += (ruido(gl_FragCoord.xy) - 0.5) / 255.0;                                        // pontilhado contra as faixas
       gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
     }`,
@@ -104,17 +103,25 @@ const GRADE = {
 // então o carro não "vaza" a cor dele para o fundo desfocado. Também troca qualquer pixel inválido (NaN ou infinito, de algum sombreador
 // numa conta 0/0, que o bloom espalharia e pintaria a tela de preto) por preto e limita o brilho antes do bloom.
 const FOCO = {
-  uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, perto: { value: FOCO_PERTO }, longe: { value: FOCO_LONGE }, raio: { value: 0.0024 }, aspecto: { value: 16 / 9 }, near: { value: 2 }, far: { value: 16000 } },
+  uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, tCarDepth: { value: null }, perto: { value: FOCO_PERTO }, longe: { value: FOCO_LONGE }, raio: { value: 0.0024 }, aspecto: { value: 16 / 9 }, near: { value: 2 }, far: { value: 16000 } },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
     #include <packing>
-    uniform sampler2D tDiffuse; uniform sampler2D tDepth; uniform float perto, longe, raio, aspecto, near, far; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform sampler2D tDepth; uniform sampler2D tCarDepth; uniform float perto, longe, raio, aspecto, near, far; varying vec2 vUv;
     vec4 limpa(vec4 c) { if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0); return clamp(c, 0.0, 64.0); }
     float desfoque(vec2 uv) { return smoothstep(perto, longe, -perspectiveDepthToViewZ(texture2D(tDepth, uv).x, near, far)); }
+    vec4 vinhetaCena(vec4 c) {
+      float profundidade = texture2D(tDepth, vUv).x;
+      float carro = texture2D(tCarDepth, vUv).x;
+      // Fundo sem geometria é o céu; um carro visível tem profundidade igual ou menor que a cena.
+      float cenario = profundidade < 0.999999 && !(carro < 0.999999 && carro <= profundidade + 0.000002) ? 1.0 : 0.0;
+      float v = smoothstep(0.38, 1.05, length((vUv - 0.5) * vec2(aspecto, 1.0)));
+      return vec4(c.rgb * (1.0 - 0.16 * cenario * v * v), c.a);
+    }
     void main() {
       vec4 c0 = limpa(texture2D(tDiffuse, vUv));
       float d0 = desfoque(vUv);
-      if (d0 < 0.02) { gl_FragColor = c0; return; }                                    // perto: nítido, sem custo
+      if (d0 < 0.02) { gl_FragColor = vinhetaCena(c0); return; }                                    // perto: nítido, sem custo
       vec3 soma = c0.rgb; float peso = 1.0;
       for (int i = 0; i < TAPS; i++) {
         float f = (float(i) + 0.5) / float(TAPS), a = float(i) * 2.39996;
@@ -122,12 +129,12 @@ const FOCO = {
         float w = clamp(desfoque(uv) / d0, 0.0, 1.0);                                 // vizinho mais perto que o pixel: peso menor
         soma += limpa(texture2D(tDiffuse, uv)).rgb * w; peso += w;
       }
-      gl_FragColor = vec4(soma / peso, 1.0);
+      gl_FragColor = vinhetaCena(vec4(soma / peso, 1.0));
     }`,
 };
 
 // ---------- a fila de passes de cada qualidade (montada na primeira vez que a qualidade é usada) ----------
-const tam = new THREE.Vector2();
+const tam = new THREE.Vector2(), corLimpeza = new THREE.Color();
 const feitos = {}; // { media: {composer, grade, radial, foco, w, h, pr}, alta: {...} }
 const ok16 = () => renderer.extensions.has("EXT_color_buffer_float") || renderer.extensions.has("EXT_color_buffer_half_float");
 function montar(q) {
@@ -136,10 +143,28 @@ function montar(q) {
   composer.renderTarget1.samples = composer.renderTarget2.samples = amostras;
   // a cena sai com uma textura de profundidade (nos dois alvos: o composer troca de um para o outro) para o desfoque de profundidade
   composer.renderTarget1.depthTexture = new THREE.DepthTexture(2, 2); composer.renderTarget2.depthTexture = new THREE.DepthTexture(2, 2);
+  const mascara = new THREE.WebGLRenderTarget(2, 2);
+  mascara.depthTexture = new THREE.DepthTexture(2, 2);
+  const materialCarro = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, side: THREE.DoubleSide });
   const cena = new RenderPass(scene, cam), desenhaCena = cena.render.bind(cena);
   const foco = new ShaderPass({ ...FOCO, defines: { TAPS: cfg.foco.pontos } });
   foco.uniforms.raio.value = cfg.foco.raio; foco.uniforms.near.value = cam.near; foco.uniforms.far.value = cam.far;
-  cena.render = function (rd, escrita, leitura, ...resto) { foco.uniforms.tDepth.value = leitura.depthTexture; return desenhaCena(rd, escrita, leitura, ...resto); }; // a cena desenha na leitura: a profundidade dela
+  cena.render = function (rd, escrita, leitura, ...resto) {
+    desenhaCena(rd, escrita, leitura, ...resto);
+    foco.uniforms.tDepth.value = leitura.depthTexture;
+    foco.uniforms.tCarDepth.value = mascara.depthTexture;
+    // Renderiza só os carros numa camada separada; a profundidade preserva oclusões pelo cenário.
+    for (const raiz of scene.children) if (raiz.userData.carroVinheta) raiz.traverse((o) => { if (o.isMesh) o.layers.enable(1); });
+    const alvo = rd.getRenderTarget(), fundo = scene.background, anterior = scene.overrideMaterial, camadas = cam.layers.mask;
+    const cor = rd.getClearColor(corLimpeza), alfa = rd.getClearAlpha(), sombra = rd.shadowMap.autoUpdate;
+    try {
+      scene.background = null; scene.overrideMaterial = materialCarro; cam.layers.set(1); rd.shadowMap.autoUpdate = false;
+      rd.setRenderTarget(mascara); rd.setClearColor(0x000000, 0); rd.clear(); rd.render(scene, cam);
+    } finally {
+      scene.background = fundo; scene.overrideMaterial = anterior; cam.layers.mask = camadas; rd.shadowMap.autoUpdate = sombra;
+      rd.setClearColor(cor, alfa); rd.setRenderTarget(alvo);
+    }
+  };
   composer.addPass(cena);
   composer.addPass(foco); // logo depois da cena, antes de qualquer passe mexer na profundidade
   let radial = null;
@@ -150,7 +175,7 @@ function montar(q) {
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   const grade = new ShaderPass(GRADE); composer.addPass(grade);
-  return { composer, grade, radial, foco, w: 0, h: 0, pr: 0 };
+  return { composer, grade, radial, foco, mascara, w: 0, h: 0, pr: 0 };
 }
 function pronto(q) {
   const f = feitos[q] || (feitos[q] = montar(q)), pr = renderer.getPixelRatio();
@@ -158,6 +183,7 @@ function pronto(q) {
   if (f.w !== tam.x || f.h !== tam.y || f.pr !== pr) {
     f.w = tam.x; f.h = tam.y; f.pr = pr;
     f.composer.setPixelRatio(pr); f.composer.setSize(tam.x, tam.y);
+    f.mascara.setSize(Math.max(1, Math.floor(tam.x * pr)), Math.max(1, Math.floor(tam.y * pr)));
     f.grade.uniforms.aspecto.value = tam.x / Math.max(1, tam.y);
     if (f.radial) f.radial.uniforms.aspecto.value = tam.x / Math.max(1, tam.y);
     f.foco.uniforms.aspecto.value = tam.x / Math.max(1, tam.y);
@@ -233,7 +259,6 @@ function atualizarCor(g, agora) {
   u.sat.value = 1.07 - 0.30 * molhado - 0.05 * N + (filtro ? filtro.sat * fe : 0);
   u.contraste.value = 1.08 - 0.17 * molhado + 0.07 * N + (filtro ? filtro.contraste * fe : 0);
   if (filtro) u.tom.value.set(1 + (filtro.tom[0] - 1) * fe, 1 + (filtro.tom[1] - 1) * fe, 1 + (filtro.tom[2] - 1) * fe); else u.tom.value.set(1, 1, 1);
-  u.vinheta.value = 0.24 + 0.12 * R + 0.10 * N;
   if (scene.fog) { const f = scene.fog.color, e = 1 / 2.2; u.bruma.value.setRGB(Math.pow(f.r, e) * 0.95, Math.pow(f.g, e) * 0.95, Math.pow(f.b, e) * 0.95); }
   // o brilho do sol: só com ele no campo de visão, acima do horizonte, e some na chuva e de noite
   sDir.copy(sun.position).sub(sun.target.position).normalize(); cam.getWorldDirection(sFrente);

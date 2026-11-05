@@ -26,7 +26,7 @@ export const MODS3 = window.Pistas.MODS, MODS_PADRAO = window.Pistas.MODS_PADRAO
 // op: { sigla (o piloto robô, f1-capacetes.js: o capacete é o dele), volante (o carro do jogador: a tela e as luzes de troca do volante, f1.js), numero (o número do piloto, no carro de equipe), semPintura (a pintura de equipe fica de fora: a máscara de cores) }
 export function makeKart(color, model, ghost = false, name = "", mods = MODS_PADRAO, target = scene, leve = false, op = {}) {
   const tipo = CARS3[model] ? model : "equilibrado", spec = CARS3[tipo], md = { ...MODS_PADRAO, ...(mods || {}) };
-  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const g = new THREE.Group(), body = new THREE.Group(); g.userData.carroVinheta = true; g.add(body);
   const [cor1, cor2] = coresDa(md.pintura, color);
   const equipe = ghost || op.semPintura ? null : PINTURAS[md.pintura]?.equipe || null; // a pintura de equipe (f1-pintura.js); a "Sua cor" segue na máscara
   const kt = montarF1({ cor: ghost ? "#ffd23f" : cor1, cor2: ghost ? "#ffffff" : cor2, leve: leve || ghost, equipe, numero: op.numero, volanteVivo: !!op.volante });
