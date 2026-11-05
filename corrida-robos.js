@@ -13,6 +13,7 @@ const F1Equipes = require("./public/corrida/f1-equipes.js"); // a montagem do ca
 const D = require("./public/corrida/dinamica.js");
 const Sim = require("./public/corrida/sim.js");
 const Contato = require("./corrida-contato.js"); // a batida entre carros a cada passo, igual à dos humanos (histórico e impulsos)
+const Estilos = require("./corrida-estilos.js");
 const Pilotos = require("./public/corrida/f1-pilotos-2026.js"); // as equipes e os pilotos reais de 2026 (os robôs das regras de F1)
 const { SKINS } = require("./public/pelada/campo.js");
 
@@ -376,7 +377,7 @@ function largar(room) {
     p.pos = null; // a posição da corrida passada não vale (o bico seria calculado a partir dela)
     // na largada: sai na própria faixa do grid, com um tempo de reação diferente, e cada um tem o seu jeito de fazer as curvas
     // regras de F1: a estratégia de parada do robô (o composto da largada e as paradas) e o mesmo pneu de quem joga
-    const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`, room.config.pista, p.spec ? p.spec.desgaste : 1) : null;
+    const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`, room.config.pista, (p.spec ? p.spec.desgaste : 1) * Estilos.parametros(room, p, TRANSITO_NIVEL.medio).desgaste) : null;
     // chuva: o quanto cada robô "sente" a água a mais ou a menos (±0,1, fixo no GP): não trocam todos de pneu juntos
     const vies = f1 ? Math.round((F1.sorteio(`vies:${room.semente}:${id}`)() - 0.5) * 20) / 100 : 0, aguaLargada = f1 && room.clima ? F1.climaEm(room.clima, room.startAt).agua : 0;
     if (plano && aguaLargada > 0) { const melhor = F1.compostoPorAgua(room.config.pista, Math.max(0, Math.min(1, aguaLargada + vies)), [...F1.SECOS, "chuva", "intermediario"], plano.largada); if (!F1.SECOS.includes(melhor)) { plano.largada = melhor; plano.paradas = []; } } // larga molhado: sai de chuva
@@ -384,7 +385,7 @@ function largar(room) {
     const rng = F1.sorteio(`estilo:${room.semente}:${id}`); // regras de F1: cada robô tem o seu jeito (sorteado pela semente do GP)
     // o jeito de cada robô com o box (sorteado pela semente do GP): segue o plano, faz o undercut (para uma volta antes quando está colado no
     // da frente), o overcut (estica uma volta em ar limpo) ou é oportunista (aproveita o safety car para parar mais cedo)
-    const estiloBox = ESTILOS_BOX[Math.floor(F1.sorteio(`box:${room.semente}:${id}`)() * ESTILOS_BOX.length)];
+    const estiloBox = pil && Estilos.PERFIS[pil.id] ? Estilos.dePiloto(pil.id).box : ESTILOS_BOX[Math.floor(F1.sorteio(`box:${room.semente}:${id}`)() * ESTILOS_BOX.length)];
     // Cada corrida conserva seus perfis: aprender uma volta invalida o cache global só para as próximas largadas.
     p.ia = { estiloBox, perfil: pf, s: g.idx, s0: g.idx, lat: g.lat, lat0: g.lat, desvio: 0, v: 0, nivel, jeito: pil ? rnd(-1, 1) * (2 + (100 - pil.constancia) * 0.3) : rnd(-7, 7), tracadoId, reacao: pil ? Math.max(150, Math.min(400, Pilotos.reacaoNaLargada(pil.largada) + rnd(-25, 25))) : rnd(150, 400), usaEm: 0,
       pneu: f1 ? F1.pneuNovo(p.pneu) : null, ers: f1 ? F1.ersNovo() : null, plano, box: null,
@@ -407,7 +408,7 @@ function largar(room) {
 function estiloDe(room, p, rng) {
   const pil = p.piloto, nivel = { facil: 1.5, medio: 1, dificil: 0.6 }[room.config.nivel] || 1;
   const estreita = T.PISTAS[room.config.pista].width <= LARGURA_ESTREITA;
-  return { dentro: (rng() * 2 - 1) * (estreita ? 0.5 : 1), lado: (rng() * 2 - 1) * (estreita ? 2 : 9), look: 2 + Math.floor(rng() * 4), erroK: nivel * (pil ? 0.5 + (100 - pil.constancia) / 40 : 1), erros: F1.sorteio(`erros:${room.semente}:${p.id}`) };
+  return { dentro: (rng() * 2 - 1) * (estreita ? 0.5 : 1), lado: (rng() * 2 - 1) * (estreita ? 2 : 9), look: pil && Estilos.PERFIS[pil.id] ? 2 + Math.min(3, Math.floor((1 - Estilos.dePiloto(pil.id).frenagem) * 4)) : 2 + Math.floor(rng() * 4), erroK: nivel * (pil ? 0.5 + (100 - pil.constancia) / 40 : 1), erros: F1.sorteio(`erros:${room.semente}:${p.id}`) };
 }
 const L_CARRO = 44, W_CARRO = 26; // o carro em unidades da pista (carros.js: 4,4 m x 2,6 m, escala 10)
 // os 3 círculos do carro (como em colisao.js, que é do navegador)
@@ -481,6 +482,7 @@ function ordemDaPassagem(pf, i, latOutro, margem, baseLat, dentro) {
 function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
   const ponto = pf.pts[i], c = pf.c, k = pf.kf, n = pf.n, now = Date.now();
   const niv = TRANSITO_NIVEL[room.config.nivel] || TRANSITO_NIVEL.medio;
+  const estilo = Estilos.parametros(room, p, niv);
   // a folga lateral entre carros acompanha a largura da pista: nas de 104 ou mais vale a de sempre; numa mais estreita (Mônaco, 84) a faixa em que o robô anda (maxLat = W/2 - 18) cabe menos, e uma folga de 44 jogava o carro de lado contra o muro
   const margemNormal = niv.margem * Math.min(1, (T.PISTAS[room.config.pista].width - 36) / 68);
   const monaco = room.config.pista === "monaco";
@@ -580,12 +582,12 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
       const fecha = Math.max(ia.v, vLivre) - alvo.ov, lento = alvo.ov < limiteLento;
       // quanto tempo até emparelhar (o bico no meio do outro carro; a mudança de linha leva ~0,9 s em paralelo) contra o tempo até frear
       const tAlcance = Math.max(0.9, (alvo.frente - L_CARRO * 0.5) / Math.max(fecha, 10)), tFreio = dFreio / Math.max(ia.v, 30);
-      const chega = lento || dFreio === Infinity || tAlcance < tFreio * niv.antec || curvaDisputavel, foraDaFreada = lento || dFreio > 30 || curvaDisputavel;
-      const querPassar = monaco ? (fecha > 3 || (ia.v < 12 && alvo.ov < 12)) : ((fecha > 6 && ia.v > 30) || (preso && (ia.v > 30 || lento)) || (ia.v < 12 && alvo.ov < 12));
+      const chega = lento || dFreio === Infinity || tAlcance < tFreio * estilo.antec || curvaDisputavel, foraDaFreada = lento || dFreio > 30 || curvaDisputavel;
+      const querPassar = monaco ? (fecha > estilo.diferencaMinima * 0.5 || (ia.v < 12 && alvo.ov < 12)) : ((fecha > estilo.diferencaMinima && ia.v > 30) || (preso && (ia.v > 30 || lento)) || (ia.v < 12 && alvo.ov < 12));
       if (querPassar && chega && foraDaFreada) {
         // O lado leva em conta a sequência de curvas; em Mônaco também pode disputar por fora quando a faixa está livre.
         const lados = ordemDaPassagem(pf, i, alvo.latOutro, MARG, baseLat, dentro);
-        const folgaFora = lento || dFreio === Infinity || tAlcance < tFreio * niv.antec * 0.8;
+        const folgaFora = lento || dFreio === Infinity || tAlcance < tFreio * estilo.antec * 0.8;
         let lado = 0;
         // carro PARADO à frente (acidente, rodado): passa raspando, com menos folga lateral e usando até perto do muro (senão, numa pista estreita, ninguém cabia ao lado dele)
         const parado = alvo.ov < 15, lentoMonaco = lento && room.config.pista === "monaco";
@@ -631,15 +633,15 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
       // (sem prazo: a disputa pode durar várias curvas; acaba se passou, se ele abriu mais de ~6 carros, se não cabe mais ou se o lado fechou)
       let acabou = !tem || frente < -L_CARRO * 1.6 || frente > L_CARRO * 6 || Math.abs(alvoLat) > limite || (!livre(ia.ult.lado) && Math.abs(frente) < L_CARRO);
       // na freada não mergulha: quem ainda está atrás do outro (o bico não chegou ao meio dele) desiste e fica no vácuo; por dentro, já encostado na lateral dele, segue
-      if (!acabou && !ia.ult.lento && !ia.ult.curva && dFreio < 30 && frente > L_CARRO * (ia.ult.lado === dentro ? 0.9 : 0.45)) { acabou = true; ia.ultAte = now + 1200; }
+      if (!acabou && !ia.ult.lento && !ia.ult.curva && dFreio < 30 && frente > L_CARRO * (ia.ult.lado === dentro ? 0.9 : 0.45)) { acabou = true; ia.ultAte = now + estilo.espera; }
       if (acabou) ia.ult = null; else out.desvio = alvoLat - linhaDele;
     }
     // defesa: UMA porta fechada por atacante e por volta, antes da freada, e nunca contra quem já emparelhou
-    if (!ia.defesa && !ia.ult && tras && niv.defende > 0 && dentro && dFreio > 90 && dFreio < 450 && ia.v > 80) {
+    if (!ia.defesa && !ia.ult && tras && estilo.defende > 0 && dentro && dFreio > 90 && dFreio < 450 && ia.v > 80) {
       const chave = tras.oid + ":" + (p.laps || 0), usadas = ia.defendeu || (ia.defendeu = {});
       if (!usadas[chave] && (tras.ov > ia.v - 4 || tras.gap < 110) && !out.bloqPos && !out.bloqNeg) {
         usadas[chave] = true;
-        if (F1.sorteio(`defesa:${room.semente}:${p.id}:${chave}`)() < niv.defende) ia.defesa = { id: tras.oid, lado: dentro, ate: now + Math.min(3000, (dFreio / Math.max(ia.v, 60)) * 1000) };
+        if (F1.sorteio(`defesa:${room.semente}:${p.id}:${chave}`)() < estilo.defende) ia.defesa = { id: tras.oid, lado: dentro, ate: now + Math.min(3000, (dFreio / Math.max(ia.v, 60)) * 1000) };
       }
     }
     if (ia.defesa) {
@@ -778,7 +780,7 @@ function decidirParada(room, p, ia, car, spec, cl) {
   if (!p.started || feitas + 1 >= voltas || car.box?.fase) return null; // na última volta o corredor passa pela chegada: sem box
   const chuvoso = !!(room.clima && room.clima.chove); // corrida com chuva: a regra dos dois compostos não vale e o plano de pneus seco fica de lado
   const planejada = !chuvoso && ia.plano && ia.plano.paradas[(p.paradas || []).length];
-  const pneu = car.pneu, fator = spec.desgaste || 1, taxa = taxaDoPneu(pneu.composto, fator);
+  const pneu = car.pneu, fator = (spec.desgaste || 1) * Estilos.parametros(room, p, TRANSITO_NIVEL.medio).desgaste, taxa = taxaDoPneu(pneu.composto, fator);
   const restam = voltas - feitas - 1, usados = new Set(p.compostos || [p.pneu || F1.COMPOSTO_PADRAO]);
   if (chuvoso && cl) { const pelaAgua = trocaPeloClima(room, p, ia, pneu, cl, restam, usados, fator); if (pelaAgua) return pelaAgua; if (!F1.SECOS.includes(pneu.composto) && cl.agua + (ia.vies || 0) > 0.3) return null; }
   const chega = pneu.desgaste + taxa * (restam + 0.35) <= F1.PENHASCO; // o resto da corrida e o começo da volta de chegada
@@ -840,7 +842,9 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   // (a conta é a da física: o freio pedido e o que o pneu segura antes de travar, `D.frenagemMaxima`, contra o do pneu de referência)
   const velFreio = Math.max(car.v, 60), ref = aderRef();
   const alongaFreio = Math.max(1, Math.min(2.2, D.frenagemMaxima(spec, velFreio, 0, { freio: ref.freio, grip: ref.grip }) / Math.max(1, D.frenagemMaxima(spec, velFreio, 0, { freio: pneu.freio * dano.freio, grip: pneu.grip * dano.grip }))));
-  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * (room.config.pista === "monaco" ? 0.20 : tr.W <= LARGURA_ESTREITA ? 0.27 : 0.20) * alongaFreio / STEP)); // o perfil já antecipa a frenagem; circuitos estreitos pedem mais folga
+  const perfilPiloto = Estilos.dePiloto(p.piloto && p.piloto.id);
+  const ajusteFreada = 1 + Math.max(0, 0.8 - perfilPiloto.frenagem) * (room.config.pista === "monaco" ? 0.06 : 0.14);
+  const olhar = Math.max(3, Math.ceil(Math.max(car.v, 30) * (room.config.pista === "monaco" ? 0.20 : tr.W <= LARGURA_ESTREITA ? 0.27 : 0.20) * alongaFreio * ajusteFreada / STEP)); // o perfil já antecipa a frenagem; circuitos estreitos pedem mais folga
   let alvo = Infinity;
   for (let k = 0; k <= olhar; k++) alvo = Math.min(alvo, fis[(i + k) % n]);
   // Mirabeau e o grampo de Mônaco exigem mais margem na chuva, inclusive na aproximação.
@@ -899,7 +903,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     // Em pista livre usa a bateria nas retas; no trânsito reserva energia e só aciona forte ao tentar passar.
     amarela: room.direcao?.amarelo?.setor === Math.floor(i / (n / T.SECTORS)), ersAuto: !ia.ult && !tf.encontrou && !tf.tras && now - room.startAt > 6000,
     voltas: room.config.voltas, laps: p.laps || 0, paradas: (p.paradas || []).length,
-    semente: room.semente, id: p.id, grid: p.grid, f1: true, agua: cl.agua, outros, stopGo };
+    semente: room.semente, id: p.id, grid: p.grid, f1: true, agua: cl.agua, outros, stopGo, fatorDesgastePneu: Estilos.parametros(room, p, TRANSITO_NIVEL.medio).desgaste };
   const ent = ia.ent || (ia.ent = {});
   const ev = [], evC = [];
   if (encalhou(room, ia, car, now, dt, tf.atras < 140)) { // preso (parado, rodado, de lado no muro ou sem andar): o "↺ Pista" do robô, do lado livre
@@ -1060,4 +1064,4 @@ function passo(room, dt, setor, emit) {
 }
 function possivel(pista, spec) { return perfilF1(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0), 1); }
 possivel.topo = (pista, spec) => topoDe(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0));
-module.exports = { prepararTracado, tracadoPronto, idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };
+module.exports = { transito, prepararTracado, tracadoPronto, idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };

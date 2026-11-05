@@ -1,10 +1,11 @@
-# Acrescenta o pneu intermediário
+# Dá estilos de pilotagem aos pilotos de F1
 
-A temporada e as salas de F1 passam a oferecer o intermediário de faixa verde. Na garoa ele tem a aderência do pneu de chuva em pista encharcada; na chuva forte, a do pneu de chuva na garoa. Sua vida útil é de quatro voltas no molhado e duas no seco, com desgaste proporcional nas transições.
+Cada piloto tem um perfil persistente de ataque, defesa, frenagem, paciência, cuidado com os pneus e estratégia de box. As diferenças são interpretações de jogo inspiradas nos pilotos reais, combinadas com a dificuldade e uma variação de trajetória por GP. Os perfis acompanham o piloto quando muda de equipe.
 
-O número 5 pede o intermediário e o 6 cancela o pedido de box antes de entrar no corredor. A opção também aparece na largada, no MFD e no menu da garagem; a seleção, a física e o protocolo são compartilhados com o servidor. Robôs e recomendações consideram o novo composto. As descrições de todos os pneus foram atualizadas e a estimativa de vida no HUD considera a água na pista.
+Nas duas últimas voltas de um dos dois GPs finais, a tabela anterior ao GP modula a disposição de quem lidera ou está a até 25 pontos da liderança. Bandeiras, espaço lateral e limites de pista continuam valendo; pneus usam o desgaste individual do piloto na física e na estratégia.
 
 ## Verificação
 
-- Testes das regras de pneus, clima, limite de jogos, escolhas e menu do box.
-- Teste de navegador da largada com intermediário e dos atalhos 5 e 6.
+- Testes de perfis, ultrapassagem, bandeira amarela, desgaste e decisão de campeonato.
+- Simulação de tráfego em Interlagos nos três níveis e pelotão em Mônaco com chuva.
+- Testes das temporadas solo e em grupo.
