@@ -38,7 +38,7 @@ function telaInicial() {
       <label for="nivel">Dificuldade dos robôs</label><select id="nivel" name="nivel"><option value="medio">Médio</option><option value="facil">Fácil</option><option value="dificil">Difícil</option></select><button class="primary" type="submit">Abrir meu box →</button></form>
       <div class="or">Já tenho temporada</div><form id="recuperar"><label for="codigo">Código de recuperação</label><input id="codigo" name="codigo" maxlength="20" autocomplete="off" placeholder="12 caracteres"><button type="submit">Recuperar save</button></form>
       <div class="or">Temporada com os amigos</div>${window.SedeGrupo.formulario()}</section></div>`;
-  window.F1Garagem.encaixar(primeira);
+  // A foto deixa o formulário livre de imediato; a vitrine 3D só é montada ao escolher uma equipe.
   const escolher = (id) => { document.documentElement.style.setProperty("--eq", equipe(id).cor); document.getElementById("equipe").value = id; window.F1Garagem.trocarVitrine(id); document.querySelectorAll("[data-vitrine]").forEach((b) => { const on = b.dataset.vitrine === id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); }); };
   document.querySelectorAll("[data-vitrine]").forEach((b) => b.addEventListener("click", () => escolher(b.dataset.vitrine)));
   document.getElementById("equipe").value = primeira;

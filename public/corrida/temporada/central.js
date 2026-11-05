@@ -11,7 +11,8 @@ const ATTR = [["aero", "Aerodinâmica", "Asa dianteira"], ["chassi", "Chassi", "
 // onde cada peça fica no carro (metros, sistema do modelo; o bico aponta para -z) e para onde o rótulo vai, em px da tela
 const PONTOS = { aero: { p: [0.25, 0.12, -2.05], dx: -150, dy: 80 }, chassi: { p: [-0.55, 0.14, 0.2], dx: -190, dy: 110 }, motor: { p: [0, 0.82, 0.6], dx: -120, dy: -110 }, freios: { p: [0.72, 0.3, -1.42], dx: 130, dy: 96 }, suspensao: { p: [-0.72, 0.42, 1.35], dx: -170, dy: -40 }, confiab: { p: [0, 0.5, 1.85], dx: -30, dy: -130 } };
 
-let aba = "central", attr = "aero", tabela = "pilotos", garagem = null, modGaragem = null, criando = false, ctxAtual = null;
+let aba = "central", attr = "aero", tabela = "pilotos", garagem = null, modGaragem = null, criando = false, ctxAtual = null, ultimaInteracao = performance.now();
+for (const tipo of ["pointerdown", "keydown", "input"]) document.addEventListener(tipo, () => { ultimaInteracao = performance.now(); }, { passive: true });
 const salvo = (() => { try { return localStorage.getItem("corrida:temporada:aba"); } catch { return null; } })();
 if (ABAS.some((a) => a[0] === salvo)) aba = salvo;
 
@@ -36,12 +37,23 @@ function ligarFundo(equipe) {
   const vistaAgora = () => (aba === "desenvolvimento" ? (innerWidth < 1000 ? "devCelular" : "dev") : "sede");
   if (garagem) { garagem.trocarEquipe(equipe); garagem.vista(vistaAgora()); return; }
   if (criando) return; criando = true;
-  (modGaragem ? Promise.resolve(modGaragem) : import("/corrida/garagem3d.js")).then((m) => {
-    modGaragem = m; criando = false;
-    if (!document.body.classList.contains("cx-on") || garagem) return;
-    garagem = m.criarGaragem(host, { aoDesenhar: posicionarRotulos, aoCarregar: posicionarRotulos }); if (!garagem) return;
-    garagem.vista(vistaAgora(), true); garagem.trocarEquipe(equipe);
-  }).catch((e) => { criando = false; console.warn("garagem 3D indisponível", e); });
+  const iniciarQuandoLivre = () => {
+    if (!document.body.classList.contains("cx-on") || garagem) { criando = false; return; }
+    if (document.hidden || performance.now() - ultimaInteracao < 1800) { setTimeout(iniciarQuandoLivre, 1000); return; }
+    const iniciar = () => {
+      if (!document.body.classList.contains("cx-on") || garagem) { criando = false; return; }
+      (modGaragem ? Promise.resolve(modGaragem) : import("/corrida/garagem3d.js")).then((m) => {
+        modGaragem = m; criando = false;
+        if (!document.body.classList.contains("cx-on") || garagem) return;
+        let carroPronto = false;
+        garagem = m.criarGaragem(host, { leve: true, entradaCarro: true, aoCarregar: () => { carroPronto = true; posicionarRotulos(); }, aoDesenhar: () => { if (carroPronto) host.classList.add("cx-carro-pronto"); posicionarRotulos(); } });
+        if (!garagem) return;
+        garagem.vista(vistaAgora(), true); garagem.trocarEquipe(ctxAtual?.s?.equipe || equipe);
+      }).catch((e) => { criando = false; console.warn("garagem 3D indisponível", e); });
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(iniciar, { timeout: 2000 }); else setTimeout(iniciar, 0);
+  };
+  setTimeout(iniciarQuandoLivre, 1800);
 }
 addEventListener("resize", () => { if (document.body.classList.contains("cx-on") && garagem) garagem.vista(aba === "desenvolvimento" ? (innerWidth < 1000 ? "devCelular" : "dev") : "sede"); posicionarRotulos(); }, { passive: true });
 
@@ -182,16 +194,23 @@ function desenvolvimento(c) {
 function posicionarRotulos() {
   if (aba !== "desenvolvimento" || !garagem) return;
   const palco = document.getElementById("cxDvPalco"), svg = document.getElementById("cxLinhas"); if (!palco || !svg) return;
-  const r = palco.getBoundingClientRect(), W = r.width, H = r.height; let linhas = "";
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  palco.querySelectorAll("[data-rotulo]").forEach((el) => {
-    const pt = PONTOS[el.dataset.rotulo], a = garagem.naTela(pt.p), ax = a.x - r.left, ay = a.y - r.top;
-    const w = el.offsetWidth || 110, lx = Math.max(4, Math.min(W - w - 4, ax + pt.dx - w / 2)), ly = Math.max(4, Math.min(H - 34, ay + pt.dy));
-    el.style.transform = `translate(${lx.toFixed(0)}px,${ly.toFixed(0)}px)`;
-    const on = el.classList.contains("on"), bx = lx + w / 2, by = ly + 15;
-    linhas += `<path class="${on ? "on" : ""}" d="M${ax.toFixed(1)} ${ay.toFixed(1)}L${bx.toFixed(1)} ${by.toFixed(1)}"/><circle class="${on ? "on" : ""}" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="${on ? 6 : 4}"/>`;
+  const r = palco.getBoundingClientRect(), W = r.width, H = r.height, elementos = [...palco.querySelectorAll("[data-rotulo]")];
+  const viewBox = `0 0 ${W} ${H}`; if (svg.getAttribute("viewBox") !== viewBox) svg.setAttribute("viewBox", viewBox);
+  // Todas as medições vêm antes das escritas para não recalcular o layout a cada rótulo.
+  const posicoes = elementos.map((el) => {
+    const pt = PONTOS[el.dataset.rotulo], a = garagem.naTela(pt.p), ax = a.x - r.left, ay = a.y - r.top, w = el.offsetWidth || 110;
+    return { el, ax, ay, lx: Math.max(4, Math.min(W - w - 4, ax + pt.dx - w / 2)), ly: Math.max(4, Math.min(H - 34, ay + pt.dy)), w, on: el.classList.contains("on") };
   });
-  svg.innerHTML = linhas;
+  if (svg.children.length !== elementos.length * 2) {
+    svg.replaceChildren();
+    for (const el of elementos) { void el; svg.append(document.createElementNS("http://www.w3.org/2000/svg", "path"), document.createElementNS("http://www.w3.org/2000/svg", "circle")); }
+  }
+  posicoes.forEach(({ el, ax, ay, lx, ly, w, on }, i) => {
+    el.style.transform = `translate(${lx.toFixed(0)}px,${ly.toFixed(0)}px)`;
+    const path = svg.children[i * 2], ponto = svg.children[i * 2 + 1];
+    path.setAttribute("class", on ? "on" : ""); path.setAttribute("d", `M${ax.toFixed(1)} ${ay.toFixed(1)}L${(lx + w / 2).toFixed(1)} ${(ly + 15).toFixed(1)}`);
+    ponto.setAttribute("class", on ? "on" : ""); ponto.setAttribute("cx", ax.toFixed(1)); ponto.setAttribute("cy", ay.toFixed(1)); ponto.setAttribute("r", on ? "6" : "4");
+  });
 }
 let arrasto = null;
 document.addEventListener("pointerdown", (e) => { if (e.target.closest?.("#cxDvPalco") && !e.target.closest("button")) { arrasto = e.clientX; e.target.setPointerCapture?.(e.pointerId); } });

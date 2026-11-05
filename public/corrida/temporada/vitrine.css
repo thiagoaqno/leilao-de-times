@@ -54,3 +54,6 @@ body::after{background:linear-gradient(180deg,#06070bd9,#06070bf2 60%,#06070b)}
 .sede .vt-acao .btn-continuar,.sede .vt-acao .btn-continuar:hover{width:100%;min-height:62px;padding:0 18px;border-radius:12px;background:var(--eq,#e10600)!important;background-image:none!important;border:0;clip-path:none;transform:none;box-shadow:none;color:#fff;font:700 17px Manrope,system-ui,sans-serif;letter-spacing:0;text-transform:none}
 .sede .vt-acao .btn-continuar::before,.sede .vt-acao .btn-continuar::after{display:none}
 .cal li,.cal b,.pn-attr span,.pn-logo b,.pn-nota small{font-family:Manrope,system-ui,sans-serif;font-style:normal;letter-spacing:0;text-transform:none}
+
+/* Imagem leve na entrada; ao escolher uma equipe, a vitrine carrega o carro 3D correspondente. */
+.vt-entrada .vt-carro .palco-slot{background:linear-gradient(90deg,#08090e66,#08090e00),url('/corrida/capa-carregamento.png') center 57%/cover no-repeat;mask-image:linear-gradient(0deg,transparent,#000 20%,#000 80%,transparent);pointer-events:none}

@@ -577,7 +577,8 @@ function buildWorld(tr) {
   if (id === "tokyo") { const moon = add(new THREE.Mesh(new THREE.SphereGeometry(90, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf2f0e8, fog: false }))); moon.position.set(WORLD / 2 + 2500, 1800, WORLD / 2 - 3000); }
   // juntar as malhas paradas por material e região (kit/fundir.js): de 900 chamadas de desenho em Mônaco para umas 300. O que as
   // animações movem é descoberto rodando a vida da pista por alguns segundos em 24 pontos da volta.
-  fundirEstaticos(tr, { simular: () => { for (let k = 0; k < 24; k++) { const p = pts[Math.floor((k / 24) * n)], foco = { x: p.x, y: p.y, z: p.h, a: Math.atan2(p.ty, p.tx) }; for (let s = 0; s < 6; s++) animarVida(tr, 0.08, foco); } } });
+  // Em Interlagos, regiões menores cortam mais árvores e sombras fora da câmera; nas demais o tamanho antigo evita excesso de chamadas.
+  fundirEstaticos(tr, { celulaInst: tr.id === "interlagos" ? 1200 : 2400, simular: () => { for (let k = 0; k < 24; k++) { const p = pts[Math.floor((k / 24) * n)], foco = { x: p.x, y: p.y, z: p.h, a: Math.atan2(p.ty, p.tx) }; for (let s = 0; s < 6; s++) animarVida(tr, 0.08, foco); } } });
 }
 // Los Angeles: placa "GALERA" no morro (estilo Hollywood) e placa verde da freeway em cima da pista
 function landmarksLA(tr, add, r) {

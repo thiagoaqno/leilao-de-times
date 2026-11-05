@@ -74,7 +74,7 @@ const SOMBREADOR_PISO = {
 };
 // a cidade à noite que aparece pelo portão do box: morro escuro com janelas acesas e prédios
 function pintarCidade(x, W, H) {
-  x.filter = "blur(2.2px)"; const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#0a0e1a"); g.addColorStop(0.55, "#141a2c"); g.addColorStop(0.72, "#2a2a3c"); g.addColorStop(1, "#0a0a10"); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // Desfoque no canvas era reaplicado a cada janela da cidade e travava a interface por segundos. const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#0a0e1a"); g.addColorStop(0.55, "#141a2c"); g.addColorStop(0.72, "#2a2a3c"); g.addColorStop(1, "#0a0a10"); x.fillStyle = g; x.fillRect(0, 0, W, H);
   const r = gerador(31), morro = (v) => H * 0.5 + Math.sin(v * 0.006) * H * 0.09 + Math.sin(v * 0.019 + 2) * H * 0.03;
   x.fillStyle = "#0a0c14"; x.beginPath(); x.moveTo(0, H); for (let v = 0; v <= W; v += 8) x.lineTo(v, morro(v)); x.lineTo(W, H); x.fill();
   for (let i = 0; i < 620; i++) {
@@ -92,11 +92,12 @@ function pintarMarca(x, W, H, nome, cor1, cor2) {
 
 export function criarGaragem(host, op = {}) {
   let renderer;
-  try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: op.leve ? "low-power" : "high-performance" }); } catch { return null; }
+  try { renderer = new THREE.WebGLRenderer({ antialias: !op.leve, powerPreference: op.leve ? "low-power" : "high-performance" }); } catch { return null; }
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.02;
   renderer.domElement.className = "gr-canvas"; renderer.domElement.setAttribute("aria-hidden", "true"); host.prepend(renderer.domElement);
   const cena = new THREE.Scene(); cena.background = new THREE.Color(0x05060a); cena.fog = new THREE.Fog(0x07080e, 12, 58);
-  const pmrem = new THREE.PMREMGenerator(renderer), amb = pmrem.fromScene(new RoomEnvironment(), 0.04); cena.environment = amb.texture; cena.environmentIntensity = 0.42; pmrem.dispose();
+  let amb = null;
+  if (!op.leve) { const pmrem = new THREE.PMREMGenerator(renderer); amb = pmrem.fromScene(new RoomEnvironment(), 0.04); cena.environment = amb.texture; cena.environmentIntensity = 0.42; pmrem.dispose(); }
   const cam = new THREE.PerspectiveCamera(29, 16 / 9, 0.1, 160);
   // luzes: o teto branco em cima, o recorte da cor da equipe por trás e um pouco de frente
   cena.add(new THREE.HemisphereLight(0xcbd6ff, 0x101014, 0.22));
@@ -108,12 +109,14 @@ export function criarGaragem(host, op = {}) {
   // ---------- o que muda de cor com a equipe ----------
   const cor1Mat = new THREE.MeshStandardMaterial({ color: 0xe10600, roughness: 0.46, metalness: 0.2, envMapIntensity: 0.7 });
   const cor1Luz = new THREE.MeshBasicMaterial({ color: 0xe10600, toneMapped: false });
-  const chaoTex = textura(2048, 2048, (x, W, H) => pintarChao(x, W, H, "#e10600"), { aniso: 8 });
-  const marcaTex = textura(1024, 256, (x, W, H) => pintarMarca(x, W, H, "", "#e10600", "#fff"));
+  const chaoTex = textura(op.leve ? 1024 : 2048, op.leve ? 1024 : 2048, (x, W, H) => pintarChao(x, W, H, "#e10600"), { aniso: 8 });
+  const marcaTex = textura(op.leve ? 512 : 1024, op.leve ? 128 : 256, (x, W, H) => pintarMarca(x, W, H, "", "#e10600", "#fff"));
 
   // ---------- o piso ----------
-  const piso = new Reflector(new THREE.PlaneGeometry(60, 60), { clipBias: 0.002, textureWidth: 1024, textureHeight: 1024, multisample: 4, shader: SOMBREADOR_PISO, color: 0x777777 });
-  piso.rotation.x = -Math.PI / 2; piso.material.uniforms.tMapa.value = chaoTex; cena.add(piso);
+  const piso = op.leve
+    ? new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ map: chaoTex, color: 0x777777, roughness: 0.55, metalness: 0.15 }))
+    : new Reflector(new THREE.PlaneGeometry(60, 60), { clipBias: 0.002, textureWidth: 1024, textureHeight: 1024, multisample: 4, shader: SOMBREADOR_PISO, color: 0x777777 });
+  piso.rotation.x = -Math.PI / 2; if (!op.leve) piso.material.uniforms.tMapa.value = chaoTex; cena.add(piso);
 
   // ---------- o box: teto, luzes compridas, pilares e paredes ----------
   caixa(cena, 60, 0.3, 60, 0x0b0c11, 0, 4.9, 0);
@@ -136,7 +139,7 @@ export function criarGaragem(host, op = {}) {
   marca.position.set(18.7, 2.7, -4.2); marca.rotation.y = -Math.PI / 2; cena.add(marca);
 
   // ---------- lá fora: a mureta do pit, a cerca, os postes e a cidade ----------
-  const cidade = new THREE.Mesh(new THREE.PlaneGeometry(150, 54), new THREE.MeshBasicMaterial({ map: textura(4096, 1474, pintarCidade), fog: false, toneMapped: false, color: 0x8a8a8a }));
+  const cidade = new THREE.Mesh(new THREE.PlaneGeometry(150, 54), new THREE.MeshBasicMaterial({ map: textura(op.leve ? 2048 : 4096, op.leve ? 737 : 1474, pintarCidade), fog: false, toneMapped: false, color: 0x8a8a8a }));
   cidade.position.set(8, 12, -80); cena.add(cidade);
   for (let i = 0; i < 26; i++) caixa(cena, 1.3, 0.55, 0.3, i % 2 ? 0x5a5d63 : 0, -6 + i * 1.3, 0.28, -26, i % 2 ? {} : { mat: cor1Mat });
   caixa(cena, 34, 2.2, 0.02, 0, 10, 1.85, -26, { mat: new THREE.MeshBasicMaterial({ color: 0x8894a8, transparent: true, opacity: 0.1 }) });
@@ -160,7 +163,7 @@ export function criarGaragem(host, op = {}) {
   nevoa.position.set(6, 3.6, -15); cena.add(nevoa);
 
   // ---------- o carro ----------
-  let carro = null, equipe = null, pedido = 0, parou = false;
+  let carro = null, equipe = null, pedido = 0, parou = false, chegou = false, entrada = 1;
   const palcoCarro = new THREE.Group(); cena.add(palcoCarro);
   const estado = { nome: null, de: null, t: 1, fim: null, sujo: true, tam: "", mx: 0, my: 0, gmx: 0, gmy: 0, giro: 0, giroAlvo: 0, extra: 0 };
   const posAgora = new THREE.Vector3(), alvoAgora = new THREE.Vector3(); let telaAgora = [0, 0], fovAgora = 29, primeiraVez = true;
@@ -169,8 +172,8 @@ export function criarGaragem(host, op = {}) {
     const FP = window.F1Pilotos, eq = FP?.EQUIPES[id] || {}, cores = coresDa(eq.pintura, eq.cor || "#e10600"), c1 = eq.cor || "#e10600", c2 = cores[1] || "#fff";
     const cor = hexDe(c1); cor1Mat.color.copy(cor).multiplyScalar(0.72); cor1Luz.color.copy(cor).multiplyScalar(1.5);
     recorte.color.copy(cor).lerp(new THREE.Color(0xffffff), 0.12); recorte2.color.set(0xffffff).lerp(cor, 0.5);
-    pintarChao(chaoTex._canvas.getContext("2d"), 2048, 2048, c1); chaoTex.needsUpdate = true;
-    const xm = marcaTex._canvas.getContext("2d"), W = 1024, H = 256; pintarMarca(xm, W, H, eq.nome || "", c1, c2); marcaTex.needsUpdate = true;
+    pintarChao(chaoTex._canvas.getContext("2d"), chaoTex._canvas.width, chaoTex._canvas.height, c1); chaoTex.needsUpdate = true;
+    const xm = marcaTex._canvas.getContext("2d"), W = marcaTex._canvas.width, H = marcaTex._canvas.height; pintarMarca(xm, W, H, eq.nome || "", c1, c2); marcaTex.needsUpdate = true;
     const img = new Image(); img.onload = () => { if (equipe !== id || parou) return; const k = Math.min(H * 0.62 / img.height, H * 0.62 / img.width); xm.drawImage(img, H * 0.05, (H - img.height * k) / 2, img.width * k, img.height * k); marcaTex.needsUpdate = true; estado.sujo = true; ligar(); }; img.src = `/api/corrida/logo/${encodeURIComponent(id)}`;
     return cores;
   }
@@ -180,6 +183,7 @@ export function criarGaragem(host, op = {}) {
     if (meu !== pedido || parou) return;
     if (carro) { palcoCarro.remove(carro.g); soltarF1(carro); carro = null; }
     try { carro = montarF1({ cor: cores[0], cor2: cores[1], equipe: id }); palcoCarro.add(carro.g); } catch (e) { console.warn("carro da garagem", e); }
+    if (op.entradaCarro && !chegou) { chegou = true; entrada = reduz() ? 1 : 0; }
     estado.sujo = true; ligar(); op.aoCarregar?.();
   }
 
@@ -214,17 +218,23 @@ export function criarGaragem(host, op = {}) {
     raf = 0; if (parou) return;
     const dt = Math.min(0.1, Math.max(0, t - ultimo) / 1000); ultimo = t;
     const viva = !!estado.fim?.deriva && !reduz(), girando = Math.abs(estado.giroAlvo + estado.extra - estado.giro) > 0.001;
+    if (reduz() && entrada < 1) entrada = 1;
+    const chegando = entrada < 1, faltaAntes = (1 - entrada) ** 3;
+    if (chegando) entrada = Math.min(1, entrada + dt / 1.5);
+    const falta = (1 - entrada) ** 3;
+    if (chegando && carro) for (const roda of carro.rodas) roda.gira.rotation.x -= 10 * (faltaAntes - falta) / roda.r;
+    palcoCarro.position.set(Math.sin(estado.giro) * 10 * falta, 0, Math.cos(estado.giro) * 10 * falta);
     if (!document.hidden && host.isConnected && host.clientWidth && estado.fim) {
       ajustar();
       if (estado.t < 1) estado.t = Math.min(1, estado.t + dt / 0.9);
       estado.gmx += (estado.mx - estado.gmx) * Math.min(1, dt * 3); estado.gmy += (estado.my - estado.gmy) * Math.min(1, dt * 3);
       estado.giro += (estado.giroAlvo + estado.extra - estado.giro) * Math.min(1, dt * 7);
-      if (viva || girando || estado.t < 1 || estado.sujo) {
+      if (viva || girando || chegando || estado.t < 1 || estado.sujo) {
         palcoCarro.rotation.y = estado.giro; palcoCarro.updateMatrixWorld(); aplicarCamera(); renderer.render(cena, cam); estado.sujo = false; op.aoDesenhar?.();
       }
     }
     if (document.hidden) return; // volta pelo visibilitychange
-    if (viva || girando || estado.t < 1 || estado.sujo) raf = requestAnimationFrame(quadro);
+    if (viva || girando || chegando || estado.t < 1 || estado.sujo) raf = requestAnimationFrame(quadro);
   }
   const ro = window.ResizeObserver ? new ResizeObserver(() => { ajustar(); estado.sujo = true; ligar(); }) : null; ro?.observe(host);
   const aoMover = (e) => { estado.mx = e.clientX / innerWidth - 0.5; estado.my = e.clientY / innerHeight - 0.5; };
@@ -246,7 +256,7 @@ export function criarGaragem(host, op = {}) {
       parou = true; if (raf) cancelAnimationFrame(raf); raf = 0; ro?.disconnect(); removeEventListener("pointermove", aoMover); document.removeEventListener("visibilitychange", aoVoltar);
       if (carro) { palcoCarro.remove(carro.g); soltarF1(carro); carro = null; }
       cena.traverse((o) => { o.geometry?.dispose(); const m = o.material; if (m) { m.map?.dispose?.(); m.dispose?.(); } });
-      piso.dispose?.(); chaoTex.dispose(); marcaTex.dispose(); amb.dispose(); renderer.dispose(); renderer.forceContextLoss?.(); renderer.domElement.remove();
+      piso.dispose?.(); chaoTex.dispose(); marcaTex.dispose(); amb?.dispose(); renderer.dispose(); renderer.forceContextLoss?.(); renderer.domElement.remove();
     },
   };
 }
