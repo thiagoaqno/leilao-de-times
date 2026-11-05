@@ -12,7 +12,7 @@ import { reconciliar, reenviarEntradas } from "./fisica.js";
 const urlCode = new URLSearchParams(location.search).get("sala");
 $("hName").value = store.get("galera:name") || "";
 if (urlCode) $("hCode").value = urlCode.toUpperCase();
-function enter(r) {
+export function enter(r) {
   if (!r.ok) { $("hErr").textContent = r.error; return; }
   E.ME = { code: r.code, id: r.id, token: r.token };
   if (r.id) store.set("corrida:" + r.code, E.ME);

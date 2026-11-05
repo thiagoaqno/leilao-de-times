@@ -3,7 +3,7 @@ test('Silverstone tem escape livre, sem balizadores, e barreira afastada', async
   test.setTimeout(180000);
   const erros = []; page.on('pageerror', e => erros.push(e.message));
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('/corrida/#debug'); await page.locator('#hName').fill('Piloto'); await page.locator('#btnCreate').click();
+  await page.goto('/corrida/#debug'); await page.locator('#mnMulti').click(); await page.locator('#hName').fill('Piloto'); await page.locator('#btnCreate').click();
   await page.locator('#snEtapas [data-etapa-ir="gp"]').click(); await page.locator('[data-pista="silverstone"]').click();
   await page.locator('#gpMais summary').click(); await page.locator('[data-quali="pular"]').click();
   await page.locator('#snEtapas [data-etapa-ir="grid"]').click(); await page.locator('#btnStart').click();

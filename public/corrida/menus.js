@@ -7,6 +7,7 @@ import { f1Pronto } from "./f1.js";
 import { palco } from "./palco.js";
 import { montarAjustes, pararAjustes } from "./ajustes-lobby.js";
 import { iniciarControle } from "./sala-controle.js";
+import { menuNaTela } from "./menu.js";
 const EQUIPES_F1 = window.EQUIPES_F1 || {};
 // o logo da equipe sozinho (sem a sigla por trás, que aparecia pelas transparências do PNG); só sem arquivo, ou se ele não carregar, entra a sigla
 const siglaEquipe = (e) => `<span class="sigla">${h(e.sigla)}</span>`;
@@ -15,8 +16,6 @@ const marcaEquipe = (id) => {
   return `<span class="equipe-marca" style="--equipe:${e.cor}">${e.arquivo ? `<img data-logo-f1 src="/api/corrida/logo/${id}" alt="" loading="lazy" data-sigla="${h(e.sigla)}">` : siglaEquipe(e)}</span>`;
 };
 document.addEventListener("error", (ev) => { const i = ev.target.matches?.("img[data-logo-f1]") && ev.target; if (!i) return; const p = i.parentNode; i.remove(); if (p && !p.querySelector(".sigla")) p.insertAdjacentHTML("afterbegin", `<span class="sigla">${i.dataset.sigla || ""}</span>`); }, true);
-const logosEquipes = document.getElementById("logosEquipes");
-if (logosEquipes) logosEquipes.innerHTML = Object.entries(EQUIPES_F1).map(([id, e]) => `<span class="equipe-mini" style="--equipe:${e.cor}">${marcaEquipe(id).replace(" loading=\"lazy\"", "")}<span>${h(e.nome)}</span></span>`).join(""); // a faixa da entrada carrega já (fica abaixo da dobra em tela baixa)
 let f1Carregou = false;
 f1Pronto.then(() => { f1Carregou = true; if (E.S && E.S.phase === "lobby") renderLobby(); }); // refaz as fotos dos carros com o modelo 3D
 
@@ -27,8 +26,10 @@ export function show(id) {
   const eraSala = !$("lobby").classList.contains("hidden");
   for (const s of ["home", "lobby"]) $(s).classList.toggle("hidden", s !== id);
   $("race").classList.toggle("hidden", id !== "race");
-  $("bar").classList.toggle("hidden", id === "race");
+  $("bar").classList.toggle("hidden", id === "race" || id === "home"); // (a tela inicial tem o topo dela)
   document.body.classList.toggle("sala-escura", id === "home" || id === "lobby"); // as telas da sala usam o fundo escuro de sala de controle
+  document.body.classList.toggle("em-home", id === "home");
+  menuNaTela(id === "home");
   if (id === "lobby" && !eraSala) { // entrou na sala (ou voltou da corrida): a etapa de agora entra animada; depois da corrida, direto no grid
     if (veioDaCorrida) { etapa = "grid"; veioDaCorrida = false; }
     animarEntrada(el(etapa));

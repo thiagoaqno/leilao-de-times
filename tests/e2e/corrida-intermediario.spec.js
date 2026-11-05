@@ -4,7 +4,7 @@ test('intermediário na largada e teclas 5 e 6 no box', async ({ page }, info) =
   const erros = []; page.on('pageerror', (erro) => erros.push(erro.message));
   await page.addInitScript(() => localStorage.setItem('corrida:aviso-gpu-v1', '1'));
   await page.goto('/corrida/#debug');
-  await page.locator('#hName').fill('Piloto');
+  await page.locator('#mnMulti').click(); await page.locator('#hName').fill('Piloto');
   await page.locator('#btnCreate').click();
   await expect(page.locator('#lobby')).toBeVisible();
   await page.locator('#snEtapas [data-etapa-ir="carro"]').click();

@@ -280,7 +280,7 @@ function draw(dt) {
     pt.mat.color.setHex(perdido ? 0xff5050 : 0xffffff); pt.mat.opacity = pt.k === prox || perdido ? 1 : 0.55;
     pt.panos.forEach((q, j) => { q.rotation.y = pt.base[j] + Math.sin(now / 420 + j * 1.7 + pt.k) * 0.12; }); // balança no vento
   }
-  if (E.S?.phase !== "race") drawBest(dt); else if (race.bestKart) race.bestKart.g.visible = false; // (na corrida, sem o fantasma do melhor tempo: só na classificação)
+  if (E.S?.phase !== "race" || E.S?.config?.contrarrelogio) drawBest(dt); else if (race.bestKart) race.bestKart.g.visible = false; // (na corrida, sem o fantasma do melhor tempo: só na classificação e no contrarrelógio)
   stepPuffs(dt);
   passoEfeitos(dt);
   stepItems(race, dt);
@@ -316,7 +316,7 @@ function draw(dt) {
 }
 // Transmissão de TV (transmissao.js): nas corridas de F1, antes das luzes e com tempo próprio (`race.tvAte`, vindo do servidor).
 // Esc pula (o botão e o toque também, no módulo). Nada de TV para quem só assiste.
-function abrirTV(tr, dt, reduceMotion) { if (race.tvAte) quadroTV(race, tr, cam, reduceMotion); }
+function abrirTV(tr, dt, reduceMotion) { if (race.tvAte) { quadroTV(race, tr, cam, reduceMotion); if (E.S?.config?.contrarrelogio) pularTV(); } } // (no contrarrelógio, direto para o carro)
 // A largada foi antecipada (todos os humanos pularam a TV): só troca a hora, sem remontar a pista nem o carro.
 export function adiantarLargada(st) {
   if (!race || st.phase !== "race" || !race.tvAte || !st.tvAte || st.tvAte >= race.tvAte || race.tr.id !== st.config.pista || sNow() >= race.startAt) return false;

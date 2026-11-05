@@ -131,6 +131,7 @@
 <link rel="stylesheet" href="/corrida/sala.css">
 <link rel="stylesheet" href="/corrida/resultado-gp.css">
 <link rel="stylesheet" href="/corrida/sala-nova.css">
+<link rel="stylesheet" href="/corrida/menu.css">
 </head>
 <body>
 <header class="bar" id="bar">
@@ -146,35 +147,69 @@
     <button class="ghost small" id="btnTeclas" title="Controles: remapear teclas e botões"><span class="lg">Controles</span><span class="sm">⌨️</span></button><button class="ghost small" id="btnRules" title="Como jogar"><span class="lg">Como jogar</span><span class="sm">❔</span></button>
   </div>
   <section id="home" class="hidden">
-    <div class="en">
-      <div class="en-esq">
-        <p class="en-kicker">Corrida da Galera · Temporada 2026</p>
-        <h2 class="en-titulo"><em>Carreira</em><strong>F1</strong></h2>
-        <p class="en-lead">Abra uma sala, monte o carro da sua equipe e dispute cada curva com os amigos. Na sala, ligue as regras de F1 para correr com pneus, paradas nos boxes e classificação.</p>
-        <div class="en-modos">
-          <a class="en-modo" href="/corrida/temporada/" style="--img:url('/corrida/fundo-carreira-sede.webp')"><small>Solo ou em grupo</small><b>Temporada</b><span>Uma carreira inteira, GP a GP</span></a>
-          <a class="en-modo" href="/corrida/drag/" style="--img:url('/corrida/ceus/tokyo.jpg')"><small>Rua à meia-noite</small><b>Drag</b><span>Racha de até 4 pessoas</span></a>
+    <div class="mn" id="mn">
+      <div class="mn-palco" id="mnPalco" aria-hidden="true"></div>
+      <div class="mn-veu" aria-hidden="true"></div>
+
+      <header class="mn-topo">
+        <a class="mn-logo" href="/" title="Voltar para a Vila"><i aria-hidden="true"></i><span><b>Corrida</b><small>da Galera</small></span></a>
+        <div class="mn-conta">
+          <button type="button" class="mn-perfil" id="mnPerfil" title="Seu nome e sua equipe">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="12.5" r="5" fill="currentColor"/><path d="M6.8 25.6c1.6-5 5.2-7.3 9.2-7.3s7.6 2.3 9.2 7.3A14 14 0 0 1 16 30a14 14 0 0 1-9.2-4.4Z" fill="currentColor"/></svg>
+            <span id="mnNomeTopo">Piloto</span>
+            <svg class="mn-bandeira" viewBox="0 0 28 20" role="img" aria-label="Brasil"><rect width="28" height="20" rx="2" fill="#009b3a"/><path d="M14 2.6 25.4 10 14 17.4 2.6 10Z" fill="#fedf00"/><circle cx="14" cy="10" r="4.4" fill="#002776"/><path d="M9.7 9.2c3-.5 6.2.2 8.5 1.9" fill="none" stroke="#fff" stroke-width=".8"/></svg>
+          </button>
+          <button type="button" class="mn-engrenagem" id="mnAjustes" aria-label="Som, gráficos e controles" aria-expanded="false" title="Som, gráficos e controles"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.7h4l.4-2.7a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg></button>
         </div>
-        <p class="foto-credito">Imagem de fundo criada para a Corrida da Galera.</p>
-      </div>
-      <div class="en-sala">
-        <h3 class="sl-tit"><span>Sala com amigos</span><em>Grid</em></h3>
-        <div class="en-corpo">
-          <label for="hName">Seu nome</label>
-          <input id="hName" maxlength="8" placeholder="Ex.: Kizzy" autocomplete="off">
-          <div class="en-acoes">
-            <div class="en-acao">
-              <label for="hCode">Já tem sala? Digite o código</label>
-              <input id="hCode" class="codein" maxlength="5" placeholder="ABCDE" autocomplete="off">
-              <div class="row"><button class="primary" id="btnJoin">Entrar</button><button class="ghost" id="btnWatch">Só assistir</button></div>
-            </div>
-            <div class="en-ou"><span>ou</span></div>
-            <button id="btnCreate" class="en-nova"><span>Abrir sala nova</span><small>Você é o organizador</small><i class="setas" aria-hidden="true"></i></button>
-          </div>
-          <div class="err" id="hErr"></div>
+      </header>
+
+      <nav class="mn-menu" id="mnMenu" aria-label="Menu principal">
+        <a class="mn-item mn-principal" id="mnCarreira" href="/corrida/temporada/"><span><b id="mnCarreiraT">Nova carreira</b><small id="mnCarreiraS">Escolha a equipe e dispute a temporada</small></span><i class="mn-seta" aria-hidden="true"></i></a>
+        <button type="button" class="mn-item" data-painel="rapida"><span><b>Corrida rápida</b></span><i class="mn-seta" aria-hidden="true"></i></button>
+        <button type="button" class="mn-item" id="mnMulti" data-painel="multi"><span><b>Multiplayer</b></span><i class="mn-seta" aria-hidden="true"></i></button>
+        <button type="button" class="mn-item" data-painel="contra"><span><b>Contrarrelógio</b></span><i class="mn-seta" aria-hidden="true"></i></button>
+        <button type="button" class="mn-item" data-painel="garagem"><span><b>Garagem</b></span><i class="mn-seta" aria-hidden="true"></i></button>
+        <a class="mn-item" href="/corrida/drag/"><span><b>Drag</b></span><i class="mn-seta" aria-hidden="true"></i></a>
+      </nav>
+
+      <div class="mn-frase"><small>Sua próxima conquista</small><strong>Cada milésimo conta.</strong></div>
+
+      <aside class="mn-painel hidden" id="mnPainel" aria-labelledby="mnPainelT">
+        <header class="mn-p-topo"><h2 id="mnPainelT"></h2><button type="button" class="mn-p-x" id="mnPainelX" aria-label="Fechar (Esc ou B)">✕</button></header>
+        <div class="mn-p-corpo">
+          <div class="mn-campo mn-nome"><label for="hName">Seu nome</label><input id="hName" maxlength="8" placeholder="Ex.: Kizzy" autocomplete="off"></div>
+          <section class="mn-sec" data-sec="rapida" id="mnRapida"></section>
+          <section class="mn-sec" data-sec="contra" id="mnContra"></section>
+          <section class="mn-sec" data-sec="multi">
+            <div id="mnGrupos"></div>
+            <div class="mn-campo"><span class="mn-rot">Salas abertas</span><div class="mn-salas" id="mnSalas"></div></div>
+            <div class="mn-campo"><label for="hCode">Já tem sala? Digite o código</label><input id="hCode" class="codein" maxlength="5" placeholder="ABCDE" autocomplete="off"><div class="mn-duas"><button type="button" class="mn-bt" id="btnJoin">Entrar</button><button type="button" class="mn-bt mn-ghost" id="btnWatch">Só assistir</button></div></div>
+            <button type="button" id="btnCreate" class="mn-acao"><span><b>Abrir sala nova</b><small>Você é o organizador</small></span><i class="mn-seta" aria-hidden="true"></i></button>
+            <a class="mn-link" href="/corrida/temporada/?amigos=1">Temporada inteira com os amigos</a>
+          </section>
+          <section class="mn-sec" data-sec="garagem">
+            <span class="mn-rot">Sua equipe</span>
+            <div class="mn-equipes" id="mnEquipes" role="group" aria-label="Equipes de 2026"></div>
+            <div class="mn-ficha" id="mnFicha"></div>
+            <a class="mn-link" id="mnGaragemCarreira" href="/corrida/temporada/">Peças e desenvolvimento ficam na carreira</a>
+          </section>
+          <div class="err" id="hErr" role="alert"></div>
         </div>
+      </aside>
+
+      <div class="mn-cartoes" id="mnCartoes">
+        <a class="mn-cartao" id="mnC1" href="/corrida/temporada/"></a>
+        <a class="mn-cartao mn-gp" id="mnC2" href="/corrida/temporada/"></a>
+        <button type="button" class="mn-cartao" id="mnC3"></button>
       </div>
-      <div class="equipes-faixa en-equipes"><span>Equipes de 2026</span><div class="logos" id="logosEquipes"></div></div>
+
+      <footer class="mn-pe">
+        <div class="mn-dicas" id="mnDicas">
+          <span class="gp"><kbd class="r">A</kbd> Selecionar</span><span class="gp"><kbd class="r">B</kbd> Voltar</span>
+          <span class="kb"><kbd>↑</kbd><kbd>↓</kbd> Navegar</span><span class="kb"><kbd>Enter</kbd> Selecionar</span><span class="kb"><kbd>Esc</kbd> Voltar</span>
+        </div>
+        <div class="mn-online" id="mnOnline" role="status"></div>
+      </footer>
     </div>
   </section>
 

@@ -59,6 +59,8 @@ module.exports = function attachTemporadaCorrida(io, corrida) {
     socket.on("piloto", (d = {}, resposta) => mudar(socket, resposta, (s) => Regras.contratarPiloto(s, d.id)));
     socket.on("engenheiro", (d = {}, resposta) => mudar(socket, resposta, (s) => Regras.contratarEngenheiro(s, d.area, Number(d.nivel))));
     socket.on("desenvolver", (_, resposta) => mudar(socket, resposta, (s) => Regras.desenvolver(s)));
+    socket.on("renovar", (d = {}, resposta) => mudar(socket, resposta, (s) => Regras.renovar(s, Number(d.anos))));
+    socket.on("aceitarProposta", (d = {}, resposta) => mudar(socket, resposta, (s) => Regras.aceitarProposta(s, d.equipe)));
     socket.on("proximaTemporada", (_, resposta) => mudar(socket, resposta, (s) => Regras.proximaTemporada(s)));
     // excluir a carreira de vez: só com o token válido e sem GP aberto (o save, o token e o código de recuperação somem)
     socket.on("excluir", (d = {}, resposta) => {
@@ -93,7 +95,9 @@ module.exports = function attachTemporadaCorrida(io, corrida) {
             const p = room.players[r.id];
             return { piloto: p.bot ? p.piloto.id : "voce", equipe: p.equipe, pos: r.pos, pontos: r.pontos, dnf: r.dnf, nc: r.nc, voltaRapida: !!r.voltaRapida };
           });
-          Regras.registrarResultado(fresco.dados, linhas);
+          let analise = null; // a análise é um extra: um erro nela nunca pode perder o resultado do GP
+          try { analise = require("./corrida-analise.js").resumo(room, (p) => (p.bot ? p.piloto.id : "voce")); } catch (e) { console.warn("Temporada F1: análise do GP não salva:", e.message); }
+          Regras.registrarResultado(fresco.dados, linhas, analise);
           if (bd.salvarTemporadaCorrida(fresco.id, fresco.dados, indice)) {
             ativos.delete(fresco.id); avisar(fresco);
           }

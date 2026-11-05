@@ -154,7 +154,7 @@ function imersao(s) {
   const classificacao = tabelas(s).pilotos.findIndex((p) => p.id === "voce") + 1;
   return { meta, confianca, rival, classificacao };
 }
-function registrarResultado(s, linhas) {
+function registrarResultado(s, linhas, analise = null) {
   if (s.gp >= s.tamanho) throw Error("A temporada terminou.");
   if (!Array.isArray(linhas) || linhas.length !== 20) throw Error("Resultado incompleto.");
   const ids = new Set(linhas.map((r) => r.piloto));
@@ -163,14 +163,16 @@ function registrarResultado(s, linhas) {
   const gp = s.calendario[s.gp];
   const objetivo = metas(s);
   const resultado = { ano: s.ano, gp: s.gp, pista: gp.pista, objetivoGP: objetivo.gp, objetivoTemporada: objetivo.temporada, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc, voltaRapida: !!r.voltaRapida })) };
+  if (analise) resultado.analise = analise;
   s.resultados.push(resultado); s.gp++;
   const humano = resultado.linhas.find((r) => r.piloto === "voce");
   const premio = 4 + Math.round((humano.pontos || 0) * 0.4);
   const contratado = Pilotos.PILOTOS.find((p) => p.id === s.piloto2);
   const salarios = 3 + Math.round((contratado.ritmo - 70) / 8) + s.engenheiros.mecanico + s.engenheiros.estrategista;
-  s.caixa = Math.max(0, s.caixa + s.patrocinio + premio - salarios);
-  resultado.financas = { patrocinio: s.patrocinio, premio, salarios };
-  return { resultado, receita: s.patrocinio + premio - salarios };
+  const bonus = pagarBonus(s, humano);
+  s.caixa = Math.max(0, s.caixa + s.patrocinio + premio + bonus - salarios);
+  resultado.financas = { patrocinio: s.patrocinio, premio, salarios, bonus };
+  return { resultado, receita: s.patrocinio + premio + bonus - salarios };
 }
 function tabelas(s) {
   const pilotos = new Map(), equipes = new Map();
@@ -188,13 +190,105 @@ function tabelas(s) {
     || Number(b.id === "voce" || b.id === s.equipe) - Number(a.id === "voce" || a.id === s.equipe) || a.nome.localeCompare(b.nome, "pt-BR");
   return { pilotos: [...pilotos.values()].sort(ordenar), equipes: [...equipes.values()].sort(ordenar) };
 }
+// ---------- o contrato, os objetivos e as propostas ----------
+// A faixa da equipe (pelo orçamento) decide o tamanho das metas: 0 = equipe de ponta, 1 = do meio, 2 = de trás.
+const ordemDeForca = () => Object.keys(Equipes.EQUIPES).sort((a, b) => Equipes.EQUIPES[b].orcamento - Equipes.EQUIPES[a].orcamento || a.localeCompare(b));
+const faixaDe = (equipe) => { const i = ordemDeForca().indexOf(equipe); return i < 3 ? 0 : i < 7 ? 1 : 2; };
+const BONUS_VITORIA = [1, 2, 3], VERBA_FAIXA = [8, 6, 5];
+function garantirContrato(s) {
+  if (!s.contrato) s.contrato = { inicio: s.ano, fim: s.ano, bonusVitoria: BONUS_VITORIA[faixaDe(s.equipe)] };
+  return s.contrato;
+}
+function contrato(s) {
+  const c = s.contrato || { inicio: s.ano, fim: s.ano, bonusVitoria: BONUS_VITORIA[faixaDe(s.equipe)] };
+  return { ...c, verbaGP: s.patrocinio, restam: Math.max(0, (c.fim - s.ano) * s.tamanho + s.tamanho - s.gp) };
+}
+function numerosDoAno(s) {
+  const n = { vitorias: 0, podios: 0, pontuou: 0, poles: 0, top5: 0, top10: 0 };
+  for (const r of s.resultados) {
+    if (r.ano !== s.ano) continue;
+    const eu = r.linhas.find((x) => x.piloto === "voce"), g = r.analise?.pilotos?.voce?.g || 0;
+    if (g === 1) n.poles++;
+    if (g >= 1 && g <= 5) n.top5++;
+    if (g >= 1 && g <= 10) n.top10++;
+    if (!eu || eu.dnf || eu.nc) continue;
+    if (eu.pos === 1) n.vitorias++;
+    if (eu.pos <= 3) n.podios++;
+    if (eu.pontos > 0) n.pontuou++;
+  }
+  return n;
+}
+// as metas de bônus da temporada: pagas no caixa uma vez, na hora em que se cumprem
+function metasDeBonus(s, n = numerosDoAno(s)) {
+  const f = faixaDe(s.equipe), q = (k) => Math.max(1, Math.ceil(s.tamanho * k)), umaOuVarias = (v, um, varias) => (v === 1 ? um : varias);
+  if (f === 0) return [{ id: "largada", nome: `Conquistar ${q(0.25)} ${umaOuVarias(q(0.25), "pole", "poles")}`, atual: n.poles, alvo: q(0.25), premio: 3 }, { id: "chegada", nome: `Subir ao pódio em ${q(0.5)} corridas`, atual: n.podios, alvo: q(0.5), premio: 4 }];
+  if (f === 1) return [{ id: "largada", nome: `Largar no top 5 em ${q(0.25)} ${umaOuVarias(q(0.25), "GP", "GPs")}`, atual: n.top5, alvo: q(0.25), premio: 3 }, { id: "chegada", nome: `Pontuar em ${q(0.5)} corridas`, atual: n.pontuou, alvo: q(0.5), premio: 4 }];
+  return [{ id: "largada", nome: `Largar no top 10 em ${q(0.25)} ${umaOuVarias(q(0.25), "GP", "GPs")}`, atual: n.top10, alvo: q(0.25), premio: 3 }, { id: "chegada", nome: `Pontuar em ${q(0.25)} ${umaOuVarias(q(0.25), "corrida", "corridas")}`, atual: n.pontuou, alvo: q(0.25), premio: 4 }];
+}
+function pagarBonus(s, humano) {
+  const c = garantirContrato(s), pagos = (s.bonusPagos ||= {}); let total = 0;
+  if (humano && humano.pos === 1 && !humano.dnf && !humano.nc) total += c.bonusVitoria;
+  for (const m of metasDeBonus(s)) { const k = `${s.ano}:${s.equipe}:${m.id}`; if (m.atual >= m.alvo && !pagos[k]) { pagos[k] = true; total += m.premio; } }
+  return total;
+}
+function objetivos(s) {
+  const f = faixaDe(s.equipe), t = tabelas(s), n = numerosDoAno(s), meta = metas(s), acabou = s.gp >= s.tamanho, q = (k) => Math.max(1, Math.ceil(s.tamanho * k));
+  const pos = t.pilotos.findIndex((p) => p.id === "voce") + 1, posE = t.equipes.findIndex((e) => e.id === s.equipe) + 1, alvoE = [1, 5, 8][f];
+  const estado = (ok) => (acabou ? (ok ? "cumprido" : "falhou") : ok ? "caminho" : "risco");
+  const plural = (v, um, varias) => (v === 1 ? um : varias);
+  const contagem = f === 0 ? { nome: `Conquistar ${q(0.25)} ${plural(q(0.25), "vitória", "vitórias")}`, atual: n.vitorias, alvo: q(0.25), nota: "Meta de vitórias" }
+    : f === 1 ? { nome: `Subir ao pódio em ${q(0.125)} ${plural(q(0.125), "corrida", "corridas")}`, atual: n.podios, alvo: q(0.125), nota: "Meta de pódios" }
+    : { nome: `Pontuar em ${q(0.25)} ${plural(q(0.25), "corrida", "corridas")}`, atual: n.pontuou, alvo: q(0.25), nota: "Meta de pontos" };
+  const lider = t.equipes[0], segundo = t.equipes[1], minha = t.equipes[posE - 1];
+  return {
+    expectativa: { pilotos: meta.temporada, construtores: alvoE },
+    pilotos: { nome: `Terminar entre os ${meta.temporada} primeiros`, sub: "Campeonato de pilotos", atual: pos, alvo: meta.temporada, estado: s.gp ? estado(pos <= meta.temporada) : "aberto" },
+    contagem: { ...contagem, estado: contagem.atual >= contagem.alvo ? "cumprido" : acabou ? "falhou" : "aberto" },
+    construtores: { nome: alvoE === 1 ? "Vencer o campeonato de construtores" : `Ficar entre os ${alvoE} primeiros construtores`, atual: posE, alvo: alvoE, estado: s.gp ? estado(posE <= alvoE) : "aberto", sub: !s.gp ? "A disputa começa no primeiro GP." : posE === 1 ? `${lider.nome} lidera por ${lider.pontos - (segundo?.pontos || 0)} pontos.` : `Faltam ${lider.pontos - minha.pontos} pontos para ${lider.nome}.` },
+    bonus: metasDeBonus(s, n).map((m) => ({ ...m, pago: !!s.bonusPagos?.[`${s.ano}:${s.equipe}:${m.id}`] })),
+  };
+}
+// como está a renovação: a confiança da diretoria decide
+function perspectiva(s) {
+  const c = imersao(s).confianca;
+  return c >= 65 ? { nivel: "favoravel", rotulo: "Favorável", confianca: c } : c >= 40 ? { nivel: "neutra", rotulo: "Em aberto", confianca: c } : { nivel: "risco", rotulo: "Em risco", confianca: c };
+}
+function renovar(s, anos) {
+  if (![1, 2].includes(anos)) throw Error("Prazo inválido.");
+  const c = garantirContrato(s), p = perspectiva(s);
+  if (c.fim > s.ano) throw Error("Seu contrato já cobre a próxima temporada.");
+  if (p.confianca < 25) throw Error("A diretoria não quer conversar agora. Melhore os resultados primeiro.");
+  c.fim = s.ano + anos;
+  if (p.confianca >= 70) s.patrocinio = Math.min(12, s.patrocinio + 1); // boa fase: a verba por GP sobe na assinatura
+  return s;
+}
+// As propostas abrem nas 2 últimas etapas e só valem depois do último GP: uma equipe mais forte (se a temporada foi boa), uma parecida e uma para liderar.
+function propostas(s) {
+  if (s.gp < s.tamanho - 2) return [];
+  const ordem = ordemDeForca(), i = ordem.indexOf(s.equipe), pos = tabelas(s).pilotos.findIndex((p) => p.id === "voce") + 1;
+  const passo = pos <= 5 ? 3 : pos <= 10 ? 2 : pos <= 15 ? 1 : 0;
+  const alvos = [i - passo, i + 1, i + 3].map((k) => ordem[Math.max(0, Math.min(ordem.length - 1, k))]);
+  return [...new Set(alvos)].filter((id) => id !== s.equipe).map((id) => ({ equipe: id, verbaGP: VERBA_FAIXA[faixaDe(id)], bonusVitoria: BONUS_VITORIA[faixaDe(id)], orcamento: Equipes.EQUIPES[id].orcamento }));
+}
+function aceitarProposta(s, id) {
+  if (s.gp < s.tamanho) throw Error("Você assina com outra equipe só depois do último GP.");
+  const p = propostas(s).find((x) => x.equipe === id);
+  if (!p) throw Error("Esta equipe não fez proposta.");
+  const titulares = Pilotos.PILOTOS.filter((x) => x.equipe === id);
+  s.equipe = id; s.piloto2 = titulares[0].id; s.montagem = Object.fromEntries(Equipes.ORDEM.map((k) => [k, 0])); s.pecas = null; s.bonus = 0;
+  s.patrocinio = p.verbaGP; s.contrato = { inicio: s.ano + 1, fim: s.ano + 1, bonusVitoria: p.bonusVitoria };
+  return s;
+}
 function proximaTemporada(s) {
   if (s.gp !== s.tamanho) throw Error("Termine o calendário primeiro.");
+  garantirContrato(s);
+  if (s.contrato.fim <= s.ano) s.contrato.fim = s.ano + 1; // sem conversa, o contrato segue por mais um ano nos mesmos termos
+  for (const r of s.resultados) if (r.ano < s.ano) delete r.analise; // o detalhe volta a volta só vale para o ano atual e o anterior (o save não cresce sem fim)
   s.ano++; s.gp = 0; s.gasto = 0; s.semente = Number(s.semente) + 937;
   const sorteado = sortearCalendario(s.tamanho, s.semente, s.calendario.map((g) => g.pista));
   s.calendario = sorteado.calendario; s.calendarioSemente = sorteado.semente; return s;
 }
-const api = { CALENDARIO, PISTAS_TRABALHADAS, sortearCalendario, PONTOS, ENGENHEIROS, teto, criar, conferirMontagem, aplicarMontagem, contratarPiloto, contratarEngenheiro, desenvolver, desenvolvimentoRivais, pilotosNoGrid, registrarResultado, tabelas, metas, imersao, proximaTemporada };
+const api = { CALENDARIO, PISTAS_TRABALHADAS, sortearCalendario, PONTOS, ENGENHEIROS, teto, criar, conferirMontagem, aplicarMontagem, contratarPiloto, contratarEngenheiro, desenvolver, desenvolvimentoRivais, pilotosNoGrid, registrarResultado, tabelas, metas, imersao, proximaTemporada, contrato, objetivos, perspectiva, renovar, propostas, aceitarProposta, metasDeBonus };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1Temporada = api;
 })(typeof window !== "undefined" ? window : globalThis);
