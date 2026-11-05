@@ -45,8 +45,8 @@ function ligarFundo(equipe) {
       (modGaragem ? Promise.resolve(modGaragem) : import("/corrida/garagem3d.js")).then((m) => {
         modGaragem = m; criando = false;
         if (!document.body.classList.contains("cx-on") || garagem) return;
-        let carroPronto = false;
-        garagem = m.criarGaragem(host, { leve: true, entradaCarro: true, aoCarregar: () => { carroPronto = true; posicionarRotulos(); }, aoDesenhar: () => { if (carroPronto) host.classList.add("cx-carro-pronto"); posicionarRotulos(); } });
+        let carroPronto = false, ultimoRotulo = -Infinity;
+        garagem = m.criarGaragem(host, { leve: true, entradaCarro: true, aoCarregar: () => { carroPronto = true; posicionarRotulos(); }, aoDesenhar: () => { if (carroPronto) host.classList.add("cx-carro-pronto"); const agora = performance.now(); if (agora - ultimoRotulo >= 1000 / 30) { ultimoRotulo = agora; posicionarRotulos(); } } });
         if (!garagem) return;
         garagem.vista(vistaAgora(), true); garagem.trocarEquipe(ctxAtual?.s?.equipe || equipe);
       }).catch((e) => { criando = false; console.warn("garagem 3D indisponível", e); });
