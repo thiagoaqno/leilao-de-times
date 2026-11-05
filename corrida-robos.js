@@ -527,8 +527,10 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
     // continuar seguindo a velocidade dele ali fazia o robô andar lado a lado sem conseguir passar.
     // (Mônaco: o espaço entre os dois pela faixa de cada um na pista, `ia.lat` x o lateral dele no ponto DELE; medido no meu quadro, com o outro
     // adiante numa curva, a faixa nunca ficava livre e o atacante seguia freando pelo da frente, sem nunca emparelhar)
-    const separados = monaco && ia.ult?.id === oid ? Math.abs(ia.lat - latOutro) : perto;
-    const faixaLivre = ia.ult?.id === oid && (ia.ult.lento || monaco) && separados >= W_CARRO + (monaco ? 3 : 3);
+    // (nas outras pistas vale a menor das duas medidas: numa curva, o lateral medido no meu quadro sozinho poderia soltar o freio com o outro ainda na minha frente)
+    const alvoDaManobra = ia.ult?.id === oid;
+    const separados = !alvoDaManobra ? perto : monaco ? Math.abs(ia.lat - latOutro) : ia.ult.lento ? perto : Math.min(perto, Math.abs(ia.lat - ondeEsta(o, distancia).lat));
+    const faixaLivre = alvoDaManobra && separados >= W_CARRO + 3;
     if (frente > 0 && distancia * STEP > 8 && !faixaLivre && Math.abs(lado) < 34 + Math.min(10, aproxima * 0.1)) { // na minha faixa (quem chega rápido vê a faixa mais larga), à frente
       // reserva espaço para o freio progressivo da física (o pedal leva ~0,2 s para subir) e para o da frente frear mais forte que o previsto
       // (na largada o pelotão sai junto: a reserva de espaço cresce aos poucos, de quase nada no grid, onde os carros estão a 4 u um do outro, até
@@ -600,8 +602,10 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
           for (let j = Math.max(0, ate - 14); j <= ate; j += 2) if (Math.abs(lat) > limEm(i + j)) return false;
           return vizinhos.every((v) => v.id === alvo.o.id || Math.abs(v.frente) > L_CARRO * 2.5 + Math.min(80, Math.max(0, ia.v - v.v) * 0.4) || Math.abs(v.lat - lat) >= MARG);
         };
-        for (const s of lados) { const lat = alvo.latOutro + s * mg; if (cabe(lat) && livre(s) && faixaSegura(lat) && (monaco || !dentro || s === dentro || folgaFora || parado)) { lado = s; break; } }
-        if (lado) ia.ult = { id: alvo.o.id, lado, ate: now + 7000, lento, parado, marg: mg, curva: curvaDisputavel };
+        // fora de Mônaco a folga encolhe até o que couber (mínimo: a largura do carro com um respiro): com 44 u fixos, um alvo perto do centro não deixava lado nenhum nas pistas de até 104
+        let mgLado = mg;
+        for (const s of lados) { const m = monaco ? mg : Math.max(W_CARRO + 3, Math.min(mg, limiteLento - s * alvo.latOutro)), lat = alvo.latOutro + s * m; if (cabe(lat) && livre(s) && faixaSegura(lat) && (monaco || !dentro || s === dentro || folgaFora || parado)) { lado = s; mgLado = m; break; } }
+        if (lado) ia.ult = { id: alvo.o.id, lado, ate: now + 7000, lento, parado, marg: mgLado, curva: curvaDisputavel };
       }
     }
     if (ia.ult) { // a ultrapassagem em andamento segue até o carro ficar para trás (ou o lado fechar)
@@ -619,10 +623,15 @@ function transito(room, p, ia, pf, i, baseLat, maxLat, vLivre = 0, plano = {}) {
         const mgAgora = Math.max(W_CARRO + 1, Math.min(ia.ult.marg || MARG, cabeAo));
         alvoLat = q.lat + ia.ult.lado * mgAgora; if (cabeAo >= W_CARRO + 1) limite = Infinity; linhaDele = plano.linhaEm ? plano.linhaEm(q.i) : baseLat;
       }
+      if (!monaco && tem && !ia.ult.parado) { // o alvo andou para o meu lado: aperta até o limite ou, ainda atrás dele, troca de lado (a mesma ideia de Mônaco, sem passar do limite da pista)
+        const latDele = alvoLat - ia.ult.lado * (ia.ult.marg || MARG), minimo = W_CARRO + 3, espaco = (s) => limite - s * latDele;
+        if (espaco(ia.ult.lado) < minimo && frente > L_CARRO * 0.6 && (ia.ult.trocas || 0) < 2 && espaco(-ia.ult.lado) >= minimo && livre(-ia.ult.lado)) { ia.ult.lado = -ia.ult.lado; ia.ult.trocas = (ia.ult.trocas || 0) + 1; }
+        alvoLat = latDele + ia.ult.lado * Math.max(minimo, Math.min(ia.ult.marg || MARG, espaco(ia.ult.lado)));
+      }
       // (sem prazo: a disputa pode durar várias curvas; acaba se passou, se ele abriu mais de ~6 carros, se não cabe mais ou se o lado fechou)
       let acabou = !tem || frente < -L_CARRO * 1.6 || frente > L_CARRO * 6 || Math.abs(alvoLat) > limite || (!livre(ia.ult.lado) && Math.abs(frente) < L_CARRO);
-      // na freada não mergulha: quem ainda está atrás do outro (o bico não chegou ao meio dele) desiste e fica no vácuo
-      if (!acabou && !ia.ult.lento && !ia.ult.curva && dFreio < 30 && frente > L_CARRO * 0.45) { acabou = true; ia.ultAte = now + 2500; }
+      // na freada não mergulha: quem ainda está atrás do outro (o bico não chegou ao meio dele) desiste e fica no vácuo; por dentro, já encostado na lateral dele, segue
+      if (!acabou && !ia.ult.lento && !ia.ult.curva && dFreio < 30 && frente > L_CARRO * (ia.ult.lado === dentro ? 0.9 : 0.45)) { acabou = true; ia.ultAte = now + 1200; }
       if (acabou) ia.ult = null; else out.desvio = alvoLat - linhaDele;
     }
     // defesa: UMA porta fechada por atacante e por volta, antes da freada, e nunca contra quem já emparelhou
@@ -834,8 +843,11 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const f = i / n, margemMolhada = room.config.pista === "monaco" ? Math.max(0, Math.min(1, (f - 0.29) / 0.03, (0.44 - f) / 0.02)) : 0;
   const cautela = 1 - 0.20 * cl.agua * margemMolhada;
   const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) * cautela : alvo); // a velocidade do robô sem ninguém na frente
+  // Colado, o limite de trânsito não deixa o DRS virar velocidade: para decidir o ataque conta metade do ganho que ele teria ao sair da faixa (a velocidade leva tempo para chegar).
+  const drsPronto = alvo >= topo * 0.97 && (car.drsAtivo || (p.drsZona >= 0 && p.drsZona === F1.zonaDRS(i / n, tr.t.drs)));
+  const vAtaque = vLivre * (drsPronto ? 1 + F1.DRS_GANHO * (spec.drs ?? 1) * 0.5 : 1);
   // o plano da frente para o trânsito: a que distância é a próxima freada e qual é o lado de dentro da próxima curva
-  const tf = transito(room, p, ia, pf, i, baseLat, maxLatDisputa, vLivre, { dFreio: distanciaDaFreada(fis, n, i, car.v), dentro: ladoDeDentro(pf, i), maxLatLento, linhaEm: (k) => linhaEm(k, car.prog + (k - i + n) % n), aderenciaFreio: cl.agua > 0 ? { freio: pneu.freio * dano.freio, grip: pneu.grip * dano.grip } : undefined });
+  const tf = transito(room, p, ia, pf, i, baseLat, maxLatDisputa, vAtaque, { dFreio: distanciaDaFreada(fis, n, i, car.v), dentro: ladoDeDentro(pf, i), maxLatLento, linhaEm: (k) => linhaEm(k, car.prog + (k - i + n) % n), aderenciaFreio: cl.agua > 0 ? { freio: pneu.freio * dano.freio, grip: pneu.grip * dano.grip } : undefined });
   ia.desvio += (tf.desvio - ia.desvio) * Math.min(1, dt * 1.8);
   ia.colado = (tf.atras ?? Infinity) < L_CARRO * 2.2; ia.arLimpo = !tf.encontrou; // (para o undercut e o overcut, em decidirParada)
   // a folga lateral de quem está ao lado: o robô fica entre os limites (e se está mais perto que a folga, se afasta)

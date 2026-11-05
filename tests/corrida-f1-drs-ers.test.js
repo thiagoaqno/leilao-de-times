@@ -51,6 +51,18 @@ test('freio e bandeira encerram o DRS sem reativar na mesma zona', () => {
   assert.equal(Sim.atualizarDRS({ tick: 1, drsFim: 0, drsUsada: -1 }, 0, -1, false), false);
 });
 
+test('freio fecha o DRS: reabre na zona sem passar dos cinco segundos, e fora dela acaba', () => {
+  const c = { tick: 1, drsFim: 0, drsUsada: -1 };
+  assert.equal(Sim.atualizarDRS(c, 0, 0, false, true), false);
+  c.tick++; assert.equal(Sim.atualizarDRS(c, 0, 0, false), true, 'entrar freando não perde a passagem');
+  const fim = c.drsFim;
+  c.tick++; assert.equal(Sim.atualizarDRS(c, 0, 0, false, true), false);
+  c.tick++; assert.equal(Sim.atualizarDRS(c, 0, 0, false), true);
+  assert.equal(c.drsFim, fim);
+  c.tick++; assert.equal(Sim.atualizarDRS(c, -1, 0, false, true), false);
+  c.tick++; assert.equal(Sim.atualizarDRS(c, -1, 0, false), false);
+});
+
 test('reconciliação preserva o relógio do DRS e a zona já usada', () => {
   const tr = Sim.criarPista(T.PISTAS.interlagos, 'interlagos');
   const a = Sim.novo(tr), b = Sim.novo(tr);

@@ -112,15 +112,15 @@ function desempacotar(n, saida = {}) {
 }
 
 // O DRS começa ao entrar numa zona autorizada e dura até cinco segundos, mesmo após sair dela.
-// Freio ou bandeira encerram o uso; a mesma passagem pela zona não pode reativá-lo.
+// Bandeira encerra o uso. O freio fecha a asa: dentro da zona ela reabre ao soltar, sem passar dos mesmos cinco segundos; fora da zona, acabou.
+// Quem entra na zona freando não perde a passagem: o relógio só começa quando a asa abre de verdade.
 const DRS_PASSOS = Math.round(5 / PASSO);
-function atualizarDRS(c, zona, autorizada, bloqueado) {
+function atualizarDRS(c, zona, autorizada, bloqueado, freando = false) {
   if (zona < 0) c.drsUsada = -1;
-  if (zona >= 0 && zona === autorizada && c.drsUsada !== zona) {
-    c.drsUsada = zona;
-    if (!bloqueado) c.drsFim = c.tick + DRS_PASSOS;
-  }
-  if (bloqueado) c.drsFim = 0;
+  if (bloqueado) { c.drsFim = 0; return false; }
+  const naZona = zona >= 0 && zona === autorizada;
+  if (freando) { if (!naZona) c.drsFim = 0; return false; }
+  if (naZona && c.drsUsada !== zona) { c.drsUsada = zona; c.drsFim = c.tick + DRS_PASSOS; }
   return c.drsFim > c.tick;
 }
 
@@ -195,7 +195,7 @@ function passo(c, ent, amb, tr, ev) {
   c.arSujo = 1 - vac.aderencia;
   // DRS e ERS
   const zona = F1.zonaDRS(c.idx / n, tr.t.drs);
-  const drs = atualizarDRS(c, zona, amb.drsZona, !!(ent.brake || amb.amarela || amb.safety || amb.quali));
+  const drs = atualizarDRS(c, zona, amb.drsZona, !!(amb.amarela || amb.safety || amb.quali), !!ent.brake);
   F1.carregarErs(c.ers, dt, !!ent.brake && c.v > 40, !ent.gas, amb.laps || 0);
   const usarErs = !!(ent.gas && !amb.safety && (amb.ersAuto !== false ? F1.usarErsAuto(c.ers.carga, c.v, spec.vmax, (tr.pts[c.idx].k || 0) < 1 / 1500, c.draft > 0.25) : ent.ers));
   const ersAtivo = F1.gastarErs(c.ers, dt, usarErs, amb.ersAuto === false || c.draft > 0.25); // (overtake: colado no da frente, ou o botão no modo manual; senão o gasto suave da reta)
