@@ -1,0 +1,56 @@
+/* A carreira de F1, solo e com os amigos: vitrine escura com o carro em destaque, rastro de luz na cor da equipe, vidro sobre a foto do GP
+   e o menu em blocos. Vem por último: só muda a aparência das telas de sede.css e garagem.css. */
+:root{--vt-vidro:#0b0d12c9;--vt-linha:#ffffff1c;--vt-raio:14px;--vt-texto:#f4f6f8;--vt-apagado:#a3adb9}
+body::after{background:linear-gradient(180deg,#06070bd9,#06070bf2 60%,#06070b)}
+.sede{max-width:1400px}.sede h1,.sede h2,.sede h3{font-style:normal}
+.bar{background:transparent;border:0}
+
+/* a vitrine */
+.vt-hero{position:relative;isolation:isolate;overflow:hidden;min-height:clamp(470px,70vh,640px);display:flex;flex-direction:column;padding:clamp(16px,2.2vw,28px);margin:0 0 16px;border:1px solid var(--vt-linha);border-radius:18px;background:radial-gradient(90% 75% at 62% 62%,color-mix(in srgb,var(--eq,#e10600) 34%,transparent),transparent 68%),linear-gradient(180deg,#07090dcc,#050609f2)}
+.vt-rastro{position:absolute;z-index:-1;left:-12%;right:-12%;bottom:21%;height:34%;transform:rotate(-5deg);background:linear-gradient(90deg,transparent 2%,color-mix(in srgb,var(--eq,#e10600) 80%,#fff 8%) 42%,transparent 96%) 0 58%/100% 3px no-repeat,linear-gradient(90deg,transparent 12%,color-mix(in srgb,var(--eq,#e10600) 62%,transparent) 55%,transparent 100%) 0 76%/100% 2px no-repeat,linear-gradient(90deg,transparent 22%,#ffffff42 58%,transparent 92%) 0 36%/100% 1px no-repeat;filter:drop-shadow(0 0 14px var(--eq,#e10600))}
+.vt-hero::after{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:0;height:42%;background:linear-gradient(180deg,transparent,#050609e0)}
+.vt-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--vt-apagado);font:600 13px Manrope,system-ui,sans-serif}
+.vt-etapa{padding:7px 12px;border:1px solid var(--vt-linha);border-radius:99px;background:#ffffff0d;color:var(--vt-texto)}
+.vt-marca{display:flex;align-items:center;gap:9px;color:var(--vt-texto)}.vt-marca img{height:24px;width:auto;max-width:78px;object-fit:contain}
+.sede .vt-titulo{position:relative;z-index:1;margin:clamp(12px,2.4vw,28px) 0 0;text-align:center;font:500 clamp(40px,6.2vw,88px)/1 Manrope,system-ui,sans-serif;letter-spacing:-.045em;color:#fff;text-transform:none;text-shadow:0 4px 34px #000b}
+.vt-sub{position:relative;z-index:1;margin:9px 0 0;text-align:center;color:#d4dae1;font:500 14px Manrope,system-ui,sans-serif}
+.vt-carro{position:relative;flex:1 1 auto;min-height:230px;margin:-22px -8% -30px}.vt-carro .palco,.vt-carro .palco-slot{position:absolute;inset:0}
+.vt-base{position:relative;z-index:2;display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+.vt-cartao{flex:1 1 150px;min-width:0;padding:12px 15px;border:1px solid var(--vt-linha);border-radius:12px;background:#0a0c11b8;backdrop-filter:blur(14px)}
+.vt-cartao small{display:block;color:var(--vt-apagado);font:700 10px Manrope,system-ui,sans-serif;letter-spacing:.09em;text-transform:uppercase}
+.vt-cartao strong{display:block;margin-top:4px;color:#fff;font:500 clamp(25px,2.7vw,36px)/1.05 Manrope,system-ui,sans-serif;letter-spacing:-.03em;white-space:nowrap}.vt-cartao strong i{margin-left:4px;color:var(--vt-apagado);font:600 13px Manrope,system-ui,sans-serif;letter-spacing:0}
+.vt-acao{flex:0 1 240px;display:flex;align-items:center}.vt-acao>*{width:100%;margin:0}.vt-acao .muted{font-size:13px}
+.sede .vt-acao .primary{min-height:62px;border-radius:12px;background:var(--eq,#e10600);background-image:none;border:0;clip-path:none;transform:none;color:#fff;font:700 17px Manrope,system-ui,sans-serif;font-style:normal;letter-spacing:0;text-transform:none;text-shadow:0 1px 3px #0009}.sede .vt-acao .primary::before,.sede .vt-acao .primary::after{display:none}
+
+/* o menu em blocos */
+.sede .abas{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0;padding:0;border:0;background:none;overflow:visible}
+.sede .abas .aba{min-height:68px;padding:12px 14px;display:flex;align-items:flex-end;border:1px solid var(--vt-linha);border-radius:12px;background:linear-gradient(150deg,#ffffff12,#ffffff05);color:var(--vt-apagado);font:700 14px Manrope,system-ui,sans-serif;font-style:normal;letter-spacing:0;text-transform:none;text-align:left;box-shadow:none;transform:none}
+.sede .abas .aba:hover{color:#fff;border-color:#ffffff4d}.sede .abas .aba.on{color:#07080b;background:#fff;border-color:#fff;box-shadow:0 0 0 2px #06070b,0 0 0 4px #fff}
+.sede .abas .aba::after,.sede .abas .aba::before{display:none}
+
+/* topo e painéis */
+.cr-topo{border:0;padding:6px 0 14px}.cr-id h1{font:500 clamp(28px,3.4vw,44px)/1 Manrope,system-ui,sans-serif;letter-spacing:-.04em;text-transform:none}.cr-id small{letter-spacing:.04em}
+.cr-caixa{border:1px solid var(--vt-linha);border-radius:12px;background:var(--vt-vidro);box-shadow:none}.cr-caixa::before,.cr-caixa::after{display:none}
+.sede .bloco,.pn-equipe,.pn-gp,.gp-mapa,.gp-circuito,.circuito-ficha,.peca-card,.imersao,.campeao,.fim-noite{border:1px solid var(--vt-linha);border-radius:var(--vt-raio);background:var(--vt-vidro);backdrop-filter:blur(14px);box-shadow:none}
+.sede .bloco>header h2,.pn-gp>header h2{font:600 20px Manrope,system-ui,sans-serif;letter-spacing:-.02em;text-transform:none}
+.garagem-hero.vt-grade{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:14px 0}.gp-acao:empty{display:none}
+.placar{border-collapse:separate;border-spacing:0 3px}.placar td{background:#ffffff08}.placar td:first-child{border-radius:7px 0 0 7px}.placar td:last-child{border-radius:0 7px 7px 0}.placar tr.eu td{background:color-mix(in srgb,var(--eq,#e10600) 36%,transparent)}
+.sede .primary{border-radius:10px}.sede button,.sede select,.sede input{border-radius:9px}
+.recuperacao{border-color:var(--vt-linha);border-radius:12px}
+
+/* a entrada: o salão com as equipes */
+.abertura.vt-entrada{align-items:stretch;gap:16px;min-height:0}.vt-salao{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;min-height:min(680px,calc(100svh - 110px));padding:clamp(16px,2.2vw,28px);border:1px solid var(--vt-linha);border-radius:18px;background:radial-gradient(70% 50% at 50% 70%,color-mix(in srgb,var(--eq,#e10600) 30%,transparent),transparent 72%),linear-gradient(180deg,#07090dd9,#050609f5)}
+.vt-salao .taglinha{color:#d4dae1}.sede .vt-salao h1{margin:8px 0 0;font:500 clamp(38px,5.2vw,74px)/1 Manrope,system-ui,sans-serif;letter-spacing:-.045em;text-transform:none;color:#fff}.sede .vt-salao h1 span{display:inline;color:var(--eq,#e10600)}
+.vt-salao .vt-carro{min-height:280px;margin:-10px -6% 0}.vt-plataforma{position:absolute;z-index:-1;left:50%;bottom:112px;width:68%;height:22%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,#ffffff1f,#ffffff0a 62%,transparent 64%,color-mix(in srgb,var(--eq,#e10600) 72%,transparent) 66%,transparent 70%)}
+.vt-tiras{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(92px,1fr);gap:7px;overflow-x:auto;padding:4px 2px 6px;scrollbar-width:thin}
+.vt-tira{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:70px;padding:7px 5px;border:1px solid var(--vt-linha);border-radius:9px;background:color-mix(in srgb,var(--c) 26%,#0a0c11);color:#e5e9ee;font:700 10px Manrope,system-ui,sans-serif;text-transform:none;letter-spacing:0;box-shadow:none}.vt-tira img{height:24px;max-width:66px;object-fit:contain}.vt-tira.on{border-color:#fff;box-shadow:0 0 0 2px #fff}
+.sede .folha{align-self:stretch;border:1px solid var(--vt-linha);border-radius:18px;background:var(--vt-vidro);backdrop-filter:blur(14px);box-shadow:none}.sede .folha h2{font:600 24px Manrope,system-ui,sans-serif;letter-spacing:-.02em;text-transform:none}
+.eq-carta{border-radius:10px;border-color:var(--vt-linha)}.eq-carta.minha{box-shadow:0 0 0 2px #fff}
+
+@media(max-width:900px){.garagem-hero.vt-grade{grid-template-columns:1fr}.sede .abas{grid-template-columns:repeat(5,minmax(116px,1fr));overflow-x:auto;padding-bottom:6px}.sede .abas .aba{min-height:54px}.vt-salao{min-height:560px}}
+@media(max-width:620px){.vt-hero{min-height:560px}.vt-carro{min-height:190px;margin:-6px -12% -14px}.vt-cartao{flex-basis:calc(50% - 5px);padding:10px 12px}.vt-acao{flex:1 1 100%}.vt-topo{font-size:12px}}
+
+/* o botão da vitrine e as listas no mesmo tipo de letra */
+.sede .vt-acao .btn-continuar,.sede .vt-acao .btn-continuar:hover{width:100%;min-height:62px;padding:0 18px;border-radius:12px;background:var(--eq,#e10600)!important;background-image:none!important;border:0;clip-path:none;transform:none;box-shadow:none;color:#fff;font:700 17px Manrope,system-ui,sans-serif;letter-spacing:0;text-transform:none}
+.sede .vt-acao .btn-continuar::before,.sede .vt-acao .btn-continuar::after{display:none}
+.cal li,.cal b,.pn-attr span,.pn-logo b,.pn-nota small{font-family:Manrope,system-ui,sans-serif;font-style:normal;letter-spacing:0;text-transform:none}

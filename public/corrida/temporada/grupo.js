@@ -16,6 +16,30 @@ const pessoa = (id) => S && S.pessoas.find((p) => p.id === id);
 const marca = (id) => `<img src="/api/corrida/logo/${encodeURIComponent(id)}" alt="" onerror="this.style.display='none'">`;
 function falar(msg) { aviso.textContent = msg; aviso.classList.remove("hidden"); clearTimeout(falar.t); falar.t = setTimeout(() => aviso.classList.add("hidden"), 4500); }
 
+// Atualiza apenas os nós que mudaram. O palco WebGL, os controles em uso e os detalhes abertos
+// continuam no mesmo DOM quando outro jogador altera a sala.
+function atualizarTela(html) {
+  const molde = document.createElement("template"); molde.innerHTML = html;
+  function atualizar(a, b) {
+    if (a.nodeType !== b.nodeType || (a.nodeType === 1 && a.tagName !== b.tagName)) { a.replaceWith(b.cloneNode(true)); return; }
+    if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+    if (a.classList.contains("palco") && b.classList.contains("palco-slot")) {
+      if (a.dataset.eq === b.dataset.eq) return;
+      a.replaceWith(b.cloneNode(true)); return;
+    }
+    const ativo = a === document.activeElement, valor = ativo && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) ? a.value : null;
+    for (const at of [...a.attributes]) if (!b.hasAttribute(at.name) && !(a.tagName === "DETAILS" && at.name === "open")) a.removeAttribute(at.name);
+    for (const at of [...b.attributes]) if (!(a.tagName === "DETAILS" && at.name === "open") && a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+    let i = 0;
+    while (i < b.childNodes.length) { if (!a.childNodes[i]) a.appendChild(b.childNodes[i].cloneNode(true)); else atualizar(a.childNodes[i], b.childNodes[i]); i++; }
+    while (a.childNodes.length > b.childNodes.length) a.lastChild.remove();
+    if (valor !== null && [...(a.options || [])].some((o) => o.value === valor && !o.disabled)) a.value = valor;
+  }
+  let i = 0;
+  while (i < molde.content.childNodes.length) { if (!app.childNodes[i]) app.appendChild(molde.content.childNodes[i].cloneNode(true)); else atualizar(app.childNodes[i], molde.content.childNodes[i]); i++; }
+  while (app.childNodes.length > molde.content.childNodes.length) app.lastChild.remove();
+}
+
 // ---------- a conexão ----------
 function ligar() {
   if (socket) return socket;
@@ -82,12 +106,14 @@ function listaDePessoas() {
 function telaDaSala() {
   const eh = S.eu === S.host, alguem = S.pessoas.some((p) => p.equipe);
   document.documentElement.style.setProperty("--eq", S.minhaEquipe ? equipe(S.minhaEquipe).cor : "#e10600");
-  app.innerHTML = `<div class="cabecalho"><div class="identidade"><div><small>Temporada com os amigos</small><h1>Sala ${h(S.codigo)}</h1></div></div><div class="dinheiro"><small>${S.pessoas.length} de ${G.MAX_PESSOAS} pessoas</small><button id="gconvite" class="small">Copiar convite</button></div></div>
+  atualizarTela(`<div class="cabecalho"><div class="identidade"><div><small>Temporada com os amigos</small><h1>Sala ${h(S.codigo)}</h1></div></div><div class="dinheiro"><small>${S.pessoas.length} de ${G.MAX_PESSOAS} pessoas</small><button id="gconvite" class="small">Copiar convite</button></div></div>
+    ${window.F1Garagem.vitrineHero({ equipe: S.minhaEquipe, etapa: "Antes da largada", titulo: S.minhaEquipe ? h(equipe(S.minhaEquipe).nome) : "Escolha sua equipe", sub: `Sala ${h(S.codigo)} · ${S.opcoes.tamanho} GPs · ${S.opcoes.voltas} voltas` })}
     <p class="boxnota">Cada amigo escolhe uma equipe de 2026; dois podem dividir a mesma (um em cada carro, com o mesmo carro e um orçamento só). As equipes sem ninguém ficam com os robôs. Quem não escolher equipe acompanha a temporada e assiste aos GPs.</p>
     <div class="duas"><section class="bloco"><header><h2>Quem está na sala</h2><small>${eh ? "você é o anfitrião" : "o anfitrião começa a temporada"}</small></header>${listaDePessoas()}
       <div class="grupo-opcoes">${opcao("tamanho", "Calendário", [[4, "4 GPs · mini"], [8, "8 GPs"], [window.F1Temporada.PISTAS_TRABALHADAS.length, `${window.F1Temporada.PISTAS_TRABALHADAS.length} GPs · todas as pistas refeitas`]])}${opcao("voltas", "Voltas por GP", [[2, "2"], [3, "3"], [5, "5"], [10, "10"]])}${opcao("nivel", "Robôs", [["facil", "Fácil"], ["medio", "Médio"], ["dificil", "Difícil"]])}</div>
       <div class="row" style="margin-top:16px"><button class="primary" id="gcomecar" ${eh && alguem ? "" : "disabled"}>${eh ? "Começar a temporada →" : "Aguardando o anfitrião"}</button><button class="ghost" id="gsair">Sair da sala</button></div>${eh && !alguem ? `<p class="boxnota">Escolha pelo menos uma equipe para começar.</p>` : ""}</section>
-      <section class="bloco"><header><h2>Escolha sua equipe</h2><small>${S.minhaEquipe ? "toque de novo para desistir" : "11 equipes de 2026"}</small></header><div class="eq-grade">${Object.keys(Pilotos.EQUIPES).map(cartaDaEquipe).join("")}</div></section></div>`;
+      <section class="bloco"><header><h2>Escolha sua equipe</h2><small>${S.minhaEquipe ? "toque de novo para desistir" : "11 equipes de 2026"}</small></header><div class="eq-grade">${Object.keys(Pilotos.EQUIPES).map(cartaDaEquipe).join("")}</div></section></div>`);
+  window.F1Garagem.encaixar(S.minhaEquipe);
 }
 
 // ---------- a temporada ----------
@@ -146,17 +172,18 @@ function telaDaTemporada() {
       : eh ? `<button class="primary grande btn-continuar" id="giniciar">Continuar</button>` : `<p class="muted">Aguardando o anfitrião abrir o GP. Quando ele abrir, a sua tela vai para a pista sozinha.</p>`;
   const GA = window.F1Garagem, aba = GA.abaAtual(), dados = painelDaEquipe(terminou), nomeLinha = meuTime ? h(eq.nome) : "Você acompanha";
   const entrada = !meuTime && !terminou ? blocoDeSubstituir(terminou) : "";
-  const hero = `${entrada}${terminou ? "" : GA.mapaGP(prox.pista, S.gp + 1, !!S.acesso, previsao, S.opcoes.voltas)}<div class="garagem-hero">${meuTime ? GA.painelEquipe(meuTime, caixa.montagem) : `<aside class="pn-equipe"><div class="pn-logo" style="--eq:#444"><b>Você acompanha</b></div><p class="boxnota" style="padding:12px">Sem carro nesta temporada: acompanhe as tabelas e os GPs.</p></aside>`}
-      <section class="cr-centro corte">${meuTime ? GA.palcoSlot(meuTime) : ""}<div class="cr-gp"><span class="etapa-rot">${terminou ? "Bandeirada final" : `Etapa ${S.gp + 1} de ${tam}`}</span><h2>${terminou ? "Temporada concluída" : `GP de ${h(prox.nome)}`}</h2><span class="sub">${terminou ? "As tabelas finais estão em Classificação." : `${h(prox.pista.toUpperCase())} · classificação + ${S.opcoes.voltas} voltas · 20 carros · robôs ${h(S.opcoes.nivel)}`}</span></div></section>
-      ${GA.colunaDireita({ titulo: "Calendário", cal: S.calendario, gp: S.gp, rotuloProx: S.acesso ? "Em curso" : "Próximo", previsao, botao, nota: terminou ? "O campeonato está fechado." : S.acesso ? "O GP está aberto. Quem cair no meio tem o carro levado por um robô até voltar." : caixa && !Equipes.custoDaMontagem(caixa.montagem) ? "Seu carro está sem pontos. Distribua o orçamento na aba Carro · Pontos antes do GP." : "A classificação e a corrida são ao vivo, com todos os amigos juntos." })}</div>
-    <div class="cr-cartoes"><div class="cr-cartao"><strong>${S.gp}/${tam}</strong><small>GPs disputados</small></div><div class="cr-cartao"><strong>${t.pilotos.filter(meus).map((p) => p.pontos).join("") || "—"}</strong><small>Seus pontos</small></div><div class="cr-cartao"><strong>${meuTime ? t.equipes.find(deMinhaEquipe).pontos : "—"}</strong><small>Pontos da equipe</small></div><div class="cr-cartao"><strong>${caixa ? `${caixa.gasto}/${Solo.teto} mi` : "—"}</strong><small>Gastos no ano</small></div></div>
+  const meusPontos = t.pilotos.find(meus)?.pontos, pontosEquipe = meuTime ? t.equipes.find(deMinhaEquipe)?.pontos : null;
+  const hero = `${GA.vitrineHero({ equipe: meuTime, montagem: caixa && caixa.montagem, etapa: terminou ? "Bandeirada final" : `Etapa ${S.gp + 1} de ${tam}`, titulo: terminou ? "Temporada concluída" : h(prox.nome), sub: terminou ? "As tabelas finais estão em Classificação." : `${h(prox.pista.toUpperCase())} · classificação + ${S.opcoes.voltas} voltas · 20 carros · robôs ${h(S.opcoes.nivel)}`, botao,
+      cartoes: [{ rot: "Seus pontos", valor: meusPontos ?? "—", un: meusPontos == null ? "" : "pts" }, { rot: "Pontos da equipe", valor: pontosEquipe ?? "—", un: pontosEquipe == null ? "" : "pts" }, { rot: "Pessoas na sala", valor: S.pessoas.length }] })}
+    ${entrada}${terminou ? "" : GA.mapaGP(prox.pista, S.gp + 1, !!S.acesso, previsao, S.opcoes.voltas)}<div class="garagem-hero vt-grade">${meuTime ? GA.painelEquipe(meuTime, caixa.montagem) : `<aside class="pn-equipe"><div class="pn-logo" style="--eq:#444"><b>Você acompanha</b></div><p class="boxnota" style="padding:12px">Sem carro nesta temporada: acompanhe as tabelas e os GPs.</p></aside>`}
+      ${GA.colunaDireita({ titulo: "Calendário", cal: S.calendario, gp: S.gp, rotuloProx: S.acesso ? "Em curso" : "Próximo", previsao, botao: "", nota: "" })}</div>
     <section class="bloco" style="margin-top:14px"><header><h2>Na sala</h2><small>${S.pessoas.filter((p) => p.online).length} online</small></header>${listaDePessoas()}</section>
     ${S.campeoes.length ? `<section class="bloco" style="margin-top:14px"><header><h2>Campeões da noite</h2></header><ul class="pessoas">${S.campeoes.map((c) => `<li><b>Temporada ${c.ano}</b><span>${h(c.pilotoNome)} · ${h(c.equipeNome)}</span></li>`).join("")}</ul></section>` : ""}`;
   const classif = `${terminou ? fimDaNoite(t) : ""}<div class="duas"><section class="bloco"><header><h2>Pilotos</h2><small>Campeonato ${S.ano}</small></header>${tabela(t.pilotos, "Piloto", meus)}</section><section class="bloco"><header><h2>Construtores</h2><small>Campeonato ${S.ano}</small></header>${tabela(t.equipes, "Equipe", deMinhaEquipe)}</section></div>${ultimo ? resumoDoGP(ultimo, meuTime) : ""}`;
   const painel = aba === "circuitos" ? GA.circuitosHTML(S.calendario, S.gp) : ({ geral: hero, carro: dados.carro, classif, equipe: dados.equipe }[aba] || hero);
-  app.innerHTML = `<div class="cr-topo"><div class="cr-id">${meuTime ? marca(meuTime) : ""}<div><small>Temporada ${S.ano} · sala ${h(S.codigo)}</small><h1>${nomeLinha}</h1></div></div><div class="cr-caixa"><small>${caixa ? "Caixa da equipe" : `${S.pessoas.length} pessoas`}</small><b>${caixa ? dinheiro(caixa.caixa) : "—"}</b></div></div>
+  atualizarTela(`<div class="cr-topo"><div class="cr-id">${meuTime ? marca(meuTime) : ""}<div><small>Temporada ${S.ano} · sala ${h(S.codigo)}</small><h1>${nomeLinha}</h1></div></div><div class="cr-caixa"><small>${caixa ? "Caixa da equipe" : `${S.pessoas.length} pessoas`}</small><b>${caixa ? dinheiro(caixa.caixa) : "—"}</b></div></div>
     ${GA.abasHTML()}<div class="painel-aba" role="tabpanel">${painel}</div>
-    <div class="recuperacao"><span>Sala guardada no servidor · código ${h(S.codigo)}</span><button id="gconvite">Copiar convite</button><a href="/corrida/temporada/">Temporada solo</a>${eh ? `<button id="gencerrar" class="discreto">Encerrar a temporada</button>` : ""}<button id="gsairtemp" class="discreto">Sair da temporada</button></div>`;
+    <div class="recuperacao"><span>Sala guardada no servidor · código ${h(S.codigo)}</span><button id="gconvite">Copiar convite</button><a href="/corrida/temporada/">Temporada solo</a>${eh ? `<button id="gencerrar" class="discreto">Encerrar a temporada</button>` : ""}<button id="gsairtemp" class="discreto">Sair da temporada</button></div>`);
   GA.encaixar(meuTime);
 }
 function desenhar(erro) {

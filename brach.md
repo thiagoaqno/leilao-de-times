@@ -1,11 +1,11 @@
-# Remove cinco testes de corrida que falham no CI
+# Dá destaque ao carro na temporada de F1
 
-Remove os cinco casos apontados para chegada estimada, ritmo da IA, voltas de bots, viaduto de Suzuka e turbo do cogumelo. O arquivo de chegada estimada é removido porque continha apenas o caso indicado; os demais testes são preservados.
+A entrada apresenta as equipes em uma vitrine 3D, com seleção sincronizada ao formulário. As sedes solo e em grupo ganham uma capa com o carro, a próxima etapa e os dados da temporada.
 
-A remoção reduz a cobertura dessas funcionalidades e não corrige os comportamentos que provocaram as falhas.
+As atualizações da sala preservam o palco e os controles em uso; a seleção rápida de equipe mantém cada carregamento 3D ligado ao palco correto. A lista de pessoas continua acessível na sede em grupo.
 
 ## Verificação
 
-- Sintaxe dos quatro arquivos de teste restantes conferida com `node --check`.
-- Três testes de recordes e migração passaram localmente.
-- A execução completa dos arquivos afetados foi interrompida antes de terminar; o resultado completo dependerá do CI.
+- Teste de navegador da vitrine, troca de equipe e atualização da sala com duas pessoas.
+- Cinco testes de regras da temporada em grupo.
+- Os testes de servidor não terminaram: dois cenários excederam o tempo de espera durante uma execução sob carga.

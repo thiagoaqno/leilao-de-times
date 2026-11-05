@@ -137,13 +137,24 @@ function encaixar(equipeId) {
   const slot = document.querySelector(".palco-slot"); if (!slot) return;
   if (!palco || palcoEq !== equipeId) {
     if (palco && palco._parar) palco._parar();
-    palco = document.createElement("div"); palco.className = "palco"; palcoEq = equipeId;
+    palco = document.createElement("div"); palco.className = "palco"; palco.dataset.eq = equipeId; palcoEq = equipeId;
     palco.innerHTML = `<canvas aria-label="Seu carro de F1 em 3D" role="img"></canvas><span class="palco-msg">Carregando o carro…</span>`;
-    if (!falhou3D) import("/corrida/temporada/car3d.js").then((m) => m.montar(palco, equipeId)).then(() => palco.classList.add("pronto")).catch((e) => { falhou3D = true; palco.classList.add("sem3d"); palco.querySelector(".palco-msg").textContent = ""; console.warn("carro 3D indisponível", e); });
+    const alvo = palco;
+    if (!falhou3D) import("/corrida/temporada/car3d.js").then((m) => m.montar(alvo, equipeId)).then(() => { if (alvo !== palco) alvo._parar?.(); else alvo.classList.add("pronto"); }).catch((e) => { if (alvo !== palco) return; falhou3D = true; alvo.classList.add("sem3d"); alvo.querySelector(".palco-msg").textContent = ""; console.warn("carro 3D indisponível", e); });
   }
   slot.replaceWith(palco);
 }
 const palcoSlot = (eq) => `<div class="palco-slot" data-eq="${h(eq)}"></div>`;
+// troca o carro do salão da entrada
+function trocarVitrine(equipeId) { const box = document.getElementById("vitrine"); if (!box) return; box.innerHTML = palcoSlot(equipeId); encaixar(equipeId); }
+// a vitrine do topo: o carro em destaque, o título e os cartões. `etapa`, `titulo` e `sub` já vêm escapados; os cartões são escapados aqui.
+function vitrineHero({ equipe, montagem, etapa, titulo, sub, botao = "", cartoes = [] }) {
+  const eq = equipe && FP().EQUIPES[equipe];
+  const cartao = (c) => `<div class="vt-cartao"><small>${h(c.rot)}</small><strong>${h(c.valor)}${c.un ? `<i>${h(c.un)}</i>` : ""}</strong></div>`;
+  return `<section class="vt-hero"${eq ? ` style="--eq:${h(eq.cor)}"` : ""}><div class="vt-rastro" aria-hidden="true"></div><div class="vt-topo"><span class="vt-etapa">${etapa}</span>${eq ? `<span class="vt-marca"><img src="/api/corrida/logo/${encodeURIComponent(equipe)}" alt="" onerror="this.style.display='none'">${h(eq.nome)}</span>` : ""}</div>
+    <h2 class="vt-titulo">${titulo}</h2><p class="vt-sub">${sub}</p><div class="vt-carro">${eq ? palcoSlot(equipe) : ""}</div>
+    <div class="vt-base">${cartoes.map(cartao).join("")}${botao ? `<div class="vt-acao">${botao}</div>` : ""}</div></section>`;
+}
 
 // ---------- as peças: um cartão por peça, agrupadas por categoria, com a barra de orçamento ----------
 const EFEITO_ROT = { motor: "Motor", aero: "Carga", chassi: "Leveza", freios: "Freio", suspensao: "Suspensão", confiab: "Confiab." };
@@ -198,5 +209,5 @@ function cliquePonto(botao, montagem, equipe, bonus = 0) {
   return { ...montagem, [k]: nivel };
 }
 
-root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, fundoDoGP, circuitosHTML, previsaoDoGP, palcoSlot, encaixar, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
+root.F1Garagem = { ABAS, abaAtual, definirAba, abasHTML, icone, bandeira, painelEquipe, calendario, colunaDireita, mapaGP, fundoDoGP, circuitosHTML, previsaoDoGP, palcoSlot, encaixar, trocarVitrine, vitrineHero, orcamentoBarra, pecasHTML, cliquePeca, pontosHTML, cliquePonto, notaGeral };
 })(window);
