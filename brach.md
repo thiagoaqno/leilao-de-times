@@ -1,8 +1,11 @@
-# Corrida em grupo sai do lobby ao preparar a pista
+# Remove cinco testes de corrida que falham no CI
 
-Quando uma pista era preparada em segundo plano pela primeira vez, a largada começava depois da resposta inicial sem atualizar imediatamente os jogadores. Eles podiam continuar no lobby enquanto a corrida já estava em andamento. O servidor agora envia o estado da sala assim que a preparação termina e a largada é iniciada.
+Remove os cinco casos apontados para chegada estimada, ritmo da IA, voltas de bots, viaduto de Suzuka e turbo do cogumelo. O arquivo de chegada estimada é removido porque continha apenas o caso indicado; os demais testes são preservados.
+
+A remoção reduz a cobertura dessas funcionalidades e não corrige os comportamentos que provocaram as falhas.
 
 ## Verificação
 
-- Conferência manual de uma sala local com dois jogadores em navegadores diferentes: ambos receberam a corrida após a preparação.
-- Sintaxe e diff conferidos; verificações automatizadas no GitHub.
+- Sintaxe dos quatro arquivos de teste restantes conferida com `node --check`.
+- Três testes de recordes e migração passaram localmente.
+- A execução completa dos arquivos afetados foi interrompida antes de terminar; o resultado completo dependerá do CI.
