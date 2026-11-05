@@ -28,7 +28,7 @@ const PASSO = 1 / 120;       // o passo fixo da física, no navegador e no servi
 // gasto, freio na curva) trava a roda. O pedal sobe em 1/FREIO_SOBE s.
 // (+20% sobre a versão anterior, 1,925 e 0,55: o freio pedido e o que o pneu segura antes de travar crescem juntos, então o pedal cheio com o pneu bom segue sem travar)
 const V_ENGATA_RE = 3; // u/s (~2 km/h): abaixo disto, segurando só o freio, engata a ré (anda para trás até uns 70 u/s)
-const FREIO_G = 2.43, FREIO_AERO = 0.66, FREIO_SOBE = 4.5;
+const FREIO_G = 2.67, FREIO_AERO = 0.66, FREIO_SOBE = 4.5;
 // O quanto o pneu aguenta de freio antes de travar (múltiplo da aderência lateral): folgado com o pneu bom (1,25) e justo com o pneu que
 // perdeu aderência (gasto, frio, molhado, depois de uma batida), onde o pedal cheio já trava a roda. Vai de ATRITO_MIN a ATRITO_MAX
 // conforme a aderência `kGrip` sobe de GRIP_TRAVA a GRIP_TRAVA + 0,25.
