@@ -52,7 +52,11 @@ const preparar = (id, hora) => { const chave = `${id}:${hora}`; if (id && chave 
 socket.on("state", (st) => {
   relogio.doEstado(st.now); relogioF1.palpite(st.now - agoraLocal()); // (o relógio do estado só serve até as respostas do NTP chegarem)
   const old = E.S; E.S = st;
-  if (st.phase === "lobby") { show("lobby"); renderLobby(); stopRace(); preparar(st.config.pista, st.config.hora); $("quali").classList.add("hidden"); return; }
+  if (st.phase === "lobby") {
+    if (!E.entradaDireta) { show("lobby"); renderLobby(); }
+    stopRace(); preparar(st.config.pista, st.config.hora); $("quali").classList.add("hidden"); return;
+  }
+  E.entradaDireta = false;
   show("race");
   if (!race || (race.startAt !== st.startAt && !adiantarLargada(st))) startRace(st);
   if (race) race.safety = st.direcao?.safety || null;

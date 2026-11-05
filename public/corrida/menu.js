@@ -185,10 +185,11 @@ function criar(config, inicio) {
   const name = exigirNome(); if (!name) return;
   $("hErr").textContent = "";
   criandoSala = true;
+  E.entradaDireta = inicio?.largar === true;
   socket.emit("create", { name, skin: store.get("galera:skin"), config, inicio }, (r) => {
     criandoSala = false;
-    if (r) enter(r);
-    else $("hErr").textContent = "Não foi possível criar a sala. Tente novamente.";
+    if (r?.ok) enter(r);
+    else { E.entradaDireta = false; $("hErr").textContent = r?.error || "Não foi possível criar a sala. Tente novamente."; }
   });
 }
 const configRapida = () => ({ pista: rapida.pista, regras: "f1", voltas: rapida.voltas, nivel: rapida.nivel, robos: 19, clima: rapida.clima, classificacao: rapida.classificacao });
