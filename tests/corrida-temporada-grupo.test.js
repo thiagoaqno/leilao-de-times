@@ -75,6 +75,24 @@ test("regras: dois na mesma equipe, mercado disputado, versão da montagem e his
   G.contratarEngenheiro(sala, "d", "mecanico", 2);
 });
 
+test("regras: quem entra com a temporada rolando assume o lugar de um piloto de robô", () => {
+  const P = require("../public/corrida/f1-pilotos-2026.js"), R = require("../public/corrida/temporada/grupo-regras.js");
+  const s = R.criarSala("ABCD", { id: "a", nome: "Ana", tokenHash: "x" });
+  R.escolherEquipe(s, "a", "mclaren"); R.iniciar(s, "a", 123);
+  R.entrar(s, { id: "b", nome: "Bia", tokenHash: "y" });
+  const [alvo, outro] = P.PILOTOS.filter((p) => p.equipe === "ferrari"), carros = R.idsEsperados(s).length;
+  R.substituirPiloto(s, "b", alvo.id);
+  assert.equal(s.pessoas.b.equipe, "ferrari");
+  assert.equal(s.contratos[alvo.id], null);
+  assert.equal(s.equipes.ferrari.companheiro, outro.id);
+  assert.equal(R.idsEsperados(s).length, carros);
+  assert.ok(R.idsEsperados(s).includes("h:b") && !R.idsEsperados(s).includes(alvo.id));
+  assert.throws(() => R.substituirPiloto(s, "b", outro.id), /já tem um carro/);
+  R.entrar(s, { id: "c", nome: "Caio", tokenHash: "z" });
+  assert.throws(() => R.substituirPiloto(s, "c", outro.id), /equipe de amigos/);
+  assert.throws(() => R.substituirPiloto(s, "c", alvo.id), /sem equipe/);
+});
+
 test("regras: o resultado fecha as tabelas, só uma vez por GP, e o campeão sai no fim", () => {
   const sala = G.criarSala("ABCDE", { id: "a", nome: "Ana", tokenHash: "x" });
   G.entrar(sala, { id: "b", nome: "Beto", tokenHash: "y" });
