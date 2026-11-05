@@ -1,0 +1,23 @@
+const { test, expect } = require('@playwright/test');
+test('vitrine troca de equipe e a sala preserva o carro nas atualizações', async ({ browser }) => {
+  const a = await browser.newContext({ viewport: { width: 1200, height: 800 } });
+  await a.addInitScript(() => localStorage.setItem("corrida:aviso-gpu-v1", "1"));
+  const page = await a.newPage();
+  await page.goto('/corrida/temporada/');
+  await page.locator('[data-vitrine="ferrari"]').click();
+  await expect(page.locator('#equipe')).toHaveValue('ferrari');
+  await expect(page.locator('[data-vitrine="ferrari"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#gnome').fill('Ana');
+  await page.locator('#gnova button').click();
+  await page.locator('[data-equipe="ferrari"]').click();
+  await expect(page.locator('.palco')).toHaveAttribute('data-eq', 'ferrari');
+  await page.locator('#gcomecar').click();
+  await expect(page.locator('.vt-hero')).toBeVisible();
+  await expect(page.locator('.palco')).toHaveAttribute('data-eq', 'ferrari');
+  await page.evaluate(() => { window.palcoOriginal = document.querySelector('.palco'); });
+  const b = await browser.newContext(); await b.addInitScript(() => localStorage.setItem("corrida:aviso-gpu-v1", "1")); const amigo = await b.newPage();
+  await amigo.goto(page.url()); await amigo.locator('#gnome').fill('Bia'); await amigo.locator('#gnomeconv button').click();
+  await expect(page.locator('.pessoas')).toContainText('Bia');
+  expect(await page.evaluate(() => window.palcoOriginal === document.querySelector('.palco'))).toBe(true);
+  await b.close(); await a.close();
+});
