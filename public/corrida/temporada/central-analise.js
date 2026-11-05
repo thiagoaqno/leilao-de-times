@@ -15,7 +15,7 @@ const LETRA = { macio: "S", medio: "M", duro: "H", chuva: "W", intermediario: "I
 const corPneu = (c) => F()?.PNEUS?.[c]?.cor || "#888";
 const nomePneu = (c) => F()?.PNEUS?.[c]?.nome || c;
 const media = (l) => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : null);
-const nomeDe = (id, s) => (id === "voce" ? s.nome : Pil().PILOTOS.find((p) => p.id === id)?.nome || id);
+const nomeDe = (id, s) => (id === "voce" ? s.nome : s.nomesExtras?.[id] || Pil().PILOTOS.find((p) => p.id === id)?.nome || id);
 const sobrenome = (n) => String(n || "").trim().split(/\s+/).at(-1).toUpperCase();
 function stints(d, voltas) {
   const fim = d.v?.length || voltas, lista = []; let de = 1, c = d.c0;

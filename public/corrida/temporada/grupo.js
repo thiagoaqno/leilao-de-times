@@ -162,8 +162,33 @@ function fimDaNoite(t) {
   return `<section class="fim-noite"><div class="taglinha">Fim da noite · temporada ${S.ano}</div><h2>${h(t.pilotos[0].nome)} é o campeão</h2><p>Construtores: <b>${h(t.equipes[0].nome)}</b>${t.equipes[0].humana ? " (equipe de amigos)" : ""}. O caixa e o carro de cada equipe seguem para o próximo ano.</p>
     <table class="placar"><thead><tr><th>Pos.</th><th>Amigo</th><th>Pontos</th></tr></thead><tbody>${amigos.map((p) => `<tr class="${p.pessoa === S.eu ? "eu" : ""}"><td>${t.pilotos.indexOf(p) + 1}</td><td><i class="faixa" style="--c:${h(equipe(p.equipe).cor)}"></i><b>${h(p.nome)}</b> <small class="muted">${h(equipe(p.equipe).nome)} · ${p.vitorias} vitória${p.vitorias === 1 ? "" : "s"} · ${p.podios} pódio${p.podios === 1 ? "" : "s"}</small></td><td><b>${p.pontos}</b></td></tr>`).join("")}</tbody></table></section>`;
 }
+// A temporada de quem tem carro usa a mesma Central da carreira solo (central.js): aqui a sala vira o "save" que ela entende, com o meu piloto como "voce".
+function telaCentral(terminou) {
+  const eq = S.minhaEquipe, t = S.equipes[eq], me = G.idDoHumano(S.eu), C = window.Central, Reg = window.F1Temporada, eh = S.eu === S.host, GA = window.F1Garagem;
+  const vira = (id) => (id === me ? "voce" : id);
+  const resultados = S.resultados.map((r) => ({ ...r, financas: r.financas?.[eq] || {}, linhas: r.linhas.map((l) => ({ ...l, piloto: vira(l.piloto) })), analise: r.analise ? { ...r.analise, pilotos: Object.fromEntries(Object.entries(r.analise.pilotos).map(([k, v]) => [vira(k), v])) } : null }));
+  const eu = S.pessoas.find((p) => p.id === S.eu), tam = S.opcoes.tamanho;
+  const s = { nome: eu?.nome || "", equipe: eq, ano: S.ano, gp: S.gp, tamanho: tam, voltas: S.opcoes.voltas, nivel: S.opcoes.nivel, semente: S.semente, montagem: t.montagem, bonus: t.bonus, caixa: t.caixa, gasto: t.gasto || 0, patrocinio: t.patrocinio, engenheiros: t.engenheiros, piloto2: t.companheiro, calendario: S.calendario, resultados, nomesExtras: Object.fromEntries(S.pessoas.map((p) => [G.idDoHumano(p.id), p.nome])) };
+  const meuId = (tb) => ({ ...tb, pilotos: tb.pilotos.map((p) => (p.id === me ? { ...p, id: "voce" } : p)) });
+  const pessoasMapa = Object.fromEntries(S.pessoas.map((p) => [p.id, p]));
+  const tabelasDe = (res) => meuId(G.tabelas({ ...S, pessoas: pessoasMapa, ordem: S.pessoas.map((p) => p.id), resultados: res.map((r) => ({ ...r, linhas: r.linhas.map((l) => (l.piloto === "voce" ? { ...l, piloto: me } : l)) })) }));
+  const tab = meuId(S.tabelas), gps = resultados.filter((r) => r.ano === S.ano), im = { ...Reg.imersao(s), classificacao: tab.pilotos.findIndex((p) => p.id === "voce") + 1 };
+  const seta = '<svg class="cx-seta" viewBox="0 0 24 14" aria-hidden="true"><path d="M1 7h21M15 1l7 6-7 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg>';
+  const botao = terminou ? (eh ? `<button type="button" class="cx-bt" id="gproxima">Começar próxima temporada ${seta}</button>` : '<p class="cx-espera">O anfitrião abre a próxima temporada</p>')
+    : S.acesso ? `<button type="button" class="cx-bt" id="gentrargp">${S.acesso.watch ? "Assistir ao GP" : "Entrar no GP"} ${seta}</button>`
+      : eh ? `<button type="button" class="cx-bt" id="giniciar">Avançar para o fim de semana ${seta}</button>` : '<p class="cx-espera">Aguardando o anfitrião abrir o GP</p>';
+  const ultimo = S.resultados.filter((r) => r.ano === S.ano).at(-1);
+  const caixaMensagens = ultimo ? resumoDoGP(ultimo, eq) : '<section class="bloco imersao"><header><h2>Caixa de mensagens</h2></header><p class="boxnota">O resumo de cada GP aparece aqui depois da corrida.</p></section>';
+  const ladoGrupo = `<aside class="cx-ct-lado"><section class="cx-card cx-seu"><div class="cx-seu-topo"><div><span class="cx-seu-tag">Sala ${h(S.codigo)}</span><h3>Na sala</h3><small>${S.pessoas.filter((p) => p.online).length} online</small></div></div>${listaDePessoas()}<button type="button" class="cx-contorno cx-seu-bt" id="gconvite">Copiar convite</button></section>${S.campeoes.length ? `<section class="cx-card cx-persp"><h5>Campeões da noite</h5><ul>${S.campeoes.map((c) => `<li>Temporada ${c.ano}: ${h(c.pilotoNome)} • ${h(c.equipeNome)}</li>`).join("")}</ul></section>` : ""}</aside>`;
+  const menuHTML = `<a href="/corrida/">Menu da Corrida</a><button id="gconvite">Copiar convite</button><a href="/corrida/temporada/">Temporada solo</a>${eh ? '<button id="gencerrar" class="discreto">Encerrar a temporada</button>' : ""}<button id="gsairtemp" class="discreto">Sair da temporada</button>`;
+  const ctx = { grupo: S.codigo, s, t: tab, eq: equipe(eq), im, prox: S.calendario[S.gp], ativo: S.acesso || null, terminou, previsao: terminou ? null : GA.previsaoDoGP(S.semente, S.ano, S.gp), botao, gps, rival: im.rival, mercado: painelDaEquipe(terminou).equipe, caixaMensagens, codigoHTML: "", nMensagens: ultimo ? 1 : 0, dinheiro, minhas: C.estatisticas(gps), tabelasDe, idsGrid: tab.pilotos.slice(0, G.GRID).map((p) => p.id), idDesenvolver: "gdesenvolver", ladoGrupo, menuHTML };
+  C.usarRender(desenhar);
+  app.innerHTML = C.html(ctx); C.depois(ctx);
+}
 function telaDaTemporada() {
   const meuTime = S.minhaEquipe, eq = meuTime && equipe(meuTime), t = S.tabelas, tam = S.opcoes.tamanho, terminou = S.gp >= tam, eh = S.eu === S.host;
+  if (meuTime) return telaCentral(terminou);
+  window.Central?.sair(); // (quem só acompanha fica com a tela das tabelas)
   document.documentElement.style.setProperty("--eq", eq ? eq.cor : "#e10600");
   const prox = S.calendario[S.gp], previsao = terminou ? null : window.F1Garagem.previsaoDoGP(S.semente, S.ano, S.gp), ultimo = S.resultados.filter((r) => r.ano === S.ano).at(-1), caixa = meuTime && S.equipes[meuTime];
   const meus = (x) => x.pessoa === S.eu, deMinhaEquipe = (x) => x.id === meuTime;
@@ -190,7 +215,7 @@ function desenhar(erro) {
   if (!S) { window.F1Garagem.fundoDoGP(null); return telaDoConvite(erro); }
   document.title = `Temporada F1 · sala ${S.codigo}`;
   // a foto do circuito do próximo GP no fundo, só enquanto há GP a jogar
-  window.F1Garagem.fundoDoGP(S.fase !== "sala" && S.gp < S.opcoes.tamanho ? S.calendario[S.gp]?.pista : null);
+  window.F1Garagem.fundoDoGP(S.fase !== "sala" && !S.minhaEquipe && S.gp < S.opcoes.tamanho ? S.calendario[S.gp]?.pista : null);
   if (S.fase === "sala") telaDaSala(); else telaDaTemporada();
 }
 
@@ -205,6 +230,7 @@ function irAoGP(acesso) {
 const clicar = async (e) => {
   if (!socket || !S) return;
   const b = e.target.closest("button"); if (!b) return;
+  if (document.body.classList.contains("cx-on") && window.Central.clique(b, desenhar)) return;
   const t = S.minhaEquipe && S.equipes && S.equipes[S.minhaEquipe];
   if (b.dataset.equipe) await pedir("equipe", { id: S.minhaEquipe === b.dataset.equipe ? null : b.dataset.equipe });
   else if (b.dataset.opcao) await pedir("opcoes", { [b.dataset.opcao]: b.dataset.valor });

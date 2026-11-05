@@ -226,7 +226,7 @@ function gridDoGP(sala) {
 }
 const idDoHumano = (pid) => `h:${pid}`;
 function idsEsperados(sala) { const g = gridDoGP(sala); return [...g.humanos.map((h) => idDoHumano(h.pid)), ...g.robos.map((p) => p.id)]; }
-function registrarResultado(sala, linhas) {
+function registrarResultado(sala, linhas, analise = null) {
   ativa(sala);
   const esperados = idsEsperados(sala), n = esperados.length;
   if (!Array.isArray(linhas) || linhas.length !== n) throw Error("Resultado incompleto.");
@@ -236,6 +236,7 @@ function registrarResultado(sala, linhas) {
     || linhas.filter((r) => r.voltaRapida).length > 1) throw Error("Resultado inválido."); // (a volta mais rápida vale +1, para um só)
   const gp = sala.calendario[sala.gp];
   const resultado = { ano: sala.ano, gp: sala.gp, pista: gp.pista, linhas: linhas.map((r) => ({ piloto: r.piloto, equipe: r.equipe, pos: r.pos, pontos: r.pontos || 0, dnf: !!r.dnf, nc: !!r.nc, voltaRapida: !!r.voltaRapida })), financas: {} };
+  if (analise) resultado.analise = analise; // as voltas do GP, para a aba Análise (corrida-analise.js)
   sala.resultados.push(resultado); sala.gp++;
   for (const [eq, t] of Object.entries(sala.equipes)) {
     const pontos = resultado.linhas.filter((r) => r.equipe === eq).reduce((s, r) => s + r.pontos, 0), premio = 4 + Math.round(pontos * 0.4);
@@ -269,6 +270,7 @@ function tabelas(sala) {
 function proximaTemporada(sala, pid) {
   if (sala.host !== pid) throw Error("Só o anfitrião abre a próxima temporada.");
   if (sala.fase !== "temporada" || sala.gp !== sala.opcoes.tamanho) throw Error("Termine o calendário primeiro.");
+  for (const r of sala.resultados) if (r.ano < sala.ano) delete r.analise; // o detalhe volta a volta só vale para o ano atual e o anterior
   sala.ano++; sala.gp = 0; sala.semente = Number(sala.semente) + 937;
   const sorteado = Solo.sortearCalendario(sala.opcoes.tamanho, sala.semente, sala.calendario.map((g) => g.pista));
   sala.calendario = sorteado.calendario; sala.calendarioSemente = sorteado.semente;
