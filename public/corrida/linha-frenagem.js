@@ -1,6 +1,6 @@
 // Linha de auxílio pessoal: o mesmo traçado otimizado usado pelos robôs, sem interferir nos comandos.
 import * as THREE from "three";
-import { carOf, me } from "./estado.js";
+import { E, carOf, me, sNow } from "./estado.js";
 
 const CHAVE = "corrida:linha-frenagem", QUANTAS = 28, PASSO = 4;
 let ligada = false;
@@ -18,7 +18,7 @@ export function criarLinhaFreio(cena) {
   geometria.setAttribute("color", new THREE.BufferAttribute(cores, 3).setUsage(THREE.DynamicDrawUsage));
   const material = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
   const malha = new THREE.Mesh(geometria, material); malha.name = "linha-frenagem"; malha.visible = false; malha.frustumCulled = false; malha.renderOrder = 2; cena.add(malha);
-  let ultima = -Infinity, pista = null, carro = null, limites = new Map(), linha = null, requisitando = false, novaTentativa = 0, parou = false;
+  let ultima = -Infinity, pista = null, carro = null, usandoReferencia = false, limites = new Map(), linha = null, requisitando = false, novaTentativa = 0, parou = false;
   const cor = new THREE.Color();
   function carregar(tr) {
     if (requisitando || performance.now() < novaTentativa) return;
@@ -31,7 +31,9 @@ export function criarLinhaFreio(cena) {
     const k = ((i % tr.n) + tr.n) % tr.n;
     if (limites.has(k)) return limites.get(k);
     const curvatura = linha.k[k];
-    const v = curvatura > 0.00001 ? window.Dinamica.velocidadeDeCurva(spec, 1 / curvatura) * 0.95 : spec.vmax;
+    const v = usandoReferencia
+      ? linha.velocidades[k] * Math.min(1.15, Math.max(0.85, spec.vmax / linha.vmaxReferencia))
+      : curvatura > 0.00001 ? window.Dinamica.velocidadeDeCurva(spec, 1 / curvatura) * 0.95 : spec.vmax;
     limites.set(k, v); return v;
   }
   function atualizar(race, visivel) {
@@ -42,7 +44,10 @@ export function criarLinhaFreio(cena) {
     if (!linha) { carregar(tr); return; }
     malha.visible = true;
     if (agora - ultima < 150) return; ultima = agora;
-    if (carro !== spec) { carro = spec; limites.clear(); }
+    const pneu = race.car.pneu, agua = window.F1Regras.climaEm(E.S?.clima, sNow()).agua;
+    // A referência observada é para a Ferrari com médio e pista seca. Fora disso, volta ao modelo físico genérico.
+    const ref = linha.velocidades?.length === n && linha.vmaxReferencia > 0 && me().equipe === "ferrari" && spec.chave === linha.montagemReferencia && pneu?.composto === "medio" && pneu.desgaste <= 0.25 && !agua && !(me().dano || 0);
+    if (carro !== spec || usandoReferencia !== !!ref) { carro = spec; usandoReferencia = !!ref; limites.clear(); }
     const velocidade = Math.abs(race.car.v || 0), dano = window.F1Regras.efeitoDoDano(me().dano || 0);
     const freio = Math.max(20, window.Dinamica.frenagemMaxima(spec, velocidade) * 0.7 * dano.freio);
     const indice = Number.isFinite(race.car.idx) ? race.car.idx : race.idx;

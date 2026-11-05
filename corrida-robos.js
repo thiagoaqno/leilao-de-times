@@ -4,6 +4,7 @@
 // permite. Pegam caixas e usam os itens. Para os navegadores eles são pilotos como os outros: a posição sai pelo
 // mesmo evento "ghost" e as voltas contam pelos mesmos setores.
 const T = require("./public/corrida/pistas.js");
+const CalibracaoMonaco = require("./corrida-monaco-calibracao.js");
 const Linha = require("./corrida-linha.js"); // a linha de corrida por otimização (curvatura mínima)
 const { Worker } = require("node:worker_threads");
 const path = require("node:path");
@@ -50,6 +51,12 @@ const CACHE = new Map();
 // meio dos vizinhos (o caminho mais reto possível), sem passar da beira. O resultado abre antes da curva, encosta
 // por dentro no ápice e volta a abrir na saída. Devolve o deslocamento lateral de cada ponto (lat) e a curvatura dele.
 const LINHAS = new Map();
+// Cópia independente do perfil: nunca altera o cache compartilhado pelos outros pilotos.
+function perfilCalibradoMonaco(pf) {
+  const lat = Float64Array.from(pf.lat, (v, i) => v * CalibracaoMonaco.pesoDaLinha(i / pf.n));
+  const latF1 = Float64Array.from(lat, (_, i) => lat[(i + 2) % pf.n]);
+  return { ...pf, lat, kf: curvaturaDoCaminho(pf.pts, latF1, 12, 6), perfisF1: new Map(), tabelas: new Map() };
+}
 // o maior deslocamento do centro do carro que cabe entre as barreiras explícitas de uma pista (`muros` em pistas.js, Baku: a Cidade Velha é estreita); Infinity onde a pista é a de sempre
 function tetoDoMuro(t, pts) {
   const n = pts.length, teto = new Float64Array(n).fill(Infinity); if (!t.muros) return teto;
@@ -90,8 +97,14 @@ const LINHAS_PUBLICAS = new Map();
 function linhaF1Pronta(pista) {
   if (!tracadoPronto(pista)) return null;
   if (!LINHAS_PUBLICAS.has(pista)) {
-    const linha = tracado(pista, true), k = curvaturaDoCaminho(linha.pts, linha.lat, 12, 6);
-    LINHAS_PUBLICAS.set(pista, { lat: Array.from(linha.lat, (v) => Math.round(v * 100) / 100), k: Array.from(k, (v) => Math.round(v * 1e7) / 1e7) });
+    const linha = tracado(pista, true), n = linha.n;
+    const calibrada = pista === CalibracaoMonaco.CALIBRACAO.pista && CalibracaoMonaco.validaPara(linha.pts);
+    const lat = calibrada
+      ? Float64Array.from(linha.lat, (_, i) => { const j = (i + 2) % n; return linha.lat[j] * CalibracaoMonaco.pesoDaLinha(j / n); })
+      : linha.lat;
+    const k = curvaturaDoCaminho(linha.pts, lat, 12, 6);
+    LINHAS_PUBLICAS.set(pista, { lat: Array.from(lat, (v) => Math.round(v * 100) / 100), k: Array.from(k, (v) => Math.round(v * 1e7) / 1e7),
+      ...(calibrada ? { velocidades: CalibracaoMonaco.REFERENCIA.velocidades, vmaxReferencia: F1Equipes.specDaEquipe("ferrari").vmax, montagemReferencia: CalibracaoMonaco.CALIBRACAO.montagem } : {}) });
   }
   return LINHAS_PUBLICAS.get(pista);
 }
@@ -401,6 +414,9 @@ function largar(room) {
       pneu: f1 ? F1.pneuNovo(p.pneu) : null, ers: f1 ? F1.ersNovo() : null, plano, box: null,
       estilo: f1 ? estiloDe(room, p, rng) : null, vies, erro: null, erroLivre: 0, ult: null };
     if (f1) {
+      if (room.config.pista === CalibracaoMonaco.CALIBRACAO.pista && p.piloto?.id === CalibracaoMonaco.CALIBRACAO.piloto && !pf.aprendeu && CalibracaoMonaco.validaPara(pf.pts)) {
+        p.ia.perfilCalibrado = perfilCalibradoMonaco(pf);
+      }
       if (t.width <= LARGURA_ESTREITA) p.ia.jeito *= 0.5; // menos variação lateral entre as muretas
       p.ia.jeito += p.ia.estilo.lado;
       if (room.config.pista === "monaco") p.ia.jeito *= 0.5; // menos oscilação entre os muros, sem mudar os desvios do trânsito
@@ -930,7 +946,10 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     const chicaneMonaco = room.config.pista === "monaco" && !tr.t.muros && ((f > 0.625 && f < 0.655) || (f > 0.805 && f < 0.835));
     const chicaneLivre = chicaneMonaco && !tf.encontrou && !amb.safety && !amb.amarela && !p.azul && !cl.agua &&
       (car.pneu?.desgaste || 0) < 0.5 && (p.dano || 0) < 10 && !car.inst;
-    Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent, chicaneLivre ? 1.15 : 1);
+    const treino = ia.usarCalibracaoMonaco;
+    const velocidadePiloto = treino ? alvo * CalibracaoMonaco.ritmoNaVolta(f) : alvo;
+    const olharPiloto = (chicaneLivre ? 1.15 : 1) * (treino ? CalibracaoMonaco.CALIBRACAO.olhar : 1);
+    Sim.pilotoAutomatico(car, tr, spec, velocidadePiloto, latAdiante, ent, olharPiloto);
     if (chicaneLivre && car.v < alvo * 1.20) ent.brake = 0;
     // Em ar limpo, uma pequena sobra de velocidade pode ser corrigida tirando o pé.
     if (room.config.pista === "monaco" && !tf.encontrou && !amb.safety && !amb.amarela && !cl.agua && car.v <= alvo * 1.10) ent.brake = 0;
@@ -969,7 +988,9 @@ function passo(room, dt, setor, emit) {
   for (const id of room.order) {
     const p = room.players[id]; if (!p.bot || !p.ia) continue;
     // Um robô que assumiu um humano pode não ter perfil ainda; calcula só uma vez ao assumir.
-    const ia = p.ia, pf = ia.perfil || (ia.perfil = perfil(room.config.pista, p.spec || p.car, ia.tracadoId)), c = pf.c;
+    const ia = p.ia, base = ia.perfil || (ia.perfil = perfil(room.config.pista, p.spec || p.car, ia.tracadoId));
+    ia.usarCalibracaoMonaco = f1 && CalibracaoMonaco.podeUsar(room, p, ia, outrosF1, now, F1);
+    const pf = ia.usarCalibracaoMonaco ? ia.perfilCalibrado : base, c = pf.c;
     if (f1 && ia.sim) {
       if (p.dnf) { ia.sim.v = ia.v = 0; if (p.pos) { p.pos.v = 0; p.pos.at = now; } continue; }
       if (corrida && p.finish == null && now >= room.startAt + ia.reacao) passoF1(room, p, ia, pf, dt, now, setor, emit, outrosF1);
@@ -1074,4 +1095,4 @@ function passo(room, dt, setor, emit) {
 }
 function possivel(pista, spec) { return perfilF1(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0), 1); }
 possivel.topo = (pista, spec) => topoDe(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0));
-module.exports = { transito, prepararTracado, tracadoPronto, linhaF1Pronta, idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };
+module.exports = { perfilCalibradoMonaco, transito, prepararTracado, tracadoPronto, linhaF1Pronta, idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };
