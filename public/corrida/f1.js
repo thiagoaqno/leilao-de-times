@@ -76,12 +76,12 @@ function pintura(base, cor1, cor2, equipe, numero, fundo = false, novo = false, 
   return m;
 }
 // Os slicks têm tons discretamente diferentes; só o pneu de chuva tem sulcos.
-const TOM_PNEU = { macio: -0.06, medio: 0, duro: 0.05, chuva: -0.02 };
+const TOM_PNEU = { macio: -0.06, medio: 0, duro: 0.05, chuva: -0.02, intermediario: -0.02 };
 // o pneu: faixa e acabamento mudam por uniform, sem carregar textura nem recompilar
 function pneuMat(base, composto, depois = "map_fragment") {
   const m = base.clone();
   m.roughness = 0.92; m.metalness = 0;
-  m.userData.faixa = { faixa: { value: new THREE.Color(FAIXAS[composto] || "#ffffff") }, faixaOn: { value: FAIXAS[composto] ? 1 : 0 }, pneuChuva: { value: composto === "chuva" ? 1 : 0 }, pneuTom: { value: TOM_PNEU[composto] || 0 } };
+  m.userData.faixa = { faixa: { value: new THREE.Color(FAIXAS[composto] || "#ffffff") }, faixaOn: { value: FAIXAS[composto] ? 1 : 0 }, pneuChuva: { value: (composto === "chuva" || composto === "intermediario") ? 1 : 0 }, pneuTom: { value: TOM_PNEU[composto] || 0 } };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, m.userData.faixa);
     sh.vertexShader = PNEU_VERT_DECL + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>" + PNEU_VERT_MAIN);
@@ -314,7 +314,7 @@ export function trocarComposto(k, composto) {
   composto = composto || null; if (k.composto === composto) return; k.composto = composto;
   const u = k.pneu?.userData?.faixa; if (!u) return;
   if (FAIXAS[composto]) { u.faixa.value.set(FAIXAS[composto]); u.faixaOn.value = 1; } else u.faixaOn.value = 0;
-  u.pneuChuva.value = composto === "chuva" ? 1 : 0; u.pneuTom.value = TOM_PNEU[composto] || 0;
+  u.pneuChuva.value = (composto === "chuva" || composto === "intermediario") ? 1 : 0; u.pneuTom.value = TOM_PNEU[composto] || 0;
 }
 export function trocarCores(k, cor1, cor2) { k.cores = [cor1, cor2]; const u = k.pintura?.userData?.cores; if (u) { u.cor1.value.set(cor1); u.cor2.value.set(cor2); } }
 export function soltarF1(k) { k.solto = true; for (const m of k.mats) m.dispose(); } // a malha é a mesma para todos os carros: fica

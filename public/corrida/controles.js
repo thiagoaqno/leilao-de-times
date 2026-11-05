@@ -26,7 +26,7 @@ export function trocarMarcha(d) {
 // do MFD (mfd.js). Fora do HUD de F1 (arcade, classificação) não há MFD e as setas seguem esterçando, como sempre.
 const SETAS = { ArrowUp: "gas", ArrowDown: "freio", ArrowLeft: "esq", ArrowRight: "dir" };
 const PILOTO = { gas: "gas", freio: "brake", esq: "left", dir: "right" };
-const PNEUS = { pneu1: "macio", pneu2: "medio", pneu3: "duro", pneu4: "chuva" };
+const PNEUS = { pneu1: "macio", pneu2: "medio", pneu3: "duro", pneu4: "chuva", pneu5: "intermediario" };
 document.addEventListener("keydown", (e) => {
   if (!race || e.target.tagName === "INPUT" || ui.aberto) return;
   if (menuBoxTecla(e)) return; // com o menu do box aberto (o carro parado na garagem) as teclas são só dele

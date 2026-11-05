@@ -6,9 +6,9 @@
 // pendente só fica no pneu atual se ele ainda está bom.
 (function (root) {
 
-const ORDEM = ["macio", "medio", "duro", "chuva"];
+const ORDEM = ["macio", "medio", "duro", "chuva", "intermediario"];
 // as ações de tecla do box → composto (1 a 4, na ordem de ORDEM)
-const PNEU_DA_ACAO = { pneu1: "macio", pneu2: "medio", pneu3: "duro", pneu4: "chuva" };
+const PNEU_DA_ACAO = { pneu1: "macio", pneu2: "medio", pneu3: "duro", pneu4: "chuva", pneu5: "intermediario" };
 const compostoDaAcao = (id) => PNEU_DA_ACAO[id] || null;
 
 // Os compostos com jogo restante (`jogos`: { macio, medio, duro, chuva })
@@ -21,7 +21,7 @@ function padraoDoB({ atual, jogos, stopGo, desgaste = 0, selecionado = null }) {
   if (selecionado && op.includes(selecionado)) return selecionado;
   if (stopGo && desgaste < 0.5) return atual;
   const i = ORDEM.indexOf(atual);
-  for (let k = 1; k <= 3; k++) { const c = ORDEM[(i + k + 4) % 4]; if (op.includes(c)) return c; }
+  for (let k = 1; k < ORDEM.length; k++) { const c = ORDEM[(i + k + ORDEM.length) % ORDEM.length]; if (op.includes(c)) return c; }
   return op[0] || atual;
 }
 

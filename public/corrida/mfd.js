@@ -51,8 +51,8 @@ const HTML = {
     <div class="mp-par"><span>Modo</span><b data-r="eModo">—</b></div><div class="mp-par"><span>DRS</span><b data-r="eDrs">—</b></div>
     <div class="mp-par"><span>Combustível</span><b>não medido no jogo</b></div></div>`,
   box: `<div class="mp mp-box"><div class="mp-janela"><small>JANELA DE BOX</small><b data-r="bJan">—</b><em data-r="bSub"></em></div>
-    <div class="bx-linha" role="group" aria-label="Escolher o pneu da parada">${["macio", "medio", "duro", "chuva"].map((c, i) => `<button type="button" class="bx-btn" data-c="${c}" data-r="bx${c}"><kbd>${i + 1}</kbd><i class="bx-pn"></i><b>${["MACIO", "MÉDIO", "DURO", "CHUVA"][i]}</b><span></span></button>`).join("")}</div>
-    <p class="mp-nota bx-info" data-r="bInfo"></p><p class="mp-nota mp-fraca" data-r="bDica"><kbd>1</kbd>–<kbd>4</kbd> escolhe e pede · <kbd>B</kbd> ou <kbd>Enter</kbd> pede o selecionado · <kbd>Backspace</kbd> cancela</p></div>`,
+    <div class="bx-linha" role="group" aria-label="Escolher o pneu da parada">${["macio", "medio", "duro", "chuva", "intermediario"].map((c, i) => `<button type="button" class="bx-btn" aria-label="${F().PNEUS[c].nome}" data-c="${c}" data-r="bx${c}"><kbd>${i + 1}</kbd><i class="bx-pn"></i><b>${["MACIO", "MÉDIO", "DURO", "CHUVA", "INTER."][i]}</b><span></span></button>`).join("")}</div>
+    <p class="mp-nota bx-info" data-r="bInfo"></p><p class="mp-nota mp-fraca" data-r="bDica"><kbd>1</kbd>–<kbd>5</kbd> escolhe e pede · <kbd>B</kbd> ou <kbd>Enter</kbd> pede o selecionado · <kbd>6</kbd> cancela</p></div>`,
   tempos: `<div class="mp mp-tempos"><div class="mp-par"><span>Volta atual</span><b data-r="tAtual">0:00.000</b></div><div class="mp-par"><span>Corrida</span><b data-r="tCorrida">0:00.0</b></div><div class="mp-par"><span>Última volta</span><b data-r="tUlt">—:--.---</b></div><div class="mp-par"><span>Melhor volta</span><b data-r="tMelhor">—:--.---</b></div>
     <div class="mp-par"><span>Volta mais rápida</span><b class="roxo" data-r="tVR">—</b></div>
     <div class="mp-par frente"><span>Carro da frente</span><b data-r="tFrente">—</b></div><div class="mp-par tras"><span>Carro de trás</span><b data-r="tTras">—</b></div></div>`,
@@ -82,7 +82,7 @@ function pedirRadio(tipo) {
 }
 
 // ---------- as linhas ajustáveis (setas ‹ › ): só o que o jogo de fato muda ----------
-const compostosPossiveis = () => ["macio", "medio", "duro", "chuva"].filter((c) => jogosDe(me())[c] > 0);
+const compostosPossiveis = () => ["macio", "medio", "duro", "chuva", "intermediario"].filter((c) => jogosDe(me())[c] > 0);
 const LINHAS = {
   radio: [
     { rot: "Diagnóstico do carro", valor: () => "Pedir", mudar: () => pedirRadio("carro") },
@@ -92,7 +92,7 @@ const LINHAS = {
     { rot: "Quem está atrás", valor: () => "Pedir", mudar: () => { if (!acoes.radioRival || !acoes.radioRival("tras")) toast("Ninguém por perto atrás.", 1500); } },
   ],
   box: [
-    { rot: "Próximo pneu", dica: "1–4", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return B.pedido === "decidir" ? "Na garagem" : F().PNEUS[B.pedido || proximo()].nome; },
+    { rot: "Próximo pneu", dica: "1–5", valor() { const B = race && race.box; if (!B) return "—"; if (B.fase) return "No box"; return B.pedido === "decidir" ? "Na garagem" : F().PNEUS[B.pedido || proximo()].nome; },
       mudar(d) {
         const B = race && race.box; if (!B || B.fase) return;
         const op = compostosPossiveis(); if (!op.length) { toast("Sem jogos de pneu: " + textoJogos(me()), 1800); return; }
@@ -131,7 +131,7 @@ function alternarBox() {
 // B apertado "de confirmação" que desfazia o 4). Cancelar é do Backspace, do mesmo número duas vezes não (é só confirmação) ou da linha "Pedir box".
 function confirmarBox() {
   const B = race && race.box; if (!B || B.fase) return;
-  if (B.pedido) { toast(`🔧 Box pedido: ${nomeDoPedido(B.pedido)} (Backspace cancela)`, 1600); return; }
+  if (B.pedido) { toast(`🔧 Box pedido: ${nomeDoPedido(B.pedido)} (6 cancela)`, 1600); return; }
   pedirPadrao();
 }
 const naPaginaBox = () => !!race && !!race.box && mfd.aberto && mfd.pagina === "box";
@@ -379,7 +379,7 @@ const ATU = {
     else if (!j.precisa) { set(r.bJan, "t", "SEM PARADA"); set(r.bSub, "t", j.motivo); }
     else { set(r.bJan, "t", j.abre === j.fecha ? `VOLTA ${j.abre}` : `VOLTA ${j.abre} – ${j.fecha}`); set(r.bSub, "t", j.motivo || "janela estimada pelo desgaste"); }
     const jogos = jogosDe(m), sel = B.pedido || proximo(), atual = race.pneu ? race.pneu.composto : null;
-    for (const c of ["macio", "medio", "duro", "chuva"]) {
+    for (const c of ["macio", "medio", "duro", "chuva", "intermediario"]) {
       const bt = r["bx" + c], n = jogos[c];
       set(bt, "c", "bx-btn" + (B.pedido === c ? " pedido" : sel === c ? " sel" : "") + (n <= 0 && !(m.stopGo && c === atual) ? " esgotado" : "") + (c === atual ? " atual" : ""));
       set(bt, "style", `--c:${F.PNEUS[c].cor}`); set(bt.querySelector("span"), "t", n <= 0 ? "esgotado" : n + (n === 1 ? " jogo" : " jogos"));

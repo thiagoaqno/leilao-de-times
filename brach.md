@@ -1,11 +1,10 @@
-# Dá destaque ao carro na temporada de F1
+# Acrescenta o pneu intermediário
 
-A entrada apresenta as equipes em uma vitrine 3D, com seleção sincronizada ao formulário. As sedes solo e em grupo ganham uma capa com o carro, a próxima etapa e os dados da temporada.
+A temporada e as salas de F1 passam a oferecer o intermediário de faixa verde. Na garoa ele tem a aderência do pneu de chuva em pista encharcada; na chuva forte, a do pneu de chuva na garoa. Sua vida útil é de quatro voltas no molhado e duas no seco, com desgaste proporcional nas transições.
 
-As atualizações da sala preservam o palco e os controles em uso; a seleção rápida de equipe mantém cada carregamento 3D ligado ao palco correto. A lista de pessoas continua acessível na sede em grupo.
+O número 5 pede o intermediário e o 6 cancela o pedido de box antes de entrar no corredor. A opção também aparece na largada, no MFD e no menu da garagem; a seleção, a física e o protocolo são compartilhados com o servidor. Robôs e recomendações consideram o novo composto. As descrições de todos os pneus foram atualizadas e a estimativa de vida no HUD considera a água na pista.
 
 ## Verificação
 
-- Teste de navegador da vitrine, troca de equipe e atualização da sala com duas pessoas.
-- Cinco testes de regras da temporada em grupo.
-- Os testes de servidor não terminaram: dois cenários excederam o tempo de espera durante uma execução sob carga.
+- Testes das regras de pneus, clima, limite de jogos, escolhas e menu do box.
+- Teste de navegador da largada com intermediário e dos atalhos 5 e 6.

@@ -782,7 +782,7 @@ export function aroDaRoda(pos, idx) {
 }
 
 // ---------------------------------------------------------------- o pneu: a faixa do composto (como as da Pirelli)
-export const FAIXAS = { macio: "#e8202a", medio: "#ffd100", duro: "#f4f4f4", chuva: "#1e7fd6" };
+export const FAIXAS = { macio: "#e8202a", medio: "#ffd100", duro: "#f4f4f4", chuva: "#1e7fd6", intermediario: "#39c85a" };
 // Os secos são slicks; o de chuva recebe canais no piso. O padrão usa a posição local, então gira junto com a roda.
 export const PNEU_VERT_DECL = "attribute vec2 aro;\nattribute float pneuLat;\nvarying vec2 vAro;\nvarying float vPneuLat;\n";
 export const PNEU_VERT_MAIN = "\nvAro = aro; vPneuLat = pneuLat;";

@@ -89,13 +89,13 @@ export function hud() {
   const B = race.box, idBox = B && (B.fase ? B.composto : B.pedido), nomeBox = idBox === "decidir" ? "pneu a escolher na garagem" : idBox && window.F1Regras.PNEUS[idBox] ? window.F1Regras.PNEUS[idBox].nome : "";
   if (m && m.dsq) msg = "🏴 BANDEIRA PRETA: você foi desclassificado";
   else if (m && m.dnf) msg = "💥 PERDA TOTAL: o carro está destruído, você está fora";
-  else if (B && B.fase === "escolha") msg = "🔧 BOX: escolha o pneu (1 a 4, 5 não troca · ← → e Enter)";
+  else if (B && B.fase === "escolha") msg = "🔧 BOX: escolha o pneu (1 a 5 · ← → e Enter)";
   else if (B && B.fase && B.stopGo) msg = B.fase === "entra" ? `🛑 STOP-AND-GO: limitador de velocidade` : B.fase === "parada" ? `🛑 STOP-AND-GO: parado ${Math.max(0, B.parada - B.t).toFixed(1)} s, sem trocar o pneu` : "🛑 STOP-AND-GO cumprido: saindo do box";
   else if (B && B.fase) msg = B.fase === "entra" ? `🔧 BOX: limitador de velocidade` : B.fase === "parada" ? `🔧 ${window.F1Regras.textoDaParada(B.parada)} · trocando para o ${nomeBox} · ${Math.max(0, B.parada - B.t).toFixed(1)} s` : "🔧 BOX: saindo, pneu novo ainda frio";
   else if (E.S.direcao?.safety) msg = "🚨 SAFETY CAR: reduza e mantenha a posição";
   else if (E.S.direcao?.amarelo?.setor === Math.floor(race.idx / (tr.n / SECTORS))) msg = "🟡 BANDEIRA AMARELA: não ultrapasse";
-  else if (B && B.pedido && m && m.stopGo) msg = `🛑 STOP-AND-GO ${m.stopGo.s} s na próxima passagem pelo box (B cancela)`;
-  else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1, 2, 3, 4 trocam · B cancela) · jogos ${textoJogos(m)}`;
+  else if (B && B.pedido && m && m.stopGo) msg = `🛑 STOP-AND-GO ${m.stopGo.s} s na próxima passagem pelo box (6 cancela)`;
+  else if (B && B.pedido) msg = `🔧 BOX: ${nomeBox} (1 a 5 trocam · 6 cancela) · jogos ${textoJogos(m)}`;
   else if (m && m.balaUntil > now) msg = "🚀 BALA! (piloto automático)";
   else if (m && m.spinUntil > now) msg = "💥 ATINGIDO!";
   else if (m && m.shrinkUntil > now) msg = "⚡ ENCOLHIDO PELO RAIO!";
