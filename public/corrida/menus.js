@@ -30,8 +30,7 @@ export function show(id) {
   document.body.classList.toggle("sala-escura", id === "home" || id === "lobby"); // as telas da sala usam o fundo escuro de sala de controle
   document.body.classList.toggle("em-home", id === "home");
   menuNaTela(id === "home");
-  clearTimeout(window.timerPreparoCorrida);
-  document.getElementById("preparoCorrida")?.remove();
+  if (id !== "home") window.preparoPronto?.();
   if (id === "lobby" && !eraSala) { // entrou na sala (ou voltou da corrida): a etapa de agora entra animada; depois da corrida, direto no grid
     if (veioDaCorrida) { etapa = "grid"; veioDaCorrida = false; }
     animarEntrada(el(etapa));

@@ -78,7 +78,7 @@ function derrapando(imp, idDoOutro) {
   return Math.abs(Math.atan2(Math.sin(Math.atan2(vy, vx) - a), Math.cos(Math.atan2(vy, vx) - a))) > DERRAPA_ANGULO;
 }
 const FREADA_BRUSCA = 140; // u/s² (~3 g): o atingido freando mais que isto na frente do causador não conta como batida proposital
-const DANO_CAUSADOR = { leve: 1, media: 2, grave: 3 }, DANO_BATIDO = { leve: 0, media: 0, grave: 0.5 };
+const DANO_CAUSADOR = { leve: 12, media: 20, grave: 35 }, DANO_BATIDO = { leve: 0, media: 0, grave: 0.5 };
 function bater(room, p, forca, tipo, agora, log, chave = tipo) {
   if (!room.direcao || room.phase !== 'race' || !p || p.dnf || p.finish != null || p.box || agora < room.startAt) return null;
   const cd = p.batidaPares || (p.batidaPares = {});

@@ -35,10 +35,14 @@ async function ligarGaragem() {
     modGaragem ||= await import("/corrida/garagem3d.js");
     if (!naTela || garagem) return;
     $("mn").classList.add("carro-vindo");
-    garagem = modGaragem.criarGaragem($("mnPalco"), { aoCarregar: () => $("mn").classList.remove("carro-vindo") });
-    if (!garagem) { $("mn").classList.add("sem3d"); return; }
+    let carroPronto = false;
+    garagem = modGaragem.criarGaragem($("mnPalco"), {
+      aoCarregar: () => { carroPronto = true; $("mn").classList.remove("carro-vindo"); },
+      aoDesenhar: () => { if (carroPronto) window.preparoPronto?.(); }
+    });
+    if (!garagem) { $("mn").classList.add("sem3d"); window.preparoPronto?.(); return; }
     garagem.vista(ehCelular() ? "celular" : painel ? "painel" : "menu", true); garagem.trocarEquipe(equipeDoCarro());
-  } catch (e) { console.warn("garagem 3D indisponível", e); $("mn").classList.add("sem3d"); }
+  } catch (e) { console.warn("garagem 3D indisponível", e); $("mn").classList.add("sem3d"); window.preparoPronto?.(); }
 }
 addEventListener("resize", () => { if (garagem) garagem.vista(ehCelular() ? "celular" : painel ? "painel" : "menu"); }, { passive: true });
 
