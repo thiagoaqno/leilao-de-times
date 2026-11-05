@@ -104,7 +104,9 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
           const p = room.players[r.id];
           return { piloto: p.pessoa ? G.idDoHumano(p.pessoa) : p.piloto.id, equipe: p.equipe, pos: r.pos, pontos: r.pontos, dnf: r.dnf, nc: r.nc, voltaRapida: !!r.voltaRapida };
         });
-        G.registrarResultado(atual, linhas);
+        let analise = null; // a análise é um extra: um erro nela nunca pode perder o resultado do GP
+        try { analise = require("./corrida-analise.js").resumo(room, (p) => (p.pessoa ? G.idDoHumano(p.pessoa) : p.piloto.id)); } catch (e) { console.warn("temporada em grupo: análise do GP não salva:", e.message); }
+        G.registrarResultado(atual, linhas, analise);
         ativos.delete(atual.codigo); guardar(atual); avisar(atual);
       } catch (e) { console.warn("temporada em grupo: GP não registrado:", e.message); }
     };

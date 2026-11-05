@@ -36,8 +36,9 @@ test('temporada em grupo também mostra os mapas numerados em tela estreita', as
   await page.locator('#gnome').fill('Piloto'); await page.locator('#gnova button[type=submit]').click();
   await page.locator('[data-equipe="mclaren"]').click();
   await page.locator('#gcomecar').click();
-  await page.locator('[data-aba="circuitos"]').click();
-  const ficha = page.locator('.circuito[open]');
+  await page.locator('[data-cx-aba="calendario"]').click();
+  await page.locator('.cx-gp[data-gp="0"]').click();
+  const ficha = page.locator('#cxSobreDlg');
   await expect(ficha.locator('.sn-sobre-svg')).toBeVisible();
   await ficha.locator('.sn-curva').first().click();
   await expect(ficha.locator('.sn-marca.hi')).toHaveCount(1);

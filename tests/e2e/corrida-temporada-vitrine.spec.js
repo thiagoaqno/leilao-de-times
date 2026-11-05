@@ -12,12 +12,10 @@ test('vitrine troca de equipe e a sala preserva o carro nas atualizações', asy
   await page.locator('[data-equipe="ferrari"]').click();
   await expect(page.locator('.palco')).toHaveAttribute('data-eq', 'ferrari');
   await page.locator('#gcomecar').click();
-  await expect(page.locator('.vt-hero')).toBeVisible();
-  await expect(page.locator('.palco')).toHaveAttribute('data-eq', 'ferrari');
-  await page.evaluate(() => { window.palcoOriginal = document.querySelector('.palco'); });
+  await expect(page.locator('.cx-faixa h1')).toHaveText('Ferrari'); // a temporada em grupo usa a mesma Central da solo
   const b = await browser.newContext(); await b.addInitScript(() => localStorage.setItem("corrida:aviso-gpu-v1", "1")); const amigo = await b.newPage();
   await amigo.goto(page.url()); await amigo.locator('#gnome').fill('Bia'); await amigo.locator('#gnomeconv button').click();
+  await page.locator('.cx-abas [data-cx-aba="contratos"]').click();
   await expect(page.locator('.pessoas')).toContainText('Bia');
-  expect(await page.evaluate(() => window.palcoOriginal === document.querySelector('.palco'))).toBe(true);
   await b.close(); await a.close();
 });

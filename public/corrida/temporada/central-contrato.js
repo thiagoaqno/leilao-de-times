@@ -17,7 +17,7 @@ const IC = {
 };
 
 function objetivos(c) {
-  const { s, im } = c, UI = U(), o = Reg().objetivos(s), logo = () => `<span class="cx-ob-logo">${UI.marca(s.equipe)}${UI.tricolor()}</span>`, restam = s.tamanho - s.gp, E = Pil().EQUIPES[s.equipe];
+  const { s, im } = c, UI = U(), o = Reg().objetivos(s, c.t), logo = () => `<span class="cx-ob-logo">${UI.marca(s.equipe)}${UI.tricolor()}</span>`, restam = s.tamanho - s.gp, E = Pil().EQUIPES[s.equipe];
   const P = o.pilotos, K = o.contagem, Q = o.construtores, pc = Math.min(100, K.atual / K.alvo * 100);
   return `<section class="cx-card cx-exp"><div class="cx-exp-topo">${UI.tituloCard(`Expectativas da ${h(E.nome)}`)}<span class="cx-selo">${restam ? `${restam} ${restam === 1 ? "etapa restante" : "etapas restantes"}` : "Temporada encerrada"}</span></div><div class="cx-exp-grid"><div>${IC.capacete}<span><small>Pilotos</small><b>Top ${o.expectativa.pilotos}</b></span></div><div>${IC.taca}<span><small>Construtores</small><b>${o.expectativa.construtores === 1 ? "1º lugar" : `Top ${o.expectativa.construtores}`}</b></span></div><div>${IC.gente}<span><small>Confiança da equipe</small><b class="branco">${im.confianca}<em> / 100</em></b></span><i class="cx-exp-barra"><u style="width:${im.confianca}%"></u></i></div></div></section>
     <section class="cx-card cx-princ"><div class="cx-exp-topo">${UI.tituloCard("Objetivos principais")}<small>Avaliação ao fim da temporada</small></div>
@@ -48,8 +48,10 @@ function lado(c) {
 }
 function html(c) {
   const { s, gps } = c, UI = U();
+  if (c.grupo && !["objetivos", "box"].includes(sub)) sub = "objetivos"; // a temporada em grupo não tem contrato: o caixa e o mercado são da equipe
+  const subs = c.grupo ? SUBS.filter((x) => ["objetivos", "box"].includes(x[0])) : SUBS;
   const corpo = sub === "contrato" ? meuContrato(c) : sub === "renovacao" ? renovacao(c) : sub === "propostas" ? propostas(c) : sub === "box" ? `<div class="cx-g-contratos">${c.mercado}</div>` : objetivos(c);
-  return `<div class="cx-g-ct"><div class="cx-ct-esq"><div class="cx-cabeca compacta"><div class="cx-cab-tit"><div><h2>Contrato e objetivos da temporada</h2><small>Temporada ${UI.dois(s.ano)} • ${gps.length} de ${s.tamanho} etapas concluídas</small></div></div></div><div class="cx-dv-abas cx-an-abas">${SUBS.map(([id, n]) => `<button type="button" class="${id === sub ? "on" : ""}" aria-pressed="${id === sub}" data-cx-ct="${id}">${n}</button>`).join("")}</div><div class="cx-ct-corpo">${corpo}</div></div>${lado(c)}</div>`;
+  return `<div class="cx-g-ct"><div class="cx-ct-esq"><div class="cx-cabeca compacta"><div class="cx-cab-tit"><div><h2>${c.grupo ? "Equipe e objetivos da temporada" : "Contrato e objetivos da temporada"}</h2><small>Temporada ${UI.dois(s.ano)} • ${gps.length} de ${s.tamanho} etapas concluídas</small></div></div></div><div class="cx-dv-abas cx-an-abas">${subs.map(([id, n]) => `<button type="button" class="${id === sub ? "on" : ""}" aria-pressed="${id === sub}" data-cx-ct="${id}">${n}</button>`).join("")}</div><div class="cx-ct-corpo">${corpo}</div></div>${c.ladoGrupo || lado(c)}</div>`;
 }
 function clique(b, render) { if (b.dataset.cxCt) { sub = b.dataset.cxCt; render(); document.querySelector(`.cx-an-abas [data-cx-ct="${sub}"]`)?.focus({ preventScroll: true }); return true; } return false; }
 root.CentralContrato = { html, clique };

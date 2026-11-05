@@ -1,5 +1,7 @@
 /* As abas Análise e Contratos da carreira. Vem depois de central.css e usa as mesmas variáveis (--eq, --eq2, --eq-txt). */
 .cx-cab-tit>i.cx-tri{width:auto;height:3px;transform:none;box-shadow:none;background:linear-gradient(90deg,var(--eq) 0 42%,#f0f2f5 42% 62%,var(--eq2) 62% 100%)}
+.cx-grupo .cx-bonus-tit,.cx-grupo .cx-bonus{display:none}
+.cx-espera{margin:0;padding:10px 16px;font:800 italic clamp(13px,1.1vw,16px)/1.15 var(--display);text-transform:uppercase;color:#dfe4ea}
 .cx-oculto{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .cx-roxo{color:#d58cff!important}
 .cx-an-abas{margin-top:clamp(0px,.3vh,4px)}
@@ -120,3 +122,33 @@
   .cx-an-estr li{grid-template-columns:30px 5px 84px minmax(0,1fr)}.cx-an-estr li>em{display:none}
   .cx-ritmo-topo .cx-legenda{position:static;transform:none;padding:4px 12px}
 }
+
+/* ---------- a porta de entrada da carreira e a sala com os amigos, no mesmo tema (a cor vem de --eq, que muda com a equipe) ---------- */
+body:not(.cx-on){--cx-t:cubic-bezier(.2,.8,.2,1)}
+body:not(.cx-on) .sede{max-width:1500px}
+body:not(.cx-on) .folha,body:not(.cx-on) .sede .bloco{position:relative;background:linear-gradient(155deg,color-mix(in srgb,var(--eq) 16%,#08090df5),#050609f5);border:1px solid color-mix(in srgb,var(--eq) 34%,#ffffff24);border-top:4px solid var(--eq);border-radius:10px;box-shadow:0 18px 50px #000a,0 0 34px color-mix(in srgb,var(--eq) 20%,transparent);transition:border-color .2s,box-shadow .25s}
+body:not(.cx-on) .folha:hover,body:not(.cx-on) .sede .bloco:hover{border-color:color-mix(in srgb,var(--eq) 70%,#fff);box-shadow:0 18px 50px #000a,0 0 44px color-mix(in srgb,var(--eq) 36%,transparent)}
+body:not(.cx-on) .folha h2,body:not(.cx-on) .sede .bloco h2{font-weight:900;font-size:clamp(28px,3vw,44px)}
+body:not(.cx-on) .folha label,body:not(.cx-on) .sede .bloco label{margin-top:10px;margin-bottom:4px;font:800 13px/1 var(--display);letter-spacing:.13em;color:#dfe4ea}
+body:not(.cx-on) .folha input,body:not(.cx-on) .folha select,body:not(.cx-on) .sede .bloco input,body:not(.cx-on) .sede .bloco select{min-height:42px;background:#07080ccc;border:1px solid #ffffff2e;border-bottom:2px solid #ffffff66;border-radius:5px;color:#fff;font-weight:700;transition:background .15s,border-color .15s,transform .15s}
+body:not(.cx-on) .folha input:hover,body:not(.cx-on) .folha select:hover,body:not(.cx-on) .sede .bloco select:hover,body:not(.cx-on) .sede .bloco input:hover{background:#14161c;border-bottom-color:var(--eq);transform:translateY(-1px)}
+body:not(.cx-on) .folha input:focus,body:not(.cx-on) .folha select:focus,body:not(.cx-on) .sede .bloco input:focus,body:not(.cx-on) .sede .bloco select:focus{border-bottom-color:var(--eq);box-shadow:0 3px 12px color-mix(in srgb,var(--eq) 40%,transparent)}
+body:not(.cx-on) .folha select option,body:not(.cx-on) .sede .bloco select option{background:#0b0c10}
+body:not(.cx-on) .sede button{border-radius:6px;border:1.5px solid color-mix(in srgb,var(--eq) 60%,#fff);background:#ffffff0d;color:#fff;font:800 italic clamp(15px,1.3vw,19px)/1.1 var(--display);text-transform:uppercase;letter-spacing:.03em;transition:transform .16s var(--cx-t),background .15s,box-shadow .2s,filter .15s}
+body:not(.cx-on) .sede button:hover:not(:disabled),body:not(.cx-on) .sede button:focus-visible{background:color-mix(in srgb,var(--eq) 42%,#0b0c10);border-color:var(--eq);transform:translateY(-2px);box-shadow:0 8px 20px color-mix(in srgb,var(--eq) 36%,transparent)}
+body:not(.cx-on) .sede button.primary{padding:14px 18px;border:0;background:linear-gradient(100deg,color-mix(in srgb,var(--eq) 58%,#000),color-mix(in srgb,var(--eq) 88%,#000));box-shadow:inset 0 -3px #fff5,0 10px 26px color-mix(in srgb,var(--eq) 38%,transparent);color:#fff;font-weight:900;font-size:clamp(20px,1.9vw,28px);text-shadow:0 1px 4px #000a}
+body:not(.cx-on) .sede button.primary:hover:not(:disabled),body:not(.cx-on) .sede button.primary:focus-visible{background:linear-gradient(100deg,color-mix(in srgb,var(--eq) 70%,#000),var(--eq));filter:brightness(1.1);transform:translateY(-2px) scale(1.012)}
+body:not(.cx-on) .folha .or{display:flex;align-items:center;gap:10px;margin:18px 0 4px;font:900 italic clamp(17px,1.5vw,22px)/1 var(--display);letter-spacing:.02em;text-transform:uppercase;color:#fff}
+body:not(.cx-on) .folha .or::before{content:"";flex:none;width:8px;height:22px;transform:skewX(-14deg);background:var(--eq)}
+body:not(.cx-on) .folha .or::after{content:"";flex:1;height:1px;background:#ffffff2e}
+body:not(.cx-on) .folha #gnova,body:not(.cx-on) .folha #gentra,body:not(.cx-on) .folha #recuperar{padding:2px 0}
+body:not(.cx-on) .abertura h1 span{color:var(--eq);text-shadow:0 0 30px color-mix(in srgb,var(--eq) 50%,transparent)}
+body:not(.cx-on) .vt-tira{transition:transform .16s var(--cx-t),background .15s,box-shadow .2s}
+body:not(.cx-on) .vt-tira:hover,body:not(.cx-on) .vt-tira:focus-visible{transform:translateY(-3px);box-shadow:0 8px 20px color-mix(in srgb,var(--c,var(--eq)) 45%,transparent)}
+body:not(.cx-on) .eq-carta{background:radial-gradient(160px 90px at 20% 0,color-mix(in srgb,var(--eq) 20%,transparent),transparent),#07080ccc;border-radius:7px;transition:transform .16s var(--cx-t),border-color .15s,box-shadow .2s}
+body:not(.cx-on) .eq-carta:hover:not(:disabled),body:not(.cx-on) .eq-carta:focus-visible{transform:translateY(-4px);box-shadow:0 10px 24px #000a,0 0 18px color-mix(in srgb,var(--eq) 42%,transparent)}
+body:not(.cx-on) .segmento button{padding:9px 16px;font-size:clamp(14px,1.15vw,17px);transform:skewX(-8deg)}
+body:not(.cx-on) .segmento button[aria-pressed=true]{background:linear-gradient(95deg,color-mix(in srgb,var(--eq) 60%,#000),color-mix(in srgb,var(--eq) 88%,#000));border-color:var(--eq);box-shadow:inset 0 -3px #fff5}
+body:not(.cx-on) .segmento button:hover:not(:disabled){transform:skewX(-8deg) translateY(-2px)}
+body:not(.cx-on) .pessoas li{border-radius:4px;padding-inline:6px;transition:background .12s,padding .14s}body:not(.cx-on) .pessoas li:hover{background:#ffffff12;padding-inline:12px}
+body:not(.cx-on) .folha h2,body:not(.cx-on) .sede .bloco h2{font-family:var(--display);font-style:italic;text-transform:uppercase;line-height:1}

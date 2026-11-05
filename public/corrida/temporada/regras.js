@@ -231,8 +231,8 @@ function pagarBonus(s, humano) {
   for (const m of metasDeBonus(s)) { const k = `${s.ano}:${s.equipe}:${m.id}`; if (m.atual >= m.alvo && !pagos[k]) { pagos[k] = true; total += m.premio; } }
   return total;
 }
-function objetivos(s) {
-  const f = faixaDe(s.equipe), t = tabelas(s), n = numerosDoAno(s), meta = metas(s), acabou = s.gp >= s.tamanho, q = (k) => Math.max(1, Math.ceil(s.tamanho * k));
+function objetivos(s, tb = null) { // `tb`: as tabelas já prontas (na temporada em grupo, as da sala)
+  const f = faixaDe(s.equipe), t = tb || tabelas(s), n = numerosDoAno(s), meta = metas(s), acabou = s.gp >= s.tamanho, q = (k) => Math.max(1, Math.ceil(s.tamanho * k));
   const pos = t.pilotos.findIndex((p) => p.id === "voce") + 1, posE = t.equipes.findIndex((e) => e.id === s.equipe) + 1, alvoE = [1, 5, 8][f];
   const estado = (ok) => (acabou ? (ok ? "cumprido" : "falhou") : ok ? "caminho" : "risco");
   const plural = (v, um, varias) => (v === 1 ? um : varias);
