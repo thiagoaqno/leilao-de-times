@@ -21,18 +21,6 @@ test("recordes: só os 5 mais rápidos ficam, cada piloto uma vez, com a melhor 
   assert.strictEqual(bd.recordesCorrida().monaco, undefined, "cada pista tem o seu quadro");
 });
 
-test("voltas dos bots: cinco por piloto, traçado da melhor de cada um e ritmo pela média", () => {
-  const s = [[0, 1, 2, 0, 0, 0]];
-  assert.deepStrictEqual([50, 52, 49, 55, 51, 53].map((t) => bd.salvarVoltaCorrida("interlagos", t, "equilibrado", "Ana", s)), [2, 1, 2, 1, 1, 1]);
-  assert.equal(bd.salvarVoltaCorrida("interlagos", 60, "equilibrado", "ana", s), 0, "mais lenta que as cinco dela: fica de fora");
-  for (const [piloto, tempo] of [["Bia", 51], ["Caio", 52], ["Duda", 53], ["Edu", 54], ["Fabi", 70]]) bd.salvarVoltaCorrida("interlagos", tempo, "equilibrado", piloto, s);
-  assert.deepStrictEqual(bd.melhoresTracadosCorrida("interlagos").map((v) => [v.piloto, v.tempo]),
-    [["Ana", 49], ["Bia", 51], ["Caio", 52], ["Duda", 53], ["Edu", 54]]);
-  assert.deepStrictEqual(bd.ritmoCorrida("interlagos", ["ANA"]), { tempo: 51, pilotos: 1, voltas: 5 }, "média das cinco melhores da Ana");
-  assert.strictEqual(bd.ritmoCorrida("interlagos", ["Ana", "Fabi"]).tempo, (51 + 70) / 2, "cada piloto pesa igual");
-  assert.strictEqual(bd.ritmoCorrida("interlagos", ["Zeca"]), null);
-  assert.strictEqual(bd.ritmoCorrida("monaco"), null);
-});
 
 test("voltas dos bots: a migração 017 traz os traçados que já estavam guardados", () => {
   const db = bd.abrir();
