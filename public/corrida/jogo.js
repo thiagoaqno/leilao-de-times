@@ -28,6 +28,7 @@ import { ceuPronto, luzPendente } from "./ceu.js";
 import { desenhar, ajustarTela, medirQuadro, comecarMedida, compilarPos, prepararBrilhos, definirEstacao } from "./pos.js";
 import { quadroTV, pularTV } from "./transmissao.js";
 import { criarLinhaFreio } from "./linha-frenagem.js";
+import { detalheRemoto } from "./detalhe-remoto.js";
 const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
 
 // ---------- corrida ----------
@@ -253,15 +254,18 @@ function draw(dt) {
     const pl = P(id); if (!pl) continue;
     if (pl.dnf) { if (gh.kart) { dropKart(gh.kart); gh.kart = null; } continue; }
     const key = pl.color + pl.car + JSON.stringify(pl.mods || {}) + (pl.numero || ""); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true, { numero: pl.numero, sigla: pl.bot ? pl.sigla : null }); gh.kartKey = key; }
-    const spec = CARS3[pl.car] || CARS3.equilibrado, gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
+    const spec = CARS3[pl.car] || CARS3.equilibrado, distancia = Math.hypot(gh.x - cam.position.x, gh.y - cam.position.z);
     gh.vz = ((gh.z - (gh.zAnt ?? gh.z)) / Math.max(dt, 1e-3)) * 0.3 + (gh.vz || 0) * 0.7; gh.zAnt = gh.z;
-    const inc = inclinacao(tr, gh.x, gh.y, gh.a, gh.idx || 0, spec.L * KS, spec.W * KS, gh.vz, noAr, gh.v || 0);
+    const { gz, inc } = detalheRemoto(gh, distancia, now, () => {
+      const gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
+      return { gz, inc: inclinacao(tr, gh.x, gh.y, gh.a, gh.idx || 0, spec.L * KS, spec.W * KS, gh.vz, noAr, gh.v || 0) };
+    });
     // o volante dos outros: pela rapidez com que a direção muda (no carro, girar 2,4 rad/s é o volante todo)
     let da = gh.a - (gh.aAnt ?? gh.a); da = Math.atan2(Math.sin(da), Math.cos(da)); gh.aAnt = gh.a;
     gh.vira = (gh.vira || 0) + (Math.max(-1, Math.min(1, da / Math.max(dt, 1e-3) / 2.4)) - (gh.vira || 0)) * Math.min(1, dt * 8);
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, gh.vira, gz, dt, inc.roll, inc.pitch, fxDe(pl, now));
     fantasmaVisual(gh.kart, !!pl.fantasma);
-    lodKart(gh.kart, Math.hypot(gh.x - cam.position.x, gh.y - cam.position.z)); // os carros de longe com menos peças (carros.js)
+    lodKart(gh.kart, distancia); // os carros de longe com menos peças (carros.js)
   }
   // Safety car: um carro próprio à frente da fila, calculado pela direção de prova no servidor.
   if (race.safety) {

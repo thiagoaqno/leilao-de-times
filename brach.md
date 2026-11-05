@@ -1,14 +1,13 @@
-# Usa uma referência única em Mônaco e amplia o grid para 22
+# Reduz trabalho na carreira e nas pistas
 
-Em Mônaco, os carros de F1 seguem a volta de 48,4195 s como referência comum, com variações dos pilotos e freada ajustada ao carro. Em pista seca, livre e com macio, os níveis usam limites calibrados; na chuva a mesma linha recebe margens mais conservadoras. A volta recente de 52,95 s com McLaren padrão é uma segunda referência com condições conhecidas, ainda não usada para treinamento.
+A vitrine de carro da carreira para de renderizar quando está fora da tela ou a aba está oculta e retoma ao voltar. Com movimento reduzido desenha apenas quando necessário; durante a oscilação limita a renderização a cerca de 30 quadros por segundo. No desenvolvimento, o reposicionamento dos rótulos acompanha o carro até 30 vezes por segundo, reduzindo leituras e escritas de layout.
 
-Nas duas voltas de macio da bancada, com os 22 pilotos simulados individualmente, houve quatro contatos e nenhuma saída em 44 voltas. O teste é em pista livre, não garante resultado em tráfego nem configurações desenvolvidas. Os tempos ainda estão acima das voltas humanas.
-
-A corrida rápida e as carreiras passam a comportar 22 carros. A temporada preenche as vagas após contratações e aceita o fechamento de GPs antigos com 20 carros. A classificação, a marcação visual do grid e as telas acompanham a nova quantidade.
+Nas pistas, carros remotos a mais de 1.000 unidades reutilizam por até 160 ms as contas visuais de inclinação e altura do terreno. A posição interpolada, a física e as colisões continuam atualizadas normalmente; carros próximos continuam calculados a cada quadro.
 
 ## Verificação
 
-- `node --test tests/corrida-monaco-referencia.test.js`
-- `node --test --test-name-pattern "Mônaco molhado" tests/corrida-monaco-chuva.test.js` (22 carros)
-- Testes focados de sala nova, classificação e temporadas solo e em grupo.
+- `node --test tests/corrida-detalhe-remoto.test.js`
+- `node --test --test-name-pattern "os outros carros: interpolação" tests/corrida-f1-rede.test.js`
+- `node --test --test-name-pattern "Mônaco: poucas malhas" tests/corrida-pistas-desempenho.test.js`
+- Navegador: tela de desenvolvimento aberta; vitrine 3D parou de desenhar oculta e retomou ao aparecer.
 - Suíte completa não executada, conforme pedido.

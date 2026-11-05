@@ -19,16 +19,46 @@ export async function montar(palco, equipeId) {
   const vitrine = !!palco.closest(".vt-carro"), giro = vitrine ? Math.PI * 0.66 : Math.PI * 0.82, balanco = vitrine ? 0.3 : 0.55; // na vitrine o carro aparece grande e de lado
   k.g.rotation.y = giro;
   cam.position.set(0, vitrine ? 0.95 : 1.5, (vitrine ? 4.3 : 7.2) * (TAM / 4.35)); cam.lookAt(0, vitrine ? 0.32 : 0.45, 0);
-  let vivo = true, visivel = true, t0 = performance.now();
-  const ajusta = () => { const w = cv.clientWidth || 640, hh = cv.clientHeight || 360; r.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); r.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); };
-  const ro = new ResizeObserver(ajusta); ro.observe(cv); ajusta();
-  const reduz = matchMedia("(prefers-reduced-motion:reduce)").matches;
-  (function laco(t) {
-    if (!vivo) return;
-    requestAnimationFrame(laco);
-    if (document.hidden || !cv.isConnected || !cv.clientWidth) return; // aba escondida ou palco fora da tela: não gasta GPU
-    if (!reduz) k.g.rotation.y = giro + Math.sin((t - t0) / 4200) * balanco;
-    r.render(cena, cam);
-  })(t0);
-  palco._parar = () => { vivo = false; ro.disconnect(); r.dispose(); };
+  let vivo = true, visivel = !window.IntersectionObserver, raf = 0, sujo = true, ultimo = 0;
+  const t0 = performance.now(), movimento = matchMedia("(prefers-reduced-motion:reduce)");
+  const podeDesenhar = () => vivo && visivel && !document.hidden && cv.isConnected && cv.clientWidth > 0;
+  function acordar() {
+    sujo = true;
+    if (podeDesenhar() && !raf) raf = requestAnimationFrame(laco);
+  }
+  function laco(t) {
+    raf = 0;
+    if (!podeDesenhar()) return;
+    // A oscilação lenta não precisa renderizar acima de 30 quadros por segundo.
+    if (sujo || t - ultimo >= 1000 / 30 - 2) {
+      k.g.rotation.y = movimento.matches ? giro : giro + Math.sin((t - t0) / 4200) * balanco;
+      r.render(cena, cam); ultimo = t; sujo = false;
+    }
+    if (!movimento.matches) raf = requestAnimationFrame(laco);
+  }
+  const ajusta = () => {
+    if (!cv.isConnected || !cv.clientWidth || !cv.clientHeight) return;
+    const w = cv.clientWidth, hh = cv.clientHeight;
+    r.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); r.setSize(w, hh, false);
+    cam.aspect = w / hh; cam.updateProjectionMatrix(); acordar();
+  };
+  const ro = new ResizeObserver(ajusta); ro.observe(cv);
+  const io = window.IntersectionObserver ? new IntersectionObserver(([e]) => {
+    visivel = e.isIntersecting;
+    if (visivel) { ajusta(); acordar(); }
+    else if (raf) { cancelAnimationFrame(raf); raf = 0; }
+  }) : null;
+  io?.observe(cv);
+  const aoVoltar = () => {
+    if (document.hidden && raf) { cancelAnimationFrame(raf); raf = 0; }
+    else if (!document.hidden) { ajusta(); acordar(); }
+  };
+  document.addEventListener("visibilitychange", aoVoltar);
+  movimento.addEventListener?.("change", acordar);
+  ajusta(); acordar();
+  palco._parar = () => {
+    vivo = false; if (raf) cancelAnimationFrame(raf); raf = 0;
+    ro.disconnect(); io?.disconnect(); document.removeEventListener("visibilitychange", aoVoltar);
+    movimento.removeEventListener?.("change", acordar); piso.geometry.dispose(); piso.material.dispose(); r.dispose();
+  };
 }
