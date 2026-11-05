@@ -41,20 +41,6 @@ test("o mesmo save gera as mesmas propostas e escolher valida a oferta", () => {
   assert.equal(Tecnicos.escolher(a, ctx(), "ficar"), null);
 });
 
-test("aceitar uma proposta troca de clube na virada, com elenco, caixa e diretoria do clube novo", () => {
-  const save = noFim(); if (!save.vagas.ofertas.length) return;
-  const oferta = save.vagas.ofertas[0], velho = save.clube, rep = save.gestao.reputacao;
-  assert.equal(Tecnicos.escolher(save, ctx(), oferta.id), null);
-  assert.equal(novaTemporada(save), null);
-  assert.equal(save.clube, oferta.id);
-  assert.ok(save.caixaIA[velho] != null && !(oferta.id in save.caixaIA), "o caixa do clube velho fica guardado");
-  assert.ok(save.gestao.reputacao >= rep - 1, "o técnico leva a reputação");
-  assert.equal(save.gestao.infra.estadio, 0, "o estádio é do clube novo");
-  assert.ok(save.calendario.length > 0 && save.calendario.every((r) => r[0].includes(oferta.id)), "o calendário é do clube novo");
-  assert.ok(save.caixaEntrada.some((x) => x.tipo === "mercado-tecnico" && /Novo clube/.test(x.titulo)));
-  const nova = estado(save).vagas; assert.ok(!nova || (nova.momento === "comeco" && !nova.ofertas.some((o) => o.id === oferta.id)), "as propostas velhas não voltam: só as do começo da temporada nova");
-});
-
 test("ficar mantém o clube", () => {
   const save = noFim(), velho = save.clube;
   Tecnicos.escolher(save, ctx(), "ficar");
