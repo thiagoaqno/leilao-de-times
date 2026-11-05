@@ -19,6 +19,7 @@ const PNEUS = {
   medio: { nome: "Médio", cor: "#ffd100", pico: 1.35, vida: 3.8, aquece: 1.1, perdaAntes: 0.03, molhado: 0.5 },
   duro: { nome: "Duro", cor: "#f4f4f4", pico: 1.32, vida: 4.8, aquece: 0.85, perdaAntes: 0.02, molhado: 0.5 },
   chuva: { nome: "Chuva", cor: "#1e7fd6", pico: 1.126, vida: 7, aquece: 0.5, perdaAntes: 0.02, molhado: 0.9, derrete: 2.8, esquenta: 0.4 },
+  intermediario: { nome: "Intermediário", cor: "#39c85a", pico: 1.126, vida: 4, aquece: 0.5, perdaAntes: 0.02, molhado: 1, derrete: 2, esquenta: 0.4 },
 };
 const SECOS = ["macio", "medio", "duro"]; // os compostos de pista seca (a estratégia e a tabela de ritmo só conhecem estes)
 const COMPOSTO_PADRAO = "medio";
@@ -46,7 +47,7 @@ function pneuNovo(composto = COMPOSTO_PADRAO) {
 //      fator (opcional: o quanto o carro gasta o pneu, `desgaste` de f1-equipes.js), agua (opcional: a água na pista, 0 a 1) }
 function gastarPneu(pneu, d) {
   const pn = PNEUS[pneu.composto] || PNEUS[COMPOSTO_PADRAO];
-  const escorrega = limite((d.slip || 0) / 60, 0, 1), seca = secaDaPista(d.agua);
+  const escorrega = limite((d.slip || 0) / 60, 0, 1), seca = pneu.composto === "intermediario" ? 1 - limite((d.agua || 0) / 0.3, 0, 1) : secaDaPista(d.agua);
   if (d.volta > 0 && d.dist > 0) {
     const quente = pn.esquenta ? 0 : limite(((pneu.temp || 0) - QUENTE) / 0.2, 0, 1); // (o de chuva tem o próprio superaquecimento)
     const estresse = (ESTRESSE_BASE + ESTRESSE_LADO * escorrega + ESTRESSE_TRAVA * limite(d.travada || 0, 0, 1) + ESTRESSE_PATINA * limite(d.patina || 0, 0, 1)
@@ -71,6 +72,7 @@ const CURVA_AGUA = {
   medio: [[0, 1], [0.15, 0.84], [0.45, 0.66], [1, 0.38]],
   duro: [[0, 1], [0.15, 0.86], [0.45, 0.7], [1, 0.42]],
   chuva: [[0, 1], [0.15, 0.97], [0.45, 1.0], [1, 1.12]],
+  intermediario: [[0, 1], [0.15, 1.02], [0.45, 1.12], [1, 1.0]],
 };
 function fatorAgua(composto, agua) {
   const c = CURVA_AGUA[composto] || CURVA_AGUA[COMPOSTO_PADRAO], a = limite(agua || 0, 0, 1);
@@ -94,7 +96,11 @@ function aderencia(pneu, agua = 0) {
     final: 1 - FINAL_FIM * x };
 }
 // Em quantas voltas o pneu chega ao penhasco, pilotado como o piloto ideal e com um gasto `fator` do carro
-const vidaEmVoltas = (composto, fator = 1) => (PNEUS[composto] || PNEUS[COMPOSTO_PADRAO]).vida / (fator || 1);
+function vidaEmVoltas(composto, fator = 1, agua = null) {
+  const pn = PNEUS[composto] || PNEUS[COMPOSTO_PADRAO];
+  const seca = agua == null ? 0 : composto === "intermediario" ? 1 - limite(agua / 0.3, 0, 1) : secaDaPista(agua);
+  return pn.vida / (fator || 1) / (1 + ((pn.derrete || 1) - 1) * seca);
+}
 // Quanto falta para o penhasco, de 1 (novo) a 0 (chegou ao penhasco: dali o pneu despenca). É o que o anel do HUD mostra.
 const vidaRestante = (pneu) => limite(1 - (pneu ? pneu.desgaste : 0) / PENHASCO, 0, 1);
 const frio = (pneu) => !!pneu && pneu.temp < TEMP_BOA - 0.02;
@@ -210,8 +216,11 @@ function recomendarParada({ atual, jogos, agua = 0, voltasRestantes = 99, fator 
     const cands = SECOS_ORDEM.filter((c) => tem(c) && c !== atual); if (!cands.length) return SECOS_ORDEM.includes(atual) ? atual : (SECOS_ORDEM.find(tem) || "medio");
     return cands.find((c) => vida(c) >= voltasRestantes) || cands.slice().sort((a, b) => vida(b) - vida(a))[0];
   };
-  if (atual !== "chuva" && agua > 0.3 && tem("chuva")) return "chuva";
-  if (atual === "chuva") return agua < 0.3 ? seco() : "chuva";
+  if (agua > 0.3) {
+    const molhados = ["chuva", "intermediario"].filter((c) => jogos ? jogos[c] > 0 : true);
+    if (molhados.length) return compostoPorAgua(null, agua, molhados);
+  }
+  if (!SECOS.includes(atual)) return seco();
   return seco();
 }
 const podeUsar = (p, composto) => !!PNEUS[composto] && jogosRestantes(p)[composto] > 0;
@@ -221,7 +230,7 @@ const podeUsar = (p, composto) => !!PNEUS[composto] && jogosRestantes(p)[compost
 function compostoParaParada(p, pedido) {
   if (podeUsar(p, pedido)) return pedido;
   const atual = p.pneuAtual || p.pneu || COMPOSTO_PADRAO, r = jogosRestantes(p), usados = new Set(p.compostos || [p.pneu || COMPOSTO_PADRAO]);
-  const todos = pedido === "chuva" ? Object.keys(PNEUS) : SECOS; // (quem pediu pneu seco nunca recebe o de chuva no lugar)
+  const todos = !SECOS.includes(pedido) ? Object.keys(PNEUS) : SECOS; // (quem pediu pneu seco nunca recebe o de chuva no lugar)
   let lista = todos.filter((c) => r[c] > 0 && c !== atual);
   if (usados.size < 2) { const novos = lista.filter((c) => !usados.has(c)); if (novos.length) lista = novos; }
   if (!lista.length) lista = todos.filter((c) => r[c] > 0);
@@ -448,7 +457,7 @@ const compostoDaClassificacao = (agua) => ((agua || 0) >= AGUA_QUALI_CHUVA ? "ch
 // aderência (o tempo vai com a raiz dela, ×0,7). O de chuva em pista seca perde mais um pouco, pelo superaquecimento.
 function tempoMolhado(pista, composto, agua) {
   const R = ritmoDePneus(), tab = R && R.tabelaDe(pista), pn = PNEUS[composto] || PNEUS[COMPOSTO_PADRAO];
-  const t0 = tab ? tab.compostos[composto === "chuva" ? "duro" : composto].tempos[0] : 70 * Math.sqrt(1.35 / pn.pico);
+  const t0 = tab ? tab.compostos[SECOS.includes(composto) ? composto : "duro"].tempos[0] : 70 * Math.sqrt(1.35 / pn.pico);
   const f = fatorAgua(composto, agua) * (1 - PERDA_ESQUENTA * 0.5 * secaDaPista(agua) * (pn.esquenta ? 1 : 0));
   return t0 * (1 + 0.7 * (1 / Math.sqrt(f) - 1)); // (0,7: o que a física dos robôs mede no molhado, de macio a chuva)
 }

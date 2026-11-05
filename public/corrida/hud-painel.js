@@ -4,6 +4,7 @@
 // poucos quadros). As contas puras estão em hud-mfd.js (HudMfd).
 import { E, $, carOf, checkpoint } from "./estado.js";
 import { race } from "./jogo.js";
+import { clima } from "./clima.js";
 import { htmlHudTelemetria, atualizarHudTelemetria, estiloHud } from "./hud-telemetria.js";
 
 const M = () => window.HudMfd, F = () => window.F1Regras;
@@ -94,9 +95,9 @@ export function atualizarTempo(m, st, now) {
 export function estrategia(m, cors, esc) {
   const pneu = race.pneu, B = race.box; if (!m || !pneu || !B) return {};
   const f = F(), T = race.hudT || {}, car = carOf(m);
-  const tp = M().voltasDePneu(pneu, f, { taxaMedida: T.taxa, fator: car && car.desgaste });
+  const tp = M().voltasDePneu(pneu, f, { taxaMedida: T.taxa, fator: car && car.desgaste, agua: clima.agua });
   const jogos = m.jogos || {}, usados = ["macio", "medio", "duro"].filter((c) => jogos[c] != null && jogos[c] < f.JOGOS_POR_COMPOSTO).length;
-  const chuva = !!(E.S.clima && E.S.clima.chove) || pneu.composto === "chuva" || jogos.chuva < f.JOGOS_POR_COMPOSTO;
+  const chuva = !!(E.S.clima && E.S.clima.chove) || (pneu.composto === "chuva" || pneu.composto === "intermediario") || jogos.chuva < f.JOGOS_POR_COMPOSTO || jogos.intermediario < f.JOGOS_POR_COMPOSTO;
   const voltaAtual = Math.min(E.S.config.voltas, (m.laps || 0) + 1);
   const janela = M().janelaDeBox({ voltaAtual, voltas: E.S.config.voltas, voltasDePneu: tp.voltas, compostosUsados: usados, chuva });
   let perda = null, retorno = null;

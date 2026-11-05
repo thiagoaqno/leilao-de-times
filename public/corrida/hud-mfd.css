@@ -300,11 +300,11 @@
 .pn2-prox b{margin-left:auto;font-size:22px;letter-spacing:.06em;color:#fff}
 /* box: os quatro compostos lado a lado, botões grandes numerados de 1 a 4 */
 .mp-box{gap:6px}
-.bx-linha{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.bx-linha{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .bx-btn{--c:#ffd100;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;min-height:76px;padding:6px 2px 5px;color:#fff;background:#171a22;border:2px solid #ffffff30;border-radius:0;cursor:pointer;font-family:inherit;box-shadow:none}
 .bx-btn kbd{position:absolute;left:4px;top:3px;display:grid;place-items:center;min-width:20px;height:20px;padding:0 4px;font:700 14px/1 var(--f1-fonte);color:#0a0c12;background:#e4e7ee;border-radius:3px}
 .bx-btn .bx-pn{display:block;width:26px;height:26px;margin:0 0 3px;border-radius:50%;background:#06070b;box-shadow:inset 0 0 0 4px var(--c)}
-.bx-btn b{font-size:14px;font-weight:700;letter-spacing:.06em}
+.bx-btn b{max-width:100%;font-size:clamp(9px,1vw,14px);font-weight:700;letter-spacing:0;line-height:1;overflow-wrap:anywhere;text-align:center}
 .bx-btn span{font-size:12px;font-weight:600;color:#ffffffc8}
 .bx-btn.sel{border-color:#fff;background:#252a36}
 .bx-btn.pedido{border-color:#ffd23f;background:#ffd23f;color:#0a0c12}.bx-btn.pedido span{color:#0a0c12}
@@ -325,11 +325,11 @@
 .bm-cab{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .bm-cab small{font-size:clamp(15px,2vw,20px);font-weight:700;letter-spacing:.2em}
 .bm-cont{display:grid;place-items:center;min-width:48px;height:48px;padding:0 8px;font-size:28px;font-weight:700;border:3px solid #ffd23f;border-radius:30px;font-variant-numeric:tabular-nums}
-.bm-linha{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.bm-linha{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 .bm-btn{--c:#ffd100;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-height:150px;padding:30px 4px 8px;color:#fff;background:#171a22;border:3px solid #ffffff30;border-radius:0;cursor:pointer;font-family:inherit;box-shadow:none}
 .bm-btn kbd{position:absolute;left:6px;top:6px;display:grid;place-items:center;min-width:26px;height:26px;font:700 18px/1 inherit;color:#0a0c12;background:#e4e7ee;border-radius:4px}
 .bm-btn .bx-pn{display:block;width:44px;height:44px;border-radius:50%;background:#06070b;box-shadow:inset 0 0 0 6px var(--c)}
-.bm-btn b{font-size:clamp(14px,1.9vw,19px);font-weight:700;letter-spacing:.06em}
+.bm-btn b{max-width:100%;font-size:clamp(12px,1.5vw,19px);font-weight:700;letter-spacing:0;line-height:1.05;overflow-wrap:anywhere}
 .bm-btn span{font-size:14px;font-weight:600;color:#ffffffd0}.bm-btn em{font-style:normal;font-size:12px;color:#ffffffa8;line-height:1.15}
 .bm-btn .bm-rec{display:none;position:absolute;left:0;right:0;bottom:-3px;padding:2px 0;font-size:11px;font-weight:700;letter-spacing:.1em;color:#0a0c12;background:#2ee08a;text-decoration:none}
 .bm-btn.rec{border-color:#2ee08a}.bm-btn.rec .bm-rec{display:block}

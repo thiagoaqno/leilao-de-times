@@ -379,7 +379,7 @@ function largar(room) {
     const f1 = room.config.regras === "f1", plano = f1 ? F1.estrategia(room.config.voltas, room.config.nivel, `${room.semente}:${id}`, room.config.pista, p.spec ? p.spec.desgaste : 1) : null;
     // chuva: o quanto cada robô "sente" a água a mais ou a menos (±0,1, fixo no GP): não trocam todos de pneu juntos
     const vies = f1 ? Math.round((F1.sorteio(`vies:${room.semente}:${id}`)() - 0.5) * 20) / 100 : 0, aguaLargada = f1 && room.clima ? F1.climaEm(room.clima, room.startAt).agua : 0;
-    if (plano && aguaLargada > 0 && F1.compostoPorAgua(room.config.pista, Math.max(0, Math.min(1, aguaLargada + vies)), [...F1.SECOS, "chuva"], plano.largada) === "chuva") { plano.largada = "chuva"; plano.paradas = []; } // larga molhado: sai de chuva
+    if (plano && aguaLargada > 0) { const melhor = F1.compostoPorAgua(room.config.pista, Math.max(0, Math.min(1, aguaLargada + vies)), [...F1.SECOS, "chuva", "intermediario"], plano.largada); if (!F1.SECOS.includes(melhor)) { plano.largada = melhor; plano.paradas = []; } } // larga molhado: sai de chuva
     if (plano) Object.assign(p, { pneu: plano.largada, pneuAtual: plano.largada, compostos: [plano.largada], paradas: [], acrescimo: 0, box: null });
     const rng = F1.sorteio(`estilo:${room.semente}:${id}`); // regras de F1: cada robô tem o seu jeito (sorteado pela semente do GP)
     // o jeito de cada robô com o box (sorteado pela semente do GP): segue o plano, faz o undercut (para uma volta antes quando está colado no
@@ -763,10 +763,14 @@ function escolherComposto(restam, usados, fator, p) {
 function trocaPeloClima(room, p, ia, pneu, cl, restam, usados, fator) {
   if (restam < 1) return null;
   const agua = Math.max(0, Math.min(1, cl.agua + (ia.vies || 0)));
-  const livres = [...F1.SECOS, "chuva"].filter((c) => c === pneu.composto || F1.podeUsar(p, c));
+  const livres = [...F1.SECOS, "chuva", "intermediario"].filter((c) => c === pneu.composto || F1.podeUsar(p, c));
   const melhor = F1.compostoPorAgua(room.config.pista, agua, livres, pneu.composto);
-  if (pneu.composto !== "chuva") return melhor === "chuva" ? "chuva" : null;
-  if (melhor === "chuva") return pneu.desgaste > F1.PENHASCO && F1.podeUsar(p, "chuva") ? "chuva" : null; // continua molhado: só troca o pneu de chuva se acabou
+  if (F1.SECOS.includes(pneu.composto)) return !F1.SECOS.includes(melhor) ? melhor : null;
+  if (!F1.SECOS.includes(melhor)) {
+    if (melhor !== pneu.composto) return melhor;
+    if (pneu.desgaste > F1.PENHASCO) { const disponiveis = ["chuva", "intermediario"].filter((c) => F1.podeUsar(p, c)); return disponiveis.length ? F1.compostoPorAgua(room.config.pista, agua, disponiveis) : null; }
+    return null;
+  }
   return escolherComposto(restam, usados, fator, p); // secou: volta ao seco que aguenta o resto da corrida
 }
 function decidirParada(room, p, ia, car, spec, cl) {
@@ -776,7 +780,7 @@ function decidirParada(room, p, ia, car, spec, cl) {
   const planejada = !chuvoso && ia.plano && ia.plano.paradas[(p.paradas || []).length];
   const pneu = car.pneu, fator = spec.desgaste || 1, taxa = taxaDoPneu(pneu.composto, fator);
   const restam = voltas - feitas - 1, usados = new Set(p.compostos || [p.pneu || F1.COMPOSTO_PADRAO]);
-  if (chuvoso && cl) { const pelaAgua = trocaPeloClima(room, p, ia, pneu, cl, restam, usados, fator); if (pelaAgua) return pelaAgua; if (pneu.composto === "chuva" && cl.agua + (ia.vies || 0) > 0.3) return null; }
+  if (chuvoso && cl) { const pelaAgua = trocaPeloClima(room, p, ia, pneu, cl, restam, usados, fator); if (pelaAgua) return pelaAgua; if (!F1.SECOS.includes(pneu.composto) && cl.agua + (ia.vies || 0) > 0.3) return null; }
   const chega = pneu.desgaste + taxa * (restam + 0.35) <= F1.PENHASCO; // o resto da corrida e o começo da volta de chegada
   const passaNaProxima = pneu.desgaste + taxa > F1.PENHASCO; // a volta que vem já passaria do penhasco
   // a volta planejada, ajustada pelo jeito: o undercut para uma volta antes se está colado no da frente; o overcut estica uma volta em

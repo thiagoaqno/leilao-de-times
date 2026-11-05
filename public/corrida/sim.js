@@ -97,9 +97,9 @@ function pneuDaLargada(fase, composto, agua = 0) {
 // ---------- a entrada de um passo, em um número só ----------
 // bits 0 acelerador · 1 freio · 2 ERS · 3 voltar à pista · 4-5 pedido de box (0 nenhum, 1 macio, 2 médio, 3 duro) ·
 // 6-9 marcha do câmbio manual (0 = automático) · 10-18 volante (0..510 → -1..1) · 19 o bit alto do pedido de box (4 = chuva)
-// (5 = "decidir": o pedido de parada sem pneu, que abre o menu na garagem; 6 = "manter": "não trocar" no menu)
-const COMPOSTOS = ["macio", "medio", "duro", "chuva", "decidir", "manter"];
-const REAIS = ["macio", "medio", "duro", "chuva"];
+// (5 = "decidir"; 6 = "manter"; 7 = "intermediario": códigos do protocolo, não teclas)
+const COMPOSTOS = ["macio", "medio", "duro", "chuva", "decidir", "manter", "intermediario"];
+const REAIS = ["macio", "medio", "duro", "chuva", "intermediario"];
 function empacotar(e) {
   const st = Math.round(limite(e.steer || 0, -1, 1) * 255) + 255, pd = e.pedido ? COMPOSTOS.indexOf(e.pedido) + 1 : 0;
   return (e.gas ? 1 : 0) | (e.brake ? 2 : 0) | (e.ers ? 4 : 0) | (e.respawn ? 8 : 0) | ((pd & 3) << 4) | ((pd >> 2) << 19) | (limite(e.marcha || 0, 0, 15) << 6) | (st << 10);

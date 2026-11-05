@@ -71,9 +71,9 @@ function estadoDoPneu(pneu, F) {
 
 // Quantas voltas o pneu ainda aguenta até o penhasco. Com uma volta completa medida (`taxaMedida`, desgaste por volta do jogador,
 // que já conta escorregão e trânsito) usa ela; senão, a nominal do composto (`PENHASCO / vida`, de f1-regras.js).
-function voltasDePneu(pneu, F, { taxaMedida, fator } = {}) {
+function voltasDePneu(pneu, F, { taxaMedida, fator, agua } = {}) {
   const pn = F.PNEUS[pneu.composto] || F.PNEUS[F.COMPOSTO_PADRAO];
-  const nominal = F.PENHASCO / F.vidaEmVoltas(pneu.composto, fator || 1); // desgaste por volta, no ritmo normal
+  const nominal = F.PENHASCO / F.vidaEmVoltas(pneu.composto, fator || 1, agua); // desgaste por volta, no ritmo normal
   const taxa = taxaMedida > 0.001 ? taxaMedida : nominal;
   const resta = Math.max(0, F.PENHASCO - pneu.desgaste);
   return { taxa, medida: taxaMedida > 0.001, voltas: pn && taxa > 0 ? resta / taxa : 99 };

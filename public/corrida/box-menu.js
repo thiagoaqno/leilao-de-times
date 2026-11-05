@@ -1,14 +1,15 @@
 // Corrida da Galera — o MENU DO BOX (regras de F1): quem pede a parada sem escolher o pneu (o pedido "decidir") entra no corredor, para na garagem e
 // escolhe aqui, num menu grande no centro da tela. O carro fica parado e o tempo conta na parada (sim.js, fase "escolha"); passados ESCOLHA_BOX_S
 // segundos sem escolher, sai com o recomendado. A escolha viaja como o pedido de sempre (`race.pedidoBox`, empacotado a cada passo); aqui só há
-// o desenho e a entrada: números 1 a 4 (e 5 = não trocar), setas e Enter, o mouse ou o toque, e o D-pad com A no controle.
+// o desenho e a entrada: números 1 a 5, setas e Enter, o mouse ou o toque, e o D-pad com A no controle.
 import { E, $, me, toast } from "./estado.js";
 import { race } from "./jogo.js";
+import { clima } from "./clima.js";
 import { set } from "./hud-painel.js";
 import { jogosDe } from "./box.js";
 
 const F = () => window.F1Regras;
-const ITENS = ["macio", "medio", "duro", "chuva", "manter"]; // a ordem do menu e dos números 1 a 5
+const ITENS = ["macio", "medio", "duro", "chuva", "intermediario", "manter"]; // a ordem do menu e dos números 1 a 5
 const menu = { sel: 0, visto: false, enviado: null };
 const aberto = () => !!race && !!race.box && race.box.fase === "escolha";
 export const menuDoBoxAberto = aberto;
@@ -18,7 +19,7 @@ function montar() {
   if (el) return; el = $("hBoxMenu"); if (!el) return;
   el.innerHTML = `<div class="bm-cab"><small>BOX · ESCOLHA O PNEU</small><b class="bm-cont" data-r="cont">6</b></div>
     <div class="bm-linha">${ITENS.map((c, i) => c === "manter"
-      ? `<button type="button" class="bm-btn bm-manter" data-c="manter"><kbd>5</kbd><b>NÃO TROCAR</b><span>sai com o pneu de agora</span></button>`
+      ? `<button type="button" class="bm-btn bm-manter" data-c="manter"><b>NÃO TROCAR</b><span>sai com o pneu de agora</span></button>`
       : `<button type="button" class="bm-btn" data-c="${c}"><kbd>${i + 1}</kbd><i class="bx-pn"></i><b>${F().PNEUS[c].nome.toUpperCase()}</b><span data-r="j${c}"></span><em data-r="a${c}"></em><u class="bm-rec">RECOMENDADO</u></button>`).join("")}</div>
     <p class="bm-info" data-r="info"></p><p class="bm-dica"><kbd>1</kbd>–<kbd>5</kbd> escolhe · <kbd>←</kbd><kbd>→</kbd> + <kbd>Enter</kbd> · D-pad + <kbd>A</kbd> · toque</p><i class="bm-barra"><s data-r="barra"></s></i>`;
   refs = {}; for (const x of el.querySelectorAll("[data-r]")) refs[x.dataset.r] = x;
@@ -59,14 +60,14 @@ export function atualizarMenuBox() {
   if (!menu.visto) { menu.visto = true; const i = ITENS.indexOf(rec); menu.sel = i >= 0 ? i : 0; }
   const resta = Math.max(0, f.ESCOLHA_BOX_S - B.t);
   set(refs.cont, "t", menu.enviado ? "OK" : Math.ceil(resta)); set(refs.barra, "w", Math.round((resta / f.ESCOLHA_BOX_S) * 100) + "%");
-  const maxPico = Math.max(...["macio", "medio", "duro", "chuva"].map((c) => f.PNEUS[c].pico));
+  const maxPico = Math.max(...["macio", "medio", "duro", "chuva", "intermediario"].map((c) => f.PNEUS[c].pico));
   el.querySelectorAll(".bm-btn").forEach((b, i) => {
     const c = b.dataset.c;
     set(b, "c", "bm-btn" + (c === "manter" ? " bm-manter" : "") + (i === menu.sel ? " sel" : "") + (c === rec ? " rec" : "") + (menu.enviado === c ? " feito" : "") + (c !== "manter" && j[c] <= 0 ? " esgotado" : "") + (c === atual ? " atual" : ""));
     if (c === "manter") return;
     set(b, "style", `--c:${f.PNEUS[c].cor}`);
     set(refs["j" + c], "t", j[c] <= 0 ? "esgotado" : j[c] + (j[c] === 1 ? " jogo" : " jogos"));
-    set(refs["a" + c], "t", `aderência ${Math.round((f.PNEUS[c].pico / maxPico) * 100)}% · ~${Math.floor(f.vidaEmVoltas(c))} voltas`);
+    set(refs["a" + c], "t", `aderência ${Math.round((f.PNEUS[c].pico / maxPico) * 100)}% · ~${Math.floor(f.vidaEmVoltas(c, 1, clima.agua))} voltas`);
   });
   const pn = race.pneu;
   set(refs.info, "t", pn ? `Pneu de agora: ${f.PNEUS[pn.composto].nome} · desgaste ${Math.round(pn.desgaste * 100)}%${B.stopGo ? " · stop-and-go: cumpre e troca junto" : ""}` : "");
