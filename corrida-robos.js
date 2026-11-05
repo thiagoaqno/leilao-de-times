@@ -845,7 +845,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const vLivre = Math.min(spec.vmax * pneu.final * dano.final, alvo < topo * 0.97 ? alvo * Math.sqrt(pneu.grip * dano.grip) * cautela : alvo); // a velocidade do robô sem ninguém na frente
   // Colado, o limite de trânsito não deixa o DRS virar velocidade: para decidir o ataque conta metade do ganho que ele teria ao sair da faixa (a velocidade leva tempo para chegar).
   const drsPronto = alvo >= topo * 0.97 && (car.drsAtivo || (p.drsZona >= 0 && p.drsZona === F1.zonaDRS(i / n, tr.t.drs)));
-  const vAtaque = vLivre * (drsPronto ? 1 + F1.DRS_GANHO * (spec.drs ?? 1) * 0.5 : 1);
+  const vAtaque = Math.min(spec.vmax * pneu.final * dano.final * F1.TETO_VELOCIDADE, vLivre * (drsPronto ? 1 + F1.DRS_GANHO * (spec.drs ?? 1) * 0.5 : 1));
   // o plano da frente para o trânsito: a que distância é a próxima freada e qual é o lado de dentro da próxima curva
   const tf = transito(room, p, ia, pf, i, baseLat, maxLatDisputa, vAtaque, { dFreio: distanciaDaFreada(fis, n, i, car.v), dentro: ladoDeDentro(pf, i), maxLatLento, linhaEm: (k) => linhaEm(k, car.prog + (k - i + n) % n), aderenciaFreio: cl.agua > 0 ? { freio: pneu.freio * dano.freio, grip: pneu.grip * dano.grip } : undefined });
   ia.desvio += (tf.desvio - ia.desvio) * Math.min(1, dt * 1.8);

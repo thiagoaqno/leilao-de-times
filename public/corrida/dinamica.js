@@ -134,7 +134,7 @@ function volanteMaximo(p, vm, kGrip = 1, kCarga = 1) {
 // Entrada: { gas, brake, steer (-1..1) } — gas e brake são 0 ou 1 (ou analógicos).
 // Ambiente: { chao (sobre o asfalto?), subida (inclinação dh/ds do chão no rumo), ar (no ar), manual, marchaManual,
 //   pn: F1.aderencia(pneu) ou null, dano: F1.efeitoDoDano(dano) ou null, drs (aberto), ers (ativo), vacuo ({final,acel,aderencia} ou null),
-//   curva (para o ar sujo), limiteV (teto de velocidade em u/s por bandeira), extra (multiplicadores soltos) }
+//   curva (para o ar sujo), limiteV (teto de velocidade em u/s por bandeira), tetoV (a velocidade máxima da F1: acima dela só corta o acelerador), extra (multiplicadores soltos) }
 const sub = { fx: 0, fy: 0, mz: 0 };
 const INST_GRIP = 0.35, INST_TRASEIRA = 0.3; // com a instabilidade cheia: -35% de aderência lateral nos dois eixos e mais -30% atrás
 function passo(c, ent, amb, p, dt = PASSO) {
@@ -185,7 +185,7 @@ function passo(c, ent, amb, p, dt = PASSO) {
   }
   // limite de velocidade por bandeira (safety car, amarela): corta o acelerador e freia
   const limiteV = amb.limiteV || Infinity, acima = uU > limiteV;
-  const gas = acima ? 0 : c.gasP, freioAuto = acima ? Math.min(1, (uU - limiteV) / 25 + 0.25) : 0;
+  const gas = acima || uU > (amb.tetoV || Infinity) ? 0 : c.gasP, freioAuto = acima ? Math.min(1, (uU - limiteV) / 25 + 0.25) : 0;
   const pedalFreio = Math.max(c.brkP, freioAuto);
   // parado (ou quase) e só o freio: engata a ré. Antes o limite era 1 u/s, mas o carro que acabava de parar ficava rastejando a ~1,2 u/s (o freio some
   // devagar perto do zero e nada puxava para trás): travava nessa faixa por mais de 1 s, ou para sempre numa subida, e a ré "não engatava"

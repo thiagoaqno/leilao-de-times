@@ -206,6 +206,7 @@ function passo(c, ent, amb, tr, ev) {
   const amb2 = c.amb || (c.amb = {});
   amb2.chao = estrada; amb2.superficie = superficie; amb2.subida = (h1 - h0) / 10; amb2.ar = c.air; amb2.manual = !!amb.manual; amb2.marchaManual = ent.marcha || c.marcha;
   amb2.pn = pn; amb2.dano = dano; amb2.drs = drs; amb2.ers = ersAtivo; amb2.vacuo = vac; amb2.curva = curva;
+  amb2.tetoV = amb.f1 ? spec.vmax * pn.final * dano.final * F1.TETO_VELOCIDADE : Infinity;
   amb2.limiteV = bandeira < 1 ? bandeira * spec.vmax * pn.final * dano.final * (1 + (drs ? F1.DRS_GANHO * (spec.drs ?? 1) : 0)) : Infinity;
   // a dinâmica
   const xAnt = c.x, yAnt = c.y;
