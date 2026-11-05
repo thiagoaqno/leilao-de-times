@@ -559,7 +559,7 @@ function efeitoDoDano(dano) {
 // ---------- o vácuo da F1 ----------
 // Atrás de outro carro o vácuo aumenta a velocidade final e reduz a aderência em curva.
 // DRS e vácuo podem ser combinados; o teto também inclui uma pequena contribuição do ERS.
-const VACUO_FINAL = 0.20, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.90, DRS_GANHO = 0.50, ERS_POTENCIA = 0.22;
+const VACUO_FINAL = 0.20, VACUO_ACEL = 0.2, AR_SUJO = 0.1, AERO_MAX = 0.90, DRS_GANHO = 0.40, ERS_POTENCIA = 0.22;
 // A velocidade da física é convertida para km/h pelo velocímetro (0,75 × u/s).
 const vacuoPermitido = (v, quali = false) => !quali && v * 0.75 >= 100;
 function vacuoF1(draft, curva) {

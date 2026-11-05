@@ -848,7 +848,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const vac = F1.vacuoF1(F1.vacuoPermitido(car.v, room.phase === "quali") ? tf.draft : 0, curva);
   const reta = alvo >= topo * 0.97;
   if (!reta) alvo *= Math.sqrt(pneu.grip * dano.grip * vac.aderencia) * (1 - 0.05 * cl.agua) * cautela; // só as curvas dependem da aderência (no molhado, mais 5% de cautela)
-  const drs = p.drsZona >= 0 && p.drsZona === F1.zonaDRS(i / n, tr.t.drs) && !room.direcao?.safety && !room.direcao?.amarelo;
+  const drs = !!car.drsAtivo && !room.direcao?.safety && !room.direcao?.amarelo;
   const ganhoReta = (1 + (drs ? F1.DRS_GANHO * (spec.drs ?? 1) : 0)) * (1 + vac.final);
   if (reta) alvo *= ganhoReta;
   alvo = Math.min(alvo, spec.vmax * pneu.final * dano.final * (reta ? ganhoReta : 1));

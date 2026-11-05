@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const F1 = require('../public/corrida/f1-regras.js');
 const T = require('../public/corrida/pistas.js');
 const Direcao = require('../corrida-f1-direcao.js');
+const Sim = require('../public/corrida/sim.js');
 
 test('pneu frio e no penhasco piora largada, freio, curva e reta', () => {
   const macio = F1.pneuNovo('macio'), duro = F1.pneuNovo('duro');
@@ -24,6 +25,51 @@ test('DRS exige menos de um segundo, volta 3 e pista verde; só abre na zona', (
   assert.equal(F1.zonaDRS(2.98, z), 0);
   assert.equal(F1.zonaDRS(3.03, z), 0);
   assert.equal(F1.zonaDRS(3.16, z), -1);
+});
+
+test('DRS dura cinco segundos após a zona e não reinicia na mesma passagem', () => {
+  const c = { tick: 100, drsFim: 0, drsUsada: -1 };
+  assert.equal(Sim.atualizarDRS(c, 0, 0, false), true);
+  const fim = c.drsFim;
+  assert.equal(fim - c.tick, 5 / Sim.PASSO);
+  c.tick = fim - 1; assert.equal(Sim.atualizarDRS(c, -1, 0, false), true);
+  c.tick = fim; assert.equal(Sim.atualizarDRS(c, -1, 0, false), false);
+  const longo = { tick: 10, drsFim: 0, drsUsada: -1 };
+  Sim.atualizarDRS(longo, 0, 0, false); longo.tick = longo.drsFim;
+  assert.equal(Sim.atualizarDRS(longo, 0, 0, false), false);
+  Sim.atualizarDRS(longo, -1, 0, false); longo.tick++;
+  assert.equal(Sim.atualizarDRS(longo, 0, 0, false), true, 'outra passagem permite novo uso');
+});
+
+test('freio e bandeira encerram o DRS sem reativar na mesma zona', () => {
+  for (const zona of [0, 1]) {
+    const c = { tick: 1, drsFim: 0, drsUsada: -1 };
+    assert.ok(Sim.atualizarDRS(c, zona, zona, false));
+    c.tick++; assert.equal(Sim.atualizarDRS(c, zona, zona, true), false);
+    c.tick++; assert.equal(Sim.atualizarDRS(c, zona, zona, false), false);
+  }
+  assert.equal(Sim.atualizarDRS({ tick: 1, drsFim: 0, drsUsada: -1 }, 0, -1, false), false);
+});
+
+test('reconciliação preserva o relógio do DRS e a zona já usada', () => {
+  const tr = Sim.criarPista(T.PISTAS.interlagos, 'interlagos');
+  const a = Sim.novo(tr), b = Sim.novo(tr);
+  a.tick = 50; Sim.atualizarDRS(a, 0, 0, false);
+  Sim.aplicar(b, Sim.serializar(a), tr);
+  assert.equal(b.drsFim, a.drsFim); assert.equal(b.drsUsada, 0); assert.equal(b.drsAtivo, true);
+  b.tick = b.drsFim; assert.equal(Sim.atualizarDRS(b, 0, 0, false), false);
+});
+
+test('a física aplica e desliga o DRS pelo relógio mesmo fora da zona', () => {
+  const tr = Sim.criarPista(T.PISTAS.interlagos, 'interlagos');
+  tr.t = { ...tr.t, drs: [[0, 0, 1]] };
+  const c = Sim.novo(tr), spec = require('../public/corrida/f1-equipes.js').specDaEquipe('mclaren');
+  const amb = { spec, voltas: 10, f1: true, drsZona: 0, outros: [] };
+  Sim.passo(c, {}, amb, tr, []); assert.equal(c.drsAtivo, true);
+  tr.t.drs = [];
+  for (let i = 1; i < Sim.DRS_PASSOS; i++) Sim.passo(c, {}, amb, tr, []);
+  assert.equal(c.drsAtivo, true);
+  Sim.passo(c, {}, amb, tr, []); assert.equal(c.drsAtivo, false);
 });
 
 test('ERS recarrega por volta, fica entre zero e um e só gasta quando ativo', () => {
