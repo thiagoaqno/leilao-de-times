@@ -168,6 +168,30 @@ function contratarPiloto(sala, pid, id) {
   anotar(sala, pid, t, `contratou ${p.nome}`, custo);
   return sala;
 }
+// Quem entra com a temporada rolando (ou quem só acompanhava) assume, entre os GPs, o lugar de um piloto de uma equipe de robôs.
+// A equipe vira humana com o carro como está (o desenvolvimento dos rivais até aqui) e o caixa inicial; o outro piloto dela vira o
+// companheiro. O piloto substituído vai para o mercado e leva os pontos dele; os pontos da equipe ficam com ela. A pessoa começa do zero.
+// Piloto de equipe de amigo não sai: quem contratou pagou por ele.
+function substituirPiloto(sala, pid, id) {
+  ativa(sala);
+  const p = sala.pessoas[pid]; if (!p) throw Error("Pessoa inválida.");
+  if (p.equipe) throw Error("Você já tem um carro nesta temporada.");
+  const alvo = Pilotos.PILOTOS.find((x) => x.id === id);
+  if (!alvo) throw Error("Piloto inválido.");
+  const eq = sala.contratos[id];
+  if (!eq) throw Error(`${alvo.nome} está sem equipe: escolha um piloto que esteja correndo.`);
+  if (sala.equipes[eq]) throw Error(`${alvo.nome} corre pela ${nomeDaEquipe(eq)}, uma equipe de amigos: escolha um piloto de uma equipe de robôs.`);
+  const rivais = Solo.desenvolvimentoRivais({ semente: sala.semente, ano: sala.ano, gp: sala.gp, tamanho: sala.opcoes.tamanho }, Object.keys(sala.equipes));
+  const t = equipeNova(eq);
+  if (rivais.montagens[eq]) { t.montagem = rivais.montagens[eq]; t.bonus = rivais.bonus[eq] || 0; }
+  const outros = Pilotos.PILOTOS.filter((x) => x.id !== id && sala.contratos[x.id] === eq);
+  sala.contratos[id] = null;
+  t.companheiro = outros.length ? outros[0].id : null;
+  for (const x of outros.slice(1)) sala.contratos[x.id] = null; // (a equipe humana tem um carro contratado só)
+  sala.equipes[eq] = t; p.equipe = eq; p.carro = 0;
+  anotar(sala, pid, t, `assumiu o lugar de ${alvo.nome}`);
+  return sala;
+}
 function contratarEngenheiro(sala, pid, area, nivel) {
   ativa(sala);
   const eq = equipeDa(sala, pid), t = sala.equipes[eq], lista = Solo.ENGENHEIROS[area];
@@ -260,7 +284,7 @@ function vista(sala, pid, presente = () => false) {
     equipes: equipes || {}, tabelas: sala.fase === "temporada" ? tabelas(sala) : null, mercado: sala.fase === "temporada" ? mercado(sala) : [] };
 }
 
-const api = { MAX_PESSOAS, GRID, OPCOES_PADRAO, TAMANHOS, VOLTAS, NIVEIS, criarSala, entrar, sair, dispensar, passarCargo, escolherEquipe, definirOpcoes, iniciar, montar, desenvolver, contratarPiloto, contratarEngenheiro, mercado,
+const api = { MAX_PESSOAS, GRID, OPCOES_PADRAO, TAMANHOS, VOLTAS, NIVEIS, criarSala, entrar, sair, dispensar, passarCargo, escolherEquipe, definirOpcoes, iniciar, montar, desenvolver, contratarPiloto, substituirPiloto, contratarEngenheiro, mercado,
   gridDoGP, idDoHumano, idsEsperados, registrarResultado, tabelas, proximaTemporada, vista, humanosDa, custoDoPiloto, nomeDaEquipe };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1TemporadaGrupo = api;

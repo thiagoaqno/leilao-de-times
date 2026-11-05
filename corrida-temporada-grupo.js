@@ -8,6 +8,7 @@
 //   `abrirGPGrupo`), todos juntos; quem não tem carro assiste. O resultado entra na temporada de todos de uma vez, uma só vez.
 // - Entre os GPs: cada equipe monta o carro e gasta o caixa (qualquer um dos dois da equipe confirma; tudo vai para o histórico
 //   com o nome de quem fez) e o mercado é disputado (um piloto ou engenheiro só trabalha para uma equipe).
+// - Quem entra com a temporada rolando assume, entre os GPs, o lugar de um piloto de uma equipe de robôs (G.substituirPiloto).
 // - O GP aberto vive na memória: se o servidor reiniciar no meio dele, a temporada volta do GP que não terminou (nada se perde).
 const crypto = require("crypto");
 const bd = require("./bd.js");
@@ -192,6 +193,7 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
     socket.on("montagem", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.montar(sala, pid, d.pecas ? { pecas: d.pecas } : d.montagem, d.versao)));
     socket.on("desenvolver", (_, cb) => agir(socket, cb, (sala, pid) => G.desenvolver(sala, pid)));
     socket.on("piloto", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.contratarPiloto(sala, pid, d.id)));
+    socket.on("substituir", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.substituirPiloto(sala, pid, d.id)));
     socket.on("engenheiro", (d = {}, cb) => agir(socket, cb, (sala, pid) => G.contratarEngenheiro(sala, pid, d.area, Number(d.nivel))));
     socket.on("proximaTemporada", (_, cb) => agir(socket, cb, (sala, pid) => G.proximaTemporada(sala, pid)));
 

@@ -96,8 +96,14 @@ function tabela(linhas, tipo, destaque) {
   for (const x of linhas) if (destaque(x) && !lista.includes(x)) lista.push(x);
   return `<table class="placar"><thead><tr><th>Pos.</th><th>${tipo}</th><th>Pontos</th></tr></thead><tbody>${lista.map((r) => `<tr class="${destaque(r) ? "eu" : ""}"><td>${linhas.indexOf(r) + 1}</td><td><i class="faixa" style="--c:${h(equipe(r.equipe || r.id)?.cor || "#fff")}"></i><b>${h(r.nome)}</b>${r.humano ? ` <small class="muted">amigo</small>` : ""}</td><td><b>${r.pontos}</b></td></tr>`).join("")}</tbody></table>`;
 }
+// quem está sem carro: entre os GPs, pode assumir o lugar de um piloto de uma equipe de robôs
+function blocoDeSubstituir(terminou) {
+  const opcoes = S.mercado.filter((m) => m.dono && !S.equipes[m.dono]).map((m) => `<option value="${h(m.id)}">${h(piloto(m.id).nome)} · ${h(equipe(m.dono).nome)}</option>`).join("");
+  const pode = opcoes && !terminou && !S.gpAberto;
+  return `<section class="bloco"><header><h2>Você acompanha</h2></header><p class="boxnota">${terminou ? "A temporada acabou: na próxima você pode assumir um carro." : S.gpAberto ? "O GP está aberto: depois do resultado você pode assumir um carro." : "Assuma o lugar de um piloto dos robôs e corra daqui em diante. Você começa com zero pontos; a equipe mantém os pontos e o carro dela."}</p>${pode ? `<div class="row"><select id="g-substituir" aria-label="Piloto a substituir">${opcoes}</select><button class="primary" id="gsubstituir">Assumir o carro</button></div>` : ""}</section>`;
+}
 function painelDaEquipe(terminou) {
-  const eq = S.minhaEquipe, t = eq && S.equipes[eq]; if (!t) { const aviso = `<section class="bloco"><header><h2>Você acompanha</h2></header><p class="boxnota">Você não tem carro nesta temporada. Acompanha as tabelas e assiste aos GPs ao vivo.</p></section>`; return { carro: aviso, equipe: aviso }; }
+  const eq = S.minhaEquipe, t = eq && S.equipes[eq]; if (!t) { const aviso = blocoDeSubstituir(terminou); return { carro: aviso, equipe: aviso }; }
   const parceiros = S.pessoas.filter((p) => p.equipe === eq && p.id !== S.eu), travado = S.gpAberto || terminou, sozinho = parceiros.length === 0;
   const opcoesPiloto = S.mercado.slice().sort((a, b) => piloto(b.id).ritmo - piloto(a.id).ritmo).map((m) => {
     const p = piloto(m.id), humano = m.dono && S.equipes[m.dono], atual = t.companheiro === m.id;
@@ -139,7 +145,8 @@ function telaDaTemporada() {
     : S.acesso ? `<button class="primary grande btn-continuar" id="gentrargp">${S.acesso.watch ? "Assistir ao GP →" : "Entrar no GP →"}</button>`
       : eh ? `<button class="primary grande btn-continuar" id="giniciar">Continuar</button>` : `<p class="muted">Aguardando o anfitrião abrir o GP. Quando ele abrir, a sua tela vai para a pista sozinha.</p>`;
   const GA = window.F1Garagem, aba = GA.abaAtual(), dados = painelDaEquipe(terminou), nomeLinha = meuTime ? h(eq.nome) : "Você acompanha";
-  const hero = `${terminou ? "" : GA.mapaGP(prox.pista, S.gp + 1, !!S.acesso, previsao, S.opcoes.voltas)}<div class="garagem-hero">${meuTime ? GA.painelEquipe(meuTime, caixa.montagem) : `<aside class="pn-equipe"><div class="pn-logo" style="--eq:#444"><b>Você acompanha</b></div><p class="boxnota" style="padding:12px">Sem carro nesta temporada: acompanhe as tabelas e os GPs.</p></aside>`}
+  const entrada = !meuTime && !terminou ? blocoDeSubstituir(terminou) : "";
+  const hero = `${entrada}${terminou ? "" : GA.mapaGP(prox.pista, S.gp + 1, !!S.acesso, previsao, S.opcoes.voltas)}<div class="garagem-hero">${meuTime ? GA.painelEquipe(meuTime, caixa.montagem) : `<aside class="pn-equipe"><div class="pn-logo" style="--eq:#444"><b>Você acompanha</b></div><p class="boxnota" style="padding:12px">Sem carro nesta temporada: acompanhe as tabelas e os GPs.</p></aside>`}
       <section class="cr-centro corte">${meuTime ? GA.palcoSlot(meuTime) : ""}<div class="cr-gp"><span class="etapa-rot">${terminou ? "Bandeirada final" : `Etapa ${S.gp + 1} de ${tam}`}</span><h2>${terminou ? "Temporada concluída" : `GP de ${h(prox.nome)}`}</h2><span class="sub">${terminou ? "As tabelas finais estão em Classificação." : `${h(prox.pista.toUpperCase())} · classificação + ${S.opcoes.voltas} voltas · 20 carros · robôs ${h(S.opcoes.nivel)}`}</span></div></section>
       ${GA.colunaDireita({ titulo: "Calendário", cal: S.calendario, gp: S.gp, rotuloProx: S.acesso ? "Em curso" : "Próximo", previsao, botao, nota: terminou ? "O campeonato está fechado." : S.acesso ? "O GP está aberto. Quem cair no meio tem o carro levado por um robô até voltar." : caixa && !Equipes.custoDaMontagem(caixa.montagem) ? "Seu carro está sem pontos. Distribua o orçamento na aba Carro · Pontos antes do GP." : "A classificação e a corrida são ao vivo, com todos os amigos juntos." })}</div>
     <div class="cr-cartoes"><div class="cr-cartao"><strong>${S.gp}/${tam}</strong><small>GPs disputados</small></div><div class="cr-cartao"><strong>${t.pilotos.filter(meus).map((p) => p.pontos).join("") || "—"}</strong><small>Seus pontos</small></div><div class="cr-cartao"><strong>${meuTime ? t.equipes.find(deMinhaEquipe).pontos : "—"}</strong><small>Pontos da equipe</small></div><div class="cr-cartao"><strong>${caixa ? `${caixa.gasto}/${Solo.teto} mi` : "—"}</strong><small>Gastos no ano</small></div></div>
@@ -185,6 +192,7 @@ const clicar = async (e) => {
   else if (b.dataset.aba) { window.F1Garagem.definirAba(b.dataset.aba); desenhar(); }
   else if ((b.dataset.ponto || b.hasAttribute("data-ponto-zerar")) && t) { const nova = window.F1Garagem.cliquePonto(b, t.montagem, S.minhaEquipe, t.bonus); if (nova) await pedir("montagem", { montagem: nova, versao: t.versao }); }
   else if (b.id === "gdesenvolver") await pedir("desenvolver");
+  else if (b.id === "gsubstituir") await pedir("substituir", { id: document.getElementById("g-substituir").value });
   else if (b.id === "gcontratar") await pedir("piloto", { id: document.getElementById("g-piloto").value });
   else if (b.dataset.engenheiro) await pedir("engenheiro", { area: b.dataset.engenheiro, nivel: document.getElementById("g-" + b.dataset.engenheiro).value });
   else if (b.id === "gconvite") { const url = `${location.origin}/corrida/temporada/?sala=${S.codigo}`; try { await navigator.clipboard.writeText(url); falar("Convite copiado. Manda no grupo."); } catch { prompt("Copie o convite:", url); } }
