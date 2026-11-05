@@ -25,10 +25,32 @@ function recolocar(p, c, tr) {
   const ia = p.ia;
   if (ia) { Object.assign(ia, { v: 0, desvio: 0, ult: null, defesa: null, erro: null, parado: 0, refT: null, susto: 0, lat: 0 }); }
 }
+// Mantém a proteção enquanto houver carros sobrepostos e por 500 ms depois da separação.
+function prolongarSobreposicao(room, agora) {
+  const jogadores = room.order.map(id => room.players[id]).filter(p => p && !p.dnf && p.finish == null);
+  for (const p of jogadores) {
+    if (!p.fantAte) continue;
+    const c = carroDe(p); if (!c) continue;
+    const [L, W] = Sim.dimensoes(p.car);
+    let sobreposto = false;
+    for (const o of jogadores) {
+      if (o === p) continue;
+      const d = carroDe(o); if (!d || Math.abs((c.z || 0) - (d.z || 0)) > 15) continue;
+      const [l, w] = Sim.dimensoes(o.car);
+      if (Sim.maisEnterrado(c.x, c.y, c.a, L, W, d.x, d.y, d.a, l, w)) {
+        sobreposto = true;
+        break;
+      }
+    }
+    if (sobreposto || p.fantSobreposto) p.fantAte = Math.max(p.fantAte, agora + 500);
+    p.fantSobreposto = sobreposto;
+  }
+}
 // Chamado a cada ~100 ms pelo laço da direção de prova. Devolve true se algum carro virou ou deixou de ser fantasma (o estado público muda).
 function passo(room, agora) {
   const batida = !!room.fantMudou; room.fantMudou = false; // (uma batida acabou de pôr dois carros em fantasma: corrida-contato.js)
   if (room.phase !== "race" || room.config.regras !== "f1" || !room.startAt) return batida;
+  prolongarSobreposicao(room, agora);
   // os fantasmas que acabaram (inclusive os de batida) deixam de ser fantasma mesmo na largada
   if (agora < room.startAt + LARGADA_MS) { let m = batida; for (const id of room.order) { const p = room.players[id]; if (p && p.fantAte && agora >= p.fantAte) { p.fantAte = 0; m = true; } } return m; }
   const tr = Sim.criarPista(T.PISTAS[room.config.pista], room.config.pista), seguro = !!(room.direcao && room.direcao.safety);
