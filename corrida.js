@@ -54,7 +54,7 @@ module.exports = function attachCorrida(io) {
       regras: f1 ? "f1" : "galera",
       caixas: !f1 && c.caixas === true,
       equilibrio: !f1 && c.equilibrio !== false,
-      robos: Math.max(0, Math.min(f1 ? Robos.GRID_F1 - 1 : 7, int(c.robos, 0))), // nas regras de F1 o grid tem até 20 carros
+      robos: Math.max(0, Math.min(f1 ? Robos.GRID_F1 - 1 : 7, int(c.robos, 0))), // nas regras de F1 o grid tem até 22 carros
       classificacao: f1 && c.classificacao === "pular" ? "pular" : f1 ? "completa" : "pular", // F1: Q1, Q2 e Q3 antes da corrida, ou grid pela ordem dos pilotos
       cambio: c.cambio === "manual" ? "manual" : "auto",
       ers: f1 && c.ers === "manual" ? "manual" : "auto",
@@ -63,7 +63,7 @@ module.exports = function attachCorrida(io) {
       contrarrelogio: f1 && c.contrarrelogio === true, // sozinho na pista, com o fantasma da sua melhor volta correndo junto (jogo.js)
     };
   };
-  // Uma sala nova (o botão "Abrir sala nova", que não manda config) nasce em Mônaco, com as regras de F1, 5 voltas, grid de 20 (19 robôs
+  // Uma sala nova (o botão "Abrir sala nova", que não manda config) nasce em Mônaco, com as regras de F1, 5 voltas, grid de 22 (21 robôs
   // médios), clima variável e a classificação pulada; o pneu da largada de cada piloto já nasce médio (`F1.COMPOSTO_PADRAO`, em `addPlayer`) e
   // cada um já entra com uma equipe (`equipeLivre`), não com o carro avulso. O organizador muda tudo depois, e quem manda uma config
   // parcial (os testes, a carreira) continua recebendo os padrões de `cleanConfig` e sem equipe.
@@ -476,7 +476,7 @@ module.exports = function attachCorrida(io) {
     const gp = temporada.calendario[temporada.gp];
     if (!gp) throw Error("A temporada terminou.");
     const rivais = require("./public/corrida/temporada/regras.js").desenvolvimentoRivais(temporada, [temporada.equipe]);
-    const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: gp.pista, voltas: temporada.voltas, robos: 19, classificacao: "completa", nivel: temporada.nivel || "medio" }),
+    const room = { code: novoCodigo(rooms), host: null, phase: "lobby", config: cleanConfig({ regras: "f1", pista: gp.pista, voltas: temporada.voltas, robos: Robos.GRID_F1 - 1, classificacao: "completa", nivel: temporada.nivel || "medio" }),
       players: {}, order: [], finishOrder: [], log: [], t: Date.now(), privada: true, temporada: true, equipeTemporada: temporada.equipe,
       sementeFixa: `${temporada.semente}:${temporada.ano}:${temporada.gp}`, pilotosTemporada: require("./public/corrida/temporada/regras.js").pilotosNoGrid(temporada),
       montagens: { ...rivais.montagens, [temporada.equipe]: temporada.montagem }, bonusMontagem: { ...rivais.bonus, [temporada.equipe]: temporada.bonus }, bonusBox: (temporada.engenheiros.mecanico * 0.5 + temporada.engenheiros.estrategista * 0.25), aoTerminarGP, aoMontar,
@@ -489,7 +489,7 @@ module.exports = function attachCorrida(io) {
     room.order.push(id); room.host = id; rooms.set(room.code, room); log(room, `🏁 GP de ${gp.nome}: box da temporada aberto.`);
     return { code: room.code, id, token, phase: room.phase };
   }
-  // GP da temporada em grupo (corrida-temporada-grupo.js): todos os humanos da sala no mesmo grid, os robôs completando os 20
+  // GP da temporada em grupo (corrida-temporada-grupo.js): todos os humanos da sala no mesmo grid, os robôs completando os 22
   // carros. `g.pessoas`: [{ pid, nome, equipe }]; `g.robos`: os pilotos reais de robô (com a equipe de quem os contratou);
   // `g.bonusBox`: o bônus dos engenheiros por equipe. Devolve o acesso de cada pessoa (e o de quem só assiste).
   function abrirGPGrupo(g, aoTerminarGP) {

@@ -4,10 +4,10 @@ const assert = require("node:assert/strict");
 const T = require("../public/corrida/pistas.js");
 const S = require("../public/corrida/sim.js");
 
-test("grid de F1: 20 carros com mais espaço entre filas, dentro da pista", () => {
+test("grid de F1: 22 carros com mais espaço entre filas, dentro da pista", () => {
   for (const [id, t] of Object.entries(T.PISTAS)) {
     const pts = T.pontos(t, 6), n = pts.length;
-    const vagas = Array.from({ length: 20 }, (_, g) => S.vagaDoGrid(pts, g, t.width, true));
+    const vagas = Array.from({ length: 22 }, (_, g) => S.vagaDoGrid(pts, g, t.width, true));
     for (let g = 0; g < vagas.length; g++) {
       const v = vagas[g], p = pts[v.idx];
       if (g) assert.ok((vagas[g - 1].idx - v.idx + n) % n >= 12, `${id}: posições devem ficar desencontradas`);

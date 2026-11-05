@@ -81,7 +81,7 @@ function central(c) {
     ? `<section class="cx-card cx-prox" style="--foto:${foto ? `url('${h(foto)}')` : "none"}"><span class="cx-prox-foto" aria-hidden="true"></span>
       <div class="cx-prox-topo"><i aria-hidden="true"></i><b>${ativo ? "GP em andamento" : "Próxima etapa"}</b><span>•</span><em>Rodada ${dois(s.gp + 1)} / ${dois(s.tamanho)}</em></div>
       <div class="cx-prox-traco">${traco}</div>
-      <div class="cx-prox-meio"><h2>${h(nomeGP(prox.pista, prox.nome))}</h2><p>${dados} <span class="cx-sub-grid">· classificação · grid de 20 carros</span></p></div>
+      <div class="cx-prox-meio"><h2>${h(nomeGP(prox.pista, prox.nome))}</h2><p>${dados} <span class="cx-sub-grid">· classificação · grid de 22 carros</span></p></div>
       <div class="cx-prox-pe"><div class="cx-clima">${prev ? `${root.PrevisaoUI?.icone ? `<span class="cx-clima-ic">${root.PrevisaoUI.icone(prev.nivel)}</span>` : ""}<span><small>Previsão</small><b>${h(prev.titulo)}</b></span><strong>${prev.pct}%<small> de chuva</small></strong>` : ""}</div>${botao}</div></section>`
     : `<section class="cx-card cx-prox cx-fim"><div class="cx-prox-topo"><i aria-hidden="true"></i><b>Bandeirada final</b></div><div class="cx-prox-meio"><h2>Temporada ${s.ano} concluída</h2><p>Campeão: ${h(t.pilotos[0].nome)} · Construtores: ${h(t.equipes[0].nome)}. O caixa e o carro seguem para o próximo ano.</p></div><div class="cx-prox-pe"><div></div>${botao}</div></section>`;
   // o campeonato: os cinco primeiros (e eu, se estou fora)
@@ -145,7 +145,7 @@ function classificacao(c) {
   }
   // a campanha: a posição a cada GP (a linha sobe quando o piloto sobe)
   const pontosEvol = gps.map((g, i) => { const tb = tabDe(s.resultados.filter((r) => r.ano !== s.ano || gps.indexOf(r) <= i)); return tb.pilotos.findIndex((p) => p.id === "voce") + 1; });
-  const W = 300, H = 56, x = (i) => (pontosEvol.length > 1 ? i / (pontosEvol.length - 1) : 0.5) * (W - 10) + 5, y = (p) => 6 + (p - 1) / 19 * (H - 12);
+  const W = 300, H = 56, x = (i) => (pontosEvol.length > 1 ? i / (pontosEvol.length - 1) : 0.5) * (W - 10) + 5, y = (p) => 6 + (p - 1) / 21 * (H - 12);
   const linha = pontosEvol.map((p, i) => `${x(i).toFixed(1)},${y(p).toFixed(1)}`).join(" ");
   const grafico = pontosEvol.length ? `<svg class="cx-evol" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sua posição a cada GP"><polygon points="${x(0).toFixed(1)},${H} ${linha} ${x(pontosEvol.length - 1).toFixed(1)},${H}"/><polyline points="${linha}"/>${pontosEvol.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p).toFixed(1)}" r="3"><title>${h(s.calendario[gps[i].gp]?.nome)}: ${p}º</title></circle>`).join("")}</svg>` : '<p class="cx-vazio">A linha aparece depois do primeiro GP.</p>';
   const dif = lider - meus, seloDif = eu === 0 ? (gps.length ? `${meus - (t.pilotos[1]?.pontos || 0)} pontos à frente` : "Tudo por fazer") : `${dif} ${dif === 1 ? "ponto" : "pontos"} para o líder`;

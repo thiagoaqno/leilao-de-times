@@ -6,14 +6,14 @@
 //   e cada gasto fica no histórico da equipe com o nome de quem fez; a montagem leva a `versao` da equipe, e quem mexeu
 //   em cima de uma versão velha é avisado em vez de desfazer o que o companheiro acabou de fazer;
 // - o mercado é disputado: um piloto ou engenheiro só trabalha para UMA equipe (quem pegou primeiro fica com ele);
-// - o grid tem 20 carros: os humanos e os pilotos reais que sobram (o corte fixo do ano sai da semente).
+// - o grid tem 22 carros: os humanos e os pilotos reais que sobram (o corte fixo do ano sai da semente).
 (function (root) {
 const Pilotos = root.F1Pilotos || require("../f1-pilotos-2026.js");
 const Equipes = root.F1Equipes || require("../f1-equipes.js");
 const Pecas = root.F1Pecas || require("../f1-pecas.js");
 const Solo = root.F1Temporada || require("./regras.js");
 
-const MAX_PESSOAS = 8, GRID = 20, CAIXA_INICIAL = 42, PATROCINIO = 6, HISTORICO_MAX = 30;
+const MAX_PESSOAS = 8, GRID = 22, CAIXA_INICIAL = 42, PATROCINIO = 6, HISTORICO_MAX = 30;
 const OPCOES_PADRAO = { tamanho: 8, voltas: 3, nivel: "medio" };
 const TAMANHOS = [4, 8, Solo.PISTAS_TRABALHADAS.length], VOLTAS = [2, 3, 5, 10], NIVEIS = ["facil", "medio", "dificil"];
 const nomeDaEquipe = (id) => (Pilotos.EQUIPES[id] || {}).nome || id;
@@ -211,7 +211,7 @@ function mercado(sala) {
 
 // ---------- o grid e o resultado ----------
 const chave = (texto) => { let h = 2166136261; for (const c of String(texto)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
-// Os 20 carros do GP: os humanos (`h:<id>`) e os pilotos reais contratados. Passando de 20, saem pilotos de equipes de robô
+// Os 22 carros do GP: os humanos (`h:<id>`) e os pilotos reais contratados. Passando de 22, saem pilotos de equipes de robô
 // (nunca os contratados por humanos), sempre os mesmos durante o ano (sorteio fixo pela semente).
 function gridDoGP(sala) {
   const humanos = sala.ordem.map((id) => sala.pessoas[id]).filter((p) => p.equipe).map((p) => ({ pid: p.id, nome: p.nome, equipe: p.equipe }));
@@ -222,16 +222,26 @@ function gridDoGP(sala) {
     const fora = new Set(cortaveis.slice(0, robos.length - vagas).map((p) => p.id));
     robos = robos.filter((p) => !fora.has(p.id));
   }
+  // Pilotos sem contrato ocupam os assentos vagos após trocas de equipe.
+  const livres = Pilotos.PILOTOS.filter((p) => !sala.contratos[p.id]);
+  for (const equipe of Object.keys(Pilotos.EQUIPES)) {
+    let faltam = 2 - humanos.filter((p) => p.equipe === equipe).length - robos.filter((p) => p.equipe === equipe).length;
+    while (faltam > 0 && livres.length) {
+      const preferido = livres.findIndex((p) => p.equipe === equipe);
+      const [p] = livres.splice(preferido >= 0 ? preferido : 0, 1);
+      robos.push({ ...p, equipe }); faltam--;
+    }
+  }
   return { humanos, robos };
 }
 const idDoHumano = (pid) => `h:${pid}`;
 function idsEsperados(sala) { const g = gridDoGP(sala); return [...g.humanos.map((h) => idDoHumano(h.pid)), ...g.robos.map((p) => p.id)]; }
 function registrarResultado(sala, linhas, analise = null) {
   ativa(sala);
-  const esperados = idsEsperados(sala), n = esperados.length;
-  if (!Array.isArray(linhas) || linhas.length !== n) throw Error("Resultado incompleto.");
+  const esperados = idsEsperados(sala), n = Array.isArray(linhas) ? linhas.length : 0;
+  if (n !== esperados.length && n !== 20) throw Error("Resultado incompleto."); // GP anterior de 20 ainda em andamento
   const ids = new Set(linhas.map((r) => r.piloto)), posicoes = new Set(linhas.map((r) => r.pos));
-  if (ids.size !== n || !esperados.every((id) => ids.has(id)) || posicoes.size !== n
+  if (ids.size !== n || ![...ids].every((id) => esperados.includes(id)) || posicoes.size !== n
     || linhas.some((r) => !inteiro(r.pos) || r.pos < 1 || r.pos > n || r.pontos !== (r.dnf || r.nc ? 0 : (Solo.PONTOS[r.pos - 1] || 0) + (r.voltaRapida ? 1 : 0)))
     || linhas.filter((r) => r.voltaRapida).length > 1) throw Error("Resultado inválido."); // (a volta mais rápida vale +1, para um só)
   const gp = sala.calendario[sala.gp];

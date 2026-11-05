@@ -97,7 +97,7 @@ function desenharCartoes() {
   if (s && t) {
     const eu = t.pilotos.findIndex((p) => p.id === "voce"), pts = t.pilotos[eu]?.pontos || 0;
     c1.innerHTML = `<span class="mn-c-txt"><small>Sua temporada</small><b>${s.gp ? `${posTxt(eu + 1)} no campeonato` : "Tudo por fazer"}</b><span>${pts} ${pts === 1 ? "ponto" : "pontos"}</span></span><span class="mn-c-marca">${LOUROS}</span>`;
-  } else c1.innerHTML = `<span class="mn-c-txt"><small>Sua temporada</small><b>Comece a carreira</b><span>11 equipes · grid de 20 carros</span></span><span class="mn-c-marca">${LOUROS}</span>`;
+  } else c1.innerHTML = `<span class="mn-c-txt"><small>Sua temporada</small><b>Comece a carreira</b><span>11 equipes · grid de 22 carros</span></span><span class="mn-c-marca">${LOUROS}</span>`;
   if (s && s.gp < s.tamanho) { const e = s.calendario[s.gp]; c2.href = "/corrida/temporada/"; c2.removeAttribute("data-painel"); cartaoGP(e.pista, "Próxima etapa", e.nome, `Rodada ${String(s.gp + 1).padStart(2, "0")} / ${String(s.tamanho).padStart(2, "0")}`, c2); }
   else { const id = rapida.pista; c2.href = "#rapida"; c2.dataset.painel = "rapida"; cartaoGP(id, "Corrida rápida", PISTAS[id]?.name || id, `${rapida.voltas} ${rapida.voltas === 1 ? "volta" : "voltas"} · direto para a pista`, c2); }
   const d = resumoMenu?.desafio;
@@ -144,7 +144,7 @@ function desenharSecao(nome) {
   if (nome === "rapida") {
     $("mnRapida").innerHTML = carrossel(rapida.pista, "rp")
       + seg([[1, "1"], [3, "3"], [5, "5"], [10, "10"]], rapida.voltas, "rp-voltas", "Voltas")
-      + seg([["facil", "Fácil"], ["medio", "Médio"], ["dificil", "Difícil"]], rapida.nivel, "rp-nivel", "Robôs · grid de 20")
+      + seg([["facil", "Fácil"], ["medio", "Médio"], ["dificil", "Difícil"]], rapida.nivel, "rp-nivel", "Robôs · grid de 22")
       + seg([["aleatorio", "Aleatório"], ["seco", "Seco"], ["chuva", "Chuva"], ["variavel", "Variável"]], rapida.clima, "rp-clima", "Clima")
       + seg([["pular", "Direto"], ["completa", "Com classificação"]], rapida.classificacao, "rp-quali", "Fim de semana")
       + `<button type="button" class="mn-acao" id="mnLargar"><span><b>Largar</b><small>${h(equipeNome())} · pneu médio</small></span>${seta}</button><button type="button" class="mn-link" id="mnAjustar">Abrir a sala para ajustar tudo</button>`;
@@ -192,7 +192,7 @@ function criar(config, inicio) {
     else { E.entradaDireta = false; $("hErr").textContent = r?.error || "Não foi possível criar a sala. Tente novamente."; }
   });
 }
-const configRapida = () => ({ pista: rapida.pista, regras: "f1", voltas: rapida.voltas, nivel: rapida.nivel, robos: 19, clima: rapida.clima, classificacao: rapida.classificacao });
+const configRapida = () => ({ pista: rapida.pista, regras: "f1", voltas: rapida.voltas, nivel: rapida.nivel, robos: 21, clima: rapida.clima, classificacao: rapida.classificacao });
 function largarRapida(largar) { store.set(CHAVE_RAPIDA, rapida); criar(configRapida(), { equipe: equipeDoCarro(), largar }); }
 function largarContra() { store.set(CHAVE_CONTRA, contra); criar({ pista: contra.pista, regras: "f1", voltas: contra.voltas, robos: 0, clima: "seco", classificacao: "pular", contrarrelogio: true }, { equipe: equipeDoCarro(), pneu: "macio", largar: true }); }
 function andarPista(cfg, d) { const l = idsPistas(), i = l.indexOf(cfg.pista); cfg.pista = l[(i + d + l.length) % l.length]; }

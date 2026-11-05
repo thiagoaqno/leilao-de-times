@@ -4,7 +4,7 @@ const R = require("../public/corrida/temporada/regras.js");
 const Analise = require("../corrida-analise.js");
 
 function resultado(s, pos) {
-  const vagas = Array.from({ length: 20 }, (_, i) => i + 1).filter((p) => p !== pos);
+  const vagas = Array.from({ length: 22 }, (_, i) => i + 1).filter((p) => p !== pos);
   return [{ piloto: "voce", equipe: s.equipe, pos, pontos: R.PONTOS[pos - 1] || 0 }, ...R.pilotosNoGrid(s).map((p, i) => ({ piloto: p.id, equipe: p.equipe, pos: vagas[i], pontos: R.PONTOS[vagas[i] - 1] || 0 }))];
 }
 const analise = (g) => ({ pilotos: { voce: { g } } });

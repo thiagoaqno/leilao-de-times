@@ -24,7 +24,7 @@ test('Mônaco molhado: pelotão passa pelo grampo sem sair da pista', { timeout:
   Date.now = () => agora; Math.random = F1.sorteio('teste-chuva-monaco');
   try {
     Robos.usarFonte(() => []);
-    const room = { config: { pista: 'monaco', regras: 'f1', caixas: false, robos: 20, nivel: 'dificil', voltas: 2 }, players: {}, order: [], phase: 'race', startAt: agora, semente: 4321, finishOrder: [], clima: { chove: true, t0: agora, agua0: 1, dur: 1000, trechos: [[0, 1000, 1]] } };
+    const room = { config: { pista: 'monaco', regras: 'f1', caixas: false, robos: 22, nivel: 'dificil', voltas: 2 }, players: {}, order: [], phase: 'race', startAt: agora, semente: 4321, finishOrder: [], clima: { chove: true, t0: agora, agua0: 1, dur: 1000, trechos: [[0, 1000, 1]] } };
     Robos.preparar(room, ['#a', '#b'], () => 'x');
     room.order.forEach((id, i) => Object.assign(room.players[id], { grid: i, laps: 0, sector: T.SECTORS - 1, started: false, finish: null }));
     Robos.largar(room); Direcao.iniciar(room);
@@ -38,7 +38,7 @@ test('Mônaco molhado: pelotão passa pelo grampo sem sair da pista', { timeout:
       Robos.passo(room, .05, setor, emitir);
       for (const id of room.order) { const p = room.players[id], f = p.ia.sim.idx / n; if (f > .33 && f < .42) maxLat = Math.max(maxLat, Math.abs(p.ia.lat)); if (f >= .42 && f < .9) passaram.add(id); }
     }
-    assert.equal(passaram.size, 20, 'todos passaram pelo grampo');
+    assert.equal(passaram.size, 22, 'todos passaram pelo grampo');
     assert.ok(maxLat <= T.PISTAS.monaco.width / 2, `saiu da pista: ${maxLat}`);
     assert.ok(batidas < 90, `excesso de contatos no pelotão: ${batidas}`); // (Mônaco real é estreita: no Casino e no Mirabeau o pelotão se toca; com 64 entre as barreiras dá ~62)
   } finally { Date.now = antigo; Math.random = aleatorio; Robos.usarFonte(() => null); }

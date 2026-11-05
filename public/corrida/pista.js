@@ -349,10 +349,10 @@ function buildWorld(tr) {
   const line = add(new THREE.Mesh(new THREE.PlaneGeometry(W, 12), new THREE.MeshStandardMaterial({ map: chk, roughness: 0.6 })));
   line.rotation.x = -Math.PI / 2; line.rotation.z = -Math.atan2(a0.ty, a0.tx) + Math.PI / 2; line.position.set(a0.x, a0.h + 0.55, a0.y);
   // os GPs com o chão do kit têm o grid pintado com os números
-  // (as barras das regras de F1 são as 20 vagas do grid; as de hoje, as 8 de sempre: pista.js liga um conjunto de cada vez)
+  // (as barras das regras de F1 são as 22 vagas do grid; as de hoje, as 8 de sempre: pista.js liga um conjunto de cada vez)
   if (!gp?.chao?.grid) { tr.gridGalera = add(new THREE.Group()); tr.gridF1 = add(new THREE.Group()); tr.gridF1.visible = false;
     const barra = new THREE.PlaneGeometry(20, 2), branco = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    for (const [grupo, quantas, f1] of [[tr.gridGalera, 8, false], [tr.gridF1, 20, true]]) for (let g = 0; g < quantas; g++) { const p = gridSpot(pts, g, W, f1); const m = new THREE.Mesh(barra, branco); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); grupo.add(m); } }
+    for (const [grupo, quantas, f1] of [[tr.gridGalera, 8, false], [tr.gridF1, 22, true]]) for (let g = 0; g < quantas; g++) { const p = gridSpot(pts, g, W, f1); const m = new THREE.Mesh(barra, branco); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(p.ty, p.tx) + Math.PI / 2; m.position.set(p.x + p.tx * 12, pts[p.idx].h + 0.55, p.y + p.ty * 12); grupo.add(m); } }
   // pórtico da largada (`portico.adiante` do GP: quantas unidades à frente da linha de chegada ele fica; Mônaco o põe uns 80 m depois, como na pista de verdade)
   const ap = gp?.portico?.adiante ? pts[Math.round(gp.portico.adiante / 6) % n] : a0;
   { const s = 1, L = W / 2 + 14, mat = M(0x333844), sign = canvasTex(256, 32, (x, w, hh) => { x.fillStyle = "#111"; x.fillRect(0, 0, w, hh); x.fillStyle = "#ffd23f"; x.font = "bold 24px sans-serif"; x.textAlign = "center"; x.fillText("CORRIDA DA GALERA", w / 2, 24); }, false);
