@@ -28,6 +28,7 @@ const FOLGA_LINHA = 4; // (pouca folga: no ápice e na saída o robô põe meio 
 const _FOLGA_LINHA_ANTIGA = 18; // a linha de F1 fica a esta distância (u) da beira da pista, de centro a centro: sobra meia largura do carro e um respiro
 // (provisório, para medir o volante antigo contra o novo; some quando o novo virar padrão)
 const VOLANTE_LINHA = process.env.ROBO_VOLANTE !== "antigo";
+const SUAVIZAR_VOLANTE = 1 - Math.exp(-Sim.PASSO / 0.012);
 // O robô de F1 segue a linha de corrida (o elástico de `tracado`) por inteiro, menos uma folga: o suficiente para abrir as curvas e
 // encostar nos ápices sem raspar no zebra. A velocidade que ele mira sai da curvatura DESSE caminho (`curvaturaDoCaminho`), não da do
 // elástico cru, que tinha quinas de raio quase zero.
@@ -982,6 +983,10 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     car.x += q.nx * lat; car.y += q.ny * lat; car.sp = { x: car.x, y: car.y };
     ia.desvio = 0; ia.ult = null; ia.erro = null; ia.recuperacoes = (ia.recuperacoes || 0) + 1;
   }
+  // A margem de Mônaco entra e sai gradualmente, sem um degrau de velocidade no limite do trecho.
+  const entrada = Math.max(0, Math.min(1, (f - 0.19) / 0.02)), saida = Math.max(0, Math.min(1, (0.29 - f) / 0.02));
+  const trecho = 1 - 0.05 * Math.min(entrada, saida);
+  const alvoGuiado = treinoMonaco ? alvo * ({ facil: 0.82, medio: 0.89, dificil: 1 }[room.config.nivel] || 1) * trecho : alvo;
   for (let s = 0, passos = Math.round(dt / Sim.PASSO); s < passos; s++) {
     ev.length = 0;
     // o volante e os pedais são calculados a cada passo da física (120 Hz), como quem joga: o robô sente o carro escorregar
@@ -990,7 +995,7 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     const chicaneMonaco = room.config.pista === "monaco" && !tr.t.muros && ((f > 0.625 && f < 0.655) || (f > 0.805 && f < 0.835));
     const chicaneLivre = chicaneMonaco && !tf.encontrou && !amb.safety && !amb.amarela && !p.azul && !cl.agua &&
       (car.pneu?.desgaste || 0) < 0.5 && (p.dano || 0) < 10 && !car.inst;
-    if (VOLANTE_LINHA) Sim.pilotoLinha(car, tr, spec, treinoMonaco ? alvo * ({ facil: 0.82, medio: 0.89, dificil: 1 }[room.config.nivel] || 1) * (f >= 0.20 && f <= 0.28 ? 0.9 : 1) : alvo, latAdiante, ent);
+    if (VOLANTE_LINHA) Sim.pilotoLinha(car, tr, spec, alvoGuiado, latAdiante, ent);
     else Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent, chicaneLivre ? 1.15 : 1);
     if (chicaneLivre && car.v < alvo * 1.20) ent.brake = 0;
     // Em ar limpo, uma pequena sobra de velocidade pode ser corrigida tirando o pé.
@@ -999,6 +1004,10 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     const exc = Math.abs(car.alF) - ALFA_FRENTE; // a frente já passou do pico do pneu (anda de frente): mais volante só piora, alivia até ela voltar a pegar
     if (exc > 0 && car.alF * ent.steer < 0) ent.steer *= Math.max(0, 1 - exc * K_FRENTE);
     if (medo > 0.01) ent.steer = (ia.volante || 0) + (ent.steer - (ia.volante || 0)) * (1 - 0.85 * Math.min(1, medo)); // com o carro abalado o volante vai mais devagar
+    if (VOLANTE_LINHA) {
+      const anterior = ia.volante || 0;
+      ent.steer = anterior + (ent.steer - anterior) * SUAVIZAR_VOLANTE;
+    }
     ia.volante = ent.steer;
     if (ent.brake && car.travada > TRAVA_ABS) ent.brake = 0; // a roda da frente travou: solta o freio um instante (o ABS de quem sabe frear)
     ent.ers = !!ia.ult && !ia.ult.emergencia;
