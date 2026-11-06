@@ -248,7 +248,7 @@ function perfilF1(pf, f) {
 }
 // O tempo de uma volta lançada andando no perfil do nível `f`, com a arrancada do carro (sem tráfego), com a aderência `ader` do pneu.
 function voltaDoPerfil(pf, f, ader) {
-  const fis = perfilF1(pf, f), ext = ader ? { grip: ader.grip, tracao: ader.tracao } : null, raiz = ader ? Math.sqrt(ader.grip) : 1;
+  const fis = perfilF1(pf, f), ext = ader ? { grip: ader.grip, tracao: ader.tracao } : null, raiz = ader ? Math.sqrt(pf.linha.hi ? ader.rel : ader.grip) : 1; // (o piloto novo: o `rel` é o limite de verdade do pneu)
   const topo = topoDe(pf), teto0 = topo * (ader ? ader.final : 1);
   let v = 0, t = 0;
   for (let volta = 0; volta < 2; volta++) {
@@ -847,7 +847,8 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const saidaGrid = Math.min(1, ((car.prog - (car.gridIdx - n)) / 100));
   const precisao = room.config.pista === "monaco" ? 0.4 : 1; // a variação de estilo é menor onde há pouco espaço para corrigir
   // (o piloto novo segue a linha base: a variedade vem do perfil do piloto, sem desvio fixo nem senoide somados ao traçado)
-  const linhaEm = pf.linha.hi ? (k) => pf.lat[(k + 2) % n] + est.dentro * pf.linha.sinal[k % n] * Math.min(1, pf.kf[k % n] * 400) * 4 : (k, prog) => pf.lat[(k + 2) % n] * pf.fator + ia.jeito + Math.sin(prog / 105 + ia.tracadoId * 1.7) * 3 * precisao
+  const jeitoP = pf.linha.hi ? (ia.jeitoPiloto || (ia.jeitoPiloto = Piloto.jeitoDe(Estilos.dePiloto(p.piloto && p.piloto.id)))) : null;
+  const linhaEm = pf.linha.hi ? (k) => pf.lat[(k + 2) % n] + jeitoP.zebra * pf.linha.sinal[k % n] * Math.min(1, pf.kf[k % n] * 400) * precisao : (k, prog) => pf.lat[(k + 2) % n] * pf.fator + ia.jeito + Math.sin(prog / 105 + ia.tracadoId * 1.7) * 3 * precisao
     + est.dentro * pf.linha.sinal[k % n] * Math.min(1, pf.kf[k % n] * 400) * 7 * precisao;
   const linha = linhaEm(i, car.prog);
   const baseLat = ia.lat0 * (1 - saidaGrid) + linha * saidaGrid;
@@ -930,6 +931,15 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
     semente: room.semente, id: p.id, grid: p.grid, f1: true, agua: cl.agua, outros, stopGo, fatorDesgastePneu: Estilos.parametros(room, p, TRANSITO_NIVEL.medio).desgaste };
   const ent = ia.ent || (ia.ent = {});
   const ev = [], evC = [];
+  // o ritmo varia de volta para volta (consistência), e de vez em quando o piloto erra a freada e entra forte demais na curva (taxa de erro)
+  let ritmoDaVolta = 1, erroK = 1;
+  if (novo) {
+    const volta = p.laps || 0;
+    if (ia.voltaRitmo !== volta) { const r = F1.sorteio(`ritmo:${room.semente}:${p.id}:${volta}`); ia.voltaRitmo = volta; ia.ritmoDaVolta = 1 - r() * jeitoP.sigma; }
+    ritmoDaVolta = ia.ritmoDaVolta;
+    if (ia.erroAte > now) erroK = ia.erroK;
+    else if (!tf.encontrou && !amb.safety && !amb.amarela && alvo < car.v * 0.9 && Math.random() < (jeitoP.erro * ({ facil: 1.4, medio: 1, dificil: 0.7 }[room.config.nivel] || 1)) / 400) { ia.erroAte = now + 700; ia.erroK = erroK = 1.05 + Math.random() * 0.05; }
+  }
   if (encalhou(room, ia, car, now, dt, tf.atras < 140)) { // preso (parado, rodado, de lado no muro ou sem andar): o "↺ Pista" do robô, do lado livre
     Sim.voltarParaPista(car, tr, ev);
     const q = tr.pts[car.idx], lado = tf.bloqPos && !tf.bloqNeg ? -1 : tf.bloqNeg && !tf.bloqPos ? 1 : 0, lat = lado * Math.min(maxLat, 40);
@@ -948,7 +958,8 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
       const ctx = pf.ctxPiloto || (pf.ctxPiloto = Piloto.contexto(spec, aderRef()));
       ctx.teto = tetoPiloto;
       const ataque = ia.ult && (!(tf.bloqPos || tf.bloqNeg) || !tf.ladoDeOutro) ? 1.04 : 1, medoK = medo > 0.01 ? 1 - 0.4 * Math.min(1, medo) : 1, tetoReta = spec.vmax * pneu.final * dano.final * ganhoReta;
-      Piloto.comandos(car, tr, spec, latAdiante, (j) => { const v = fis[j]; return Math.min(tetoReta, (v >= topo * 0.97 ? tetoReta : v * escalaCurva * ataque) * medoK); }, ent, ctx);
+      const noPiloto = jeitoP.entradaK * ritmoDaVolta * erroK; // o jeito do piloto, o ritmo desta volta e o erro de agora
+      Piloto.comandos(car, tr, spec, latAdiante, (j) => { const v = fis[j]; return Math.min(tetoReta, (v >= topo * 0.97 ? tetoReta : v * escalaCurva * ataque * noPiloto) * medoK); }, ent, ctx, jeitoP);
       if (ent.gas && car.patina > PAT) ent.gas *= 0.6; // a traseira já está no limite: alivia o pé em vez de cortar
     } else {
     Sim.pilotoAutomatico(car, tr, spec, alvo, latAdiante, ent, chicaneLivre ? 1.15 : 1);

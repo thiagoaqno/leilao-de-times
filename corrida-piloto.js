@@ -123,7 +123,10 @@ function linhaDeCorrida(pts, lo, hi, cap, op = {}) {
 // que falta para chegar, `antecipa` segundos adiante, à velocidade pedida ali; o gás e o freio são a fração disso sobre o que o carro dá.
 const LARGURA_ESTREITA = 90; // (rua de muro colado: mirar mais perto, sem cortar a curva em cima da barreira)
 const PILOTO = { olhar: 0.60, olharEstreita: 0.50, olharMin: 24, macio: 0.25, derrapa: 25, antecipa: 0.28, gasMin: 0.04, freioGanho: 1.3 };
-function comandos(c, tr, spec, latEm, vEm, saida, ctx) {
+// O jeito de um piloto, pelo perfil (corrida-estilos.js): diferenças pequenas, de décimos por volta. O ritmo base já é o limite do pneu: passar dele
+// bate e perde tempo. Por isso o perfil só tira: o valor máximo chega no limite, e os outros ficam um pouco abaixo dele.
+const jeitoDe = (perfil) => ({ antecipa: PILOTO.antecipa + (1 - perfil.frenagem) * 0.1, entradaK: 1 - (1 - perfil.entrada) * 0.02, rampaGas: 1.5 + perfil.retomada * 3, zebra: (perfil.zebra - 0.7) * 10, sigma: (1 - perfil.consistencia) * 0.012, erro: perfil.erro });
+function comandos(c, tr, spec, latEm, vEm, saida, ctx, jeito) {
   const n = tr.n, i = c.idx, v = Math.max(c.v, 25), p = ctx.p;
   // Mira um ponto da linha adiante, como quem olha para onde vai: a guinada sai do arco até ele, sem correções a cada vértice da pista.
   const Ld = Math.max(PILOTO.olharMin, v * (tr.W <= LARGURA_ESTREITA ? PILOTO.olharEstreita : PILOTO.olhar)); let j = i, acc = 0; while (acc < Ld) { j = (j + 1) % n; acc += STEP; }
@@ -136,11 +139,12 @@ function comandos(c, tr, spec, latEm, vEm, saida, ctx) {
     saida.steer = Math.max(-1, Math.min(1, delta / dm));
   }
   // os pedais
-  const ds = Math.max(STEP, c.v * PILOTO.antecipa), jv = (i + Math.ceil(ds / STEP)) % n, vAlvo = Math.min(vEm(jv), ctx.teto ?? Infinity);
+  const ds = Math.max(STEP, c.v * (jeito ? jeito.antecipa : PILOTO.antecipa)), jv = (i + Math.ceil(ds / STEP)) % n, vAlvo = Math.min(vEm(jv), ctx.teto ?? Infinity);
   const querA = (vAlvo * vAlvo - c.v * c.v) / (2 * ds);
   const maxG = Math.max(1, naTabela(ctx.cap.acel, ctx.cap.passoV, c.v)), maxF = Math.max(1, naTabela(ctx.cap.freio, ctx.cap.passoV, c.v));
   if (querA >= 0) { saida.gas = Math.min(1, querA / maxG + (c.v < vAlvo ? PILOTO.gasMin : 0)); saida.brake = 0; if (saida.gas < PILOTO.gasMin) saida.gas = 0; }
   else { const f = (-querA / maxF) * PILOTO.freioGanho; saida.gas = 0; saida.brake = f < 0.06 ? 0 : Math.min(1, f); }
+  if (jeito) { saida.gas = Math.min(saida.gas, (c.gasPiloto || 0) + jeito.rampaGas * D.PASSO); c.gasPiloto = saida.gas; } // a retomada do acelerador é do jeito de cada um
   if (saida.gas && c.slip > PILOTO.derrapa) saida.gas *= Math.max(0.25, PILOTO.derrapa / c.slip); // escorregando: alivia até o pneu voltar a pegar
   saida.ers = 0; saida.respawn = 0; saida.pedido = null; saida.marcha = 0;
   return saida;
@@ -175,4 +179,4 @@ function contexto(spec, ref) {
   return { p: D.parametros(spec), cap: CAP_LINHA(spec, ref), teto: Infinity };
 }
 
-module.exports = { MARGEM_MURO, PILOTO, JANELA_K, limitesDaPista, capacidade, perfilNoCaminho, geometria, linhaDeCorrida, calcularLinha, linhaDaPista, temLinhaPronta, perfilDoNivel, contexto, comandos, naTabela };
+module.exports = { MARGEM_MURO, PILOTO, JANELA_K, limitesDaPista, capacidade, perfilNoCaminho, geometria, linhaDeCorrida, calcularLinha, linhaDaPista, temLinhaPronta, perfilDoNivel, contexto, jeitoDe, comandos, naTabela };

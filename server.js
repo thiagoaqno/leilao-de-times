@@ -49,6 +49,7 @@ const carreiraOnline = require("./carreira-online.js")(io); // Carreira em grupo
 require("./moderacao-api.js").attach(app, carreiraOnline); // o workflow manual do GitHub edita salas vivas
 require("./admin-carreira.js").attach(app, carreiraOnline); // painel privado em URL separada, com login pelo GitHub
 require("./admin-pokemon.js").attach(app); // edição dos times Pokémon dos líderes e treinadores
+require("./admin-pilotos.js").attach(app); // edição dos perfis dos pilotos de F1
 const noite = require("./noite.js"); noite.attach(io); // Noite da Galera: levar todo mundo para outro jogo e o placar da noite, canal /noite
 require("./tenis.js")(io); // Tênis da Galera: tênis arcade, simples ou duplas, com robôs, canal /tenis
 require("./digita.js")(io); // Corrida de Digitação: quem digita a frase mais rápido, canal /digita
