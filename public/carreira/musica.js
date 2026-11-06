@@ -27,10 +27,12 @@
   document.body.appendChild(cx);
   const $ = (id) => cx.querySelector("#" + id);
   const ler = () => { try { return JSON.parse(localStorage.getItem("galera:musica")) || {}; } catch (e) { return {}; } };
-  const guardar = () => { try { localStorage.setItem("galera:musica", JSON.stringify({ vol, tocando, i })); } catch (e) { /* sem armazenamento */ } };
+  const guardar = () => { try { localStorage.setItem("galera:musica", JSON.stringify({ vol, volMexido, tocando })); } catch (e) { /* sem armazenamento */ } };
+  const VOLUME_PADRAO = 0.05;
   const salvo = ler();
   let calada = false; // a partida está tocando: a música espera (MusicaCarreira, logo abaixo)
-  let lista = [], i = Math.max(0, salvo.i | 0), vol = typeof salvo.vol === "number" ? salvo.vol : 0.4, tocando = salvo.tocando !== false; // liga sozinha, a menos que a pessoa tenha pausado
+  // O volume padrão é baixo; só vale o guardado se a pessoa mexeu nele (`volMexido`: os saves antigos guardavam o padrão de antes, 40%)
+  let lista = [], i = 0, volMexido = !!salvo.volMexido, vol = volMexido && typeof salvo.vol === "number" ? salvo.vol : VOLUME_PADRAO, tocando = salvo.tocando !== false; // liga sozinha, a menos que a pessoa tenha pausado
   const audio = new Audio();
   audio.preload = "none";
 
@@ -69,13 +71,13 @@
   $("mTocar").addEventListener("click", () => { if (audio.paused) { calada = false; tocar(); } else pausar(); }); // tocar à mão vale até na partida
   $("mProx").addEventListener("click", () => { calada = false; carregar(i + 1); tocar(); });
   $("mAnt").addEventListener("click", () => { calada = false; carregar(i - 1); tocar(); });
-  $("mVol").addEventListener("input", (e) => { vol = e.target.value / 100; audio.volume = vol; guardar(); });
+  $("mVol").addEventListener("input", (e) => { vol = e.target.value / 100; volMexido = true; audio.volume = vol; guardar(); });
   addEventListener("keydown", (e) => { if (e.key === "Escape") cx.classList.remove("on"); });
 
   fetch("/api/musicas").then((r) => r.json()).then((l) => {
     if (!Array.isArray(l) || !l.length) return;
-    lista = l;
-    i = Math.min(i, lista.length - 1);
+    lista = l.slice();
+    for (let a = lista.length - 1; a > 0; a--) { const b = Math.floor(Math.random() * (a + 1)); [lista[a], lista[b]] = [lista[b], lista[a]]; } // cada vez numa ordem: começa numa música diferente e não repete até dar a volta
     audio.volume = vol;
     bt.hidden = false;
     pintar();

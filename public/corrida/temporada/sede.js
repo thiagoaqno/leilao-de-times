@@ -26,23 +26,11 @@ function guardar(r) {
 }
 function marca(id) { return `<img src="/api/corrida/logo/${encodeURIComponent(id)}" alt="" onerror="this.style.display='none'">`; }
 function telaInicial() {
-  window.Central?.sair();
   window.F1Garagem?.fundoDoGP(null);
-  const opcoes = Object.entries(Pilotos.EQUIPES).map(([id, e]) => `<option value="${h(id)}">${h(e.nome)}</option>`).join("");
-  const primeira = Object.keys(Pilotos.EQUIPES)[0];
-  document.documentElement.style.setProperty("--eq", equipe(primeira).cor);
-  app.innerHTML = `<div class="abertura vt-entrada"><section class="vt-salao"><div class="taglinha">Corrida da Galera · 2026</div><h1>Sua equipe. <span>Sua temporada.</span></h1><div class="vt-plataforma" aria-hidden="true"></div><div class="vt-carro" id="vitrine">${window.F1Garagem.palcoSlot(primeira)}</div><nav class="vt-tiras" aria-label="Equipes">${Object.entries(Pilotos.EQUIPES).map(([id, e]) => `<button type="button" class="vt-tira ${id === primeira ? "on" : ""}" style="--c:${h(e.cor)}" data-vitrine="${h(id)}" aria-pressed="${id === primeira}">${marca(id)}<span>${h(e.nome)}</span></button>`).join("")}</nav></section>
-    <section class="folha"><h2>Abrir temporada</h2><form id="nova"><label for="nome">Seu nome no grid</label><input id="nome" name="nome" maxlength="40" required autocomplete="name" placeholder="Seu nome">
-      <label for="equipe">Equipe</label><select id="equipe" name="equipe">${opcoes}</select><div class="duo"><div><label for="tamanho">Calendário</label><select id="tamanho" name="tamanho"><option value="8">8 GPs</option><option value="4">4 GPs · mini temporada</option><option value="${Regras.PISTAS_TRABALHADAS.length}">${Regras.PISTAS_TRABALHADAS.length} GPs · todas as pistas refeitas</option></select></div>
-      <div><label for="voltas">Voltas por GP</label><select id="voltas" name="voltas"><option value="3">3 voltas</option><option value="2">2 voltas</option><option value="5">5 voltas</option><option value="10">10 voltas</option></select></div></div>
-      <label for="nivel">Dificuldade dos robôs</label><select id="nivel" name="nivel"><option value="medio">Médio</option><option value="facil">Fácil</option><option value="dificil">Difícil</option></select><button class="primary" type="submit">Abrir meu box →</button></form>
-      <div class="or">Já tenho temporada</div><form id="recuperar"><label for="codigo">Código de recuperação</label><input id="codigo" name="codigo" maxlength="20" autocomplete="off" placeholder="12 caracteres"><button type="submit">Recuperar save</button></form>
-      <div class="or">Temporada com os amigos</div>${window.SedeGrupo.formulario()}</section></div>`;
-  // A foto deixa o formulário livre de imediato; a vitrine 3D só é montada ao escolher uma equipe.
-  const escolher = (id) => { document.documentElement.style.setProperty("--eq", equipe(id).cor); document.getElementById("equipe").value = id; window.F1Garagem.trocarVitrine(id); document.querySelectorAll("[data-vitrine]").forEach((b) => { const on = b.dataset.vitrine === id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); }); };
-  document.querySelectorAll("[data-vitrine]").forEach((b) => b.addEventListener("click", () => escolher(b.dataset.vitrine)));
-  document.getElementById("equipe").value = primeira;
-  document.getElementById("equipe").addEventListener("change", (e) => escolher(e.target.value));
+  const primeira = Object.keys(Pilotos.EQUIPES)[0], E = window.EntradaCarreira;
+  document.title = "Carreira F1 · Corrida da Galera";
+  app.innerHTML = E.inicial({ equipes: Pilotos.EQUIPES, primeira, todas: Regras.PISTAS_TRABALHADAS.length, grupo: window.SedeGrupo.formulario() });
+  E.ligarInicial(primeira, Pilotos.EQUIPES);
 }
 function tabela(rows, tipo, meu, rival = null) {
   const lista = rows.slice(0, 10);

@@ -33,6 +33,7 @@ test('a tela Sobre o GP da sala continua abrindo e destacando curvas', async ({ 
 test('temporada em grupo também mostra os mapas numerados em tela estreita', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/corrida/temporada/');
+  await page.locator('[data-en-aba="amigos"]').click();
   await page.locator('#gnome').fill('Piloto'); await page.locator('#gnova button[type=submit]').click();
   await page.locator('[data-equipe="mclaren"]').click();
   await page.locator('#gcomecar').click();

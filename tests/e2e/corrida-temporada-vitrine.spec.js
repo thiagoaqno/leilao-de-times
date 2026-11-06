@@ -7,6 +7,7 @@ test('vitrine troca de equipe e a sala preserva o carro nas atualizações', asy
   await page.locator('[data-vitrine="ferrari"]').click();
   await expect(page.locator('#equipe')).toHaveValue('ferrari');
   await expect(page.locator('[data-vitrine="ferrari"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('[data-en-aba="amigos"]').click();
   await page.locator('#gnome').fill('Ana');
   await page.locator('#gnova button').click();
   await page.locator('[data-equipe="ferrari"]').click();

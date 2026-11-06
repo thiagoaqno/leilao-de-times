@@ -1,25 +1,18 @@
-# Carros de F1 mais parecidos com os reais
+# Refaz a entrada da carreira F1 no visual da Central e ajusta a música
 
-As 11 pinturas foram refeitas em cima das fotos de 2026 (fontes em `public/corrida/halo-referencias.md`), a Ferrari primeiro, como amostra aprovada pelo Thiago. Nada de modelo novo: o carro continua o mesmo, só muda o que é pintado nele.
+A tela de entrada de `/corrida/temporada/` e o convite da sala com os amigos ainda estavam no visual antigo. Agora usam o estúdio, a cor da equipe e o tema claro ou escuro da Central.
 
-- **Pinturas:** cada folha de `f1-pintura.js` segue a geometria real do modelo (medida com grade de s/y), com preto de baixo, asas de carbono, sombra pintada nas caixas e o número onde o carro de verdade usa.
-- **Marcas:** `f1-marcas.js` desenha os patrocinadores no canvas, sem imagem baixada. **Decisão do Thiago:** imitar os logos, com cor e traço reconhecíveis. É a opção de maior risco de marca registrada num site público; para voltar atrás basta trocar as funções desse arquivo.
-- **Reflexo:** pintura acetinada e opaca (`VERNIZ_*`), carbono sem espelhar o céu e assoalho escuro. O carro não acende no bloom: medido em HDR, em jogo, a luz máxima da Ferrari ficou em 0,89 (na `main`, até 0,98) e o limiar do bloom é 1.
-- **Pneus:** letras PIRELLI e P ZERO na lateral, na cor do composto (uma textura só, de todos os carros), roda escura e borracha fosca.
-- **Folha em 2×:** só o carro do jogador e o da garagem. Os outros seguem em 1×, para um grid de 22 não pesar.
+- **Entrada** (`temporada/entrada.js`, `entrada.css`): carro grande, faixa com as 11 equipes (hover e marcação na cor de cada uma) e um painel à direita com três abas: Nova temporada, Recuperar e Com os amigos. Antes, os três formulários ficavam empilhados na mesma coluna.
+- **Convite** (`?sala=CÓDIGO`): o mesmo visual, só com o nome para entrar.
+- **Modo escuro:** um botão no painel, usando a mesma preferência da Central (`corrida:tema`).
+- Os campos, os ids e as ações não mudaram. Só quem usa a sala com os amigos ou o código de recuperação precisa abrir a aba antes; dois testes e2e ganharam esse clique.
+- A sala de espera ainda tem o visual antigo e fica para o próximo PR, junto com o carregamento.
 
-## Medido (GPU real: RTX 2060 e Intel UHD)
+## Música (`public/carreira/musica.js`, na Carreira de Treinador, na Corrida e na Carreira F1)
 
-| | `main` | esta branch |
-| --- | --- | --- |
-| Carro do jogador | 16 chamadas, 76.102 triângulos | 16 chamadas, 76.102 triângulos |
-| Outros carros | 10 chamadas, 16.204 triângulos | 10 chamadas, 16.204 triângulos |
-| Texturas do carro | 11 (leve: 9) | 12 (leve: 10): as letras do pneu |
-| Memória | 11 folhas de 1024 x 1152 | as mesmas 11, mais 1 de 2048 x 2304 (~25 MB) |
-| `medir.mjs monaco` (só a pista) | 188 chamadas, 282.633 triângulos | 188 chamadas, 282.634 triângulos |
+- A lista é embaralhada ao abrir: começa numa música diferente e não repete até dar a volta.
+- O volume padrão é 5%. O volume guardado só vale se a pessoa mexeu nele depois desta mudança, porque os saves antigos guardavam o padrão de 40%. Por isso, quem tinha ajustado à mão volta para 5% uma vez.
 
-## O que não foi verificado
+## Verificação
 
-- O FPS em jogo não foi medido: a janela ficou oculta durante os testes, e aí o navegador segura os quadros. As contagens acima são iguais às da `main`, mas falta jogar uma corrida para confirmar.
-- Só a Ferrari foi vista em jogo. As outras 10 foram conferidas na página de prévia, com a luz de lá.
-- A suíte de testes fica com o CI, como manda o projeto.
+Conferido no navegador embutido, em servidor local: entrada nos temas claro e escuro, troca de equipe, abas, convite, volume em 5% e música diferente ao abrir, sem erros no console. A criação de uma carreira pelo formulário novo chegou à Central com a equipe escolhida. Em largura estreita conferi só o desenho (800 px); não testei num celular de verdade. O carro aparece com renderização por software, e não numa placa de vídeo. Não rodei a suíte local (regra do projeto); o CI confere.
