@@ -18,3 +18,11 @@ test("depois de um engasgo longo, os robôs não tentam recuperar de uma vez", (
   assert.ok(Robos.tempoDoPasso(novo, 2000) <= Sim.PASSO);
   assert.ok(novo.relogioRobos <= 2000);
 });
+test("o volante visto nos outros carros destaca a curva leve, sem passar do batente", () => {
+  const Pose = require("../public/corrida/pose.js");
+  assert.equal(Pose.volanteVisto(0), 0);
+  assert.equal(Pose.volanteVisto(9), 1);
+  assert.equal(Pose.volanteVisto(-9), -1);
+  assert.ok(Pose.volanteVisto(0.3) > 0.3 / 2.4 * 2, "a curva leve aparece mais");
+  assert.equal(Pose.volanteVisto(-0.5), -Pose.volanteVisto(0.5));
+});

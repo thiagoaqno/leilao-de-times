@@ -1,4 +1,4 @@
-# Acaba com as microtravadas dos robôs de F1
+# Acaba com as microtravadas dos robôs de F1 e mostra as rodas esterçando
 
 O servidor avançava os robôs sempre 50 ms a cada ciclo, mas carimbava a posição com a hora real, e o timer não bate certinho. No Windows, ele roda a cada ~62 ms: os robôs andavam ~20% mais devagar que o tempo real e a tela via o carro frear e acelerar. Em servidor Linux o timer é mais preciso, então o efeito deve ser menor (não medido lá).
 
@@ -17,6 +17,10 @@ Agora os robôs de F1 andam o tempo real que passou, em passos inteiros da físi
 
 Os tempos de volta em tempo real ficam mais rápidos no Windows, porque os robôs não perdem mais os ~20%.
 
+## Rodas esterçando
+
+As rodas dos robôs já viravam, mas pouco: numa corrida real, 2,5° na maior parte do tempo e 13° em curva (p50 e p90), o que quase não aparece com a câmera atrás do carro. A tela agora usa a guinada que vem do servidor em vez de recalcular quadro a quadro, e a curva leve aparece mais (`Pose.volanteVisto`): pela conta sobre a bancada, 6,6° e 16°, com o mesmo batente de ~24°. Só muda o desenho dos carros dos outros; a física e o carro do jogador não mudam.
+
 ## Testes
 
-Novo `tests/corrida-relogio-robos.test.js`. Não rodei a suíte local (regra do projeto); o CI confere.
+Novo `tests/corrida-relogio-robos.test.js`, com o `volanteVisto`. Não rodei a suíte local (regra do projeto); o CI confere.
