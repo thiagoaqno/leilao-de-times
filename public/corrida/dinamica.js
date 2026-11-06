@@ -151,7 +151,8 @@ function passo(c, ent, amb, p, dt = PASSO) {
   const kArr = (ex.arrasto || 1) * (amb.drs ? (1 + DRS_GANHO * drsK) ** -3 : 1) * (amb.vacuo ? (1 + amb.vacuo.final) ** -3 : 1);
   const kCarga = (ex.carga || 1) * (amb.drs ? 0.85 : 1);
   // pedais: o acelerador sobe em ~0,3 s e solta rápido; o freio sobe em ~0,22 s (por isso dá para frear "progressivo" soltando antes)
-  const gasT = ent.gas ? 1 : 0, brkT = ent.brake ? 1 : 0;
+  // (true/false de quem joga valem 1/0; os robôs mandam a fração do pedal)
+  const gasT = ent.gas === true ? 1 : ent.gas ? limite(+ent.gas, 0, 1) : 0, brkT = ent.brake === true ? 1 : ent.brake ? limite(+ent.brake, 0, 1) : 0;
   c.gasP += limite(gasT - c.gasP, -dt * 8, dt * 3.5);
   c.brkP += limite(brkT - c.brkP, -dt * 7, dt * FREIO_SOBE);
   // volante: o alvo é o comando; sobe a ~5/s e volta a ~8/s (teclado: de batente a batente em 0,4 s)
