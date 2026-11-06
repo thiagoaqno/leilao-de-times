@@ -6,9 +6,9 @@ body.cx-on::before,body.cx-on::after{display:none}
 body.cx-on .bar{display:none}
 body.cx-on .sede{max-width:none;padding:0;margin:0;position:relative;z-index:1}
 #cxFundo{position:fixed;inset:0;z-index:0;overflow:hidden;background:linear-gradient(180deg,var(--cx-bg2) 0,var(--cx-bg) 56%,var(--cx-chao) 76%,var(--cx-bg) 100%)}
-.cx-relevo{position:absolute;right:5vw;top:6vh;width:min(46vw,620px);height:min(70vh,620px);background:var(--logo) center/contain no-repeat;filter:grayscale(1);opacity:.08;transition:opacity .3s}
-body.cx-escuro .cx-relevo{filter:grayscale(1) invert(1);opacity:.09}
-#cxFundo[data-aba="central"] .cx-relevo{right:18vw}
+.cx-relevo{position:absolute;left:58%;top:50%;transform:translate(-50%,-50%);width:min(40vw,520px);height:min(60vh,520px);background:var(--logo) center/contain no-repeat;filter:grayscale(1);opacity:.045;transition:opacity .3s}
+body.cx-escuro .cx-relevo{filter:grayscale(1) invert(1);opacity:.05}
+
 .cx-estudio{position:absolute;inset:0;width:100%!important;height:100%!important;display:block;opacity:0;transition:opacity .35s ease-out}
 #cxFundo.cx-carro-pronto[data-aba="central"] .cx-estudio,#cxFundo.cx-carro-pronto[data-aba="desenvolvimento"] .cx-estudio{opacity:1}
 
@@ -236,7 +236,7 @@ body.cx-escuro .cx-relevo{filter:grayscale(1) invert(1);opacity:.09}
   .cx-cabeca{flex-direction:column;align-items:flex-start}.cx-gpbar-traco{display:none}.cx-gpbar .cx-bt{width:100%;margin-left:0}
   .cx-cal{grid-template-columns:minmax(0,1fr)}.cx-exp-grid,.cx-bonus{grid-template-columns:1fr}.cx-exp-grid>div{padding-left:0}.cx-exp-grid>div+div{border-left:0}
   .cx-ob{grid-template-columns:32px minmax(0,1fr)}.cx-ob-num{grid-column:1 / -1}.cx-ob-num>div{flex-direction:row;gap:12px;align-items:center}
-  .cx-relevo{right:0;width:80vw}#cxFundo[data-aba="central"] .cx-relevo{right:0}.cx-an-estr li{grid-template-columns:30px 4px 84px minmax(0,1fr)}.cx-an-estr li>em{display:none}.cx-dv-minis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cx-relevo{left:50%;width:80vw}.cx-an-estr li{grid-template-columns:30px 4px 84px minmax(0,1fr)}.cx-an-estr li>em{display:none}.cx-dv-minis{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){.cx *,.cx *::before,.cx *::after,.cx-estudio{transition-duration:.01ms!important;animation:none!important}}
 .cx-seu .pessoas li{color:var(--cx-tx)}.cx-seu .pessoas li>:last-child{color:var(--cx-tx2)}

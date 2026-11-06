@@ -233,7 +233,29 @@ function html(c) {
     <footer class="cx-pe"><div class="cx-dicas"><span class="gp"><kbd class="r">A</kbd> Selecionar</span><span class="gp"><kbd class="r">B</kbd> Voltar</span><span class="gp"><kbd>LB</kbd><kbd>RB</kbd> Trocar aba</span><span class="kb"><kbd>Q</kbd><kbd>E</kbd> Trocar aba</span><span class="kb"><kbd>Esc</kbd> Voltar</span><button type="button" class="cx-msg" data-cx-msg><kbd class="r gp">Y</kbd><kbd class="kb">M</kbd> Mensagens · ${c.nMensagens}</button></div><div class="cx-salvo"><svg class="cx-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.600 4.600L19 7"/></svg>Salvo</div></footer></div>`;
 }
 function depois(c) { tema(c.s.equipe); ligarFundo(c.s.equipe); requestAnimationFrame(posicionarRotulos); root.Radio?.desenharBotoes?.(); root.CentralAnalise?.ligarGraficos(); }
-function trocarAba(a, render) { aba = a; try { localStorage.setItem("corrida:temporada:aba", a); } catch {} render(); window.scrollTo?.({ top: 0 }); const b = document.querySelector(`.cx-aba[data-cx-aba="${a}"]`); b?.focus({ preventScroll: true }); }
+// Põe o HTML novo na tela mexendo só no que mudou: quem está olhando não vê a tela piscar quando outro jogador age, e o que não mudou segue no lugar.
+function pintar(alvo, html) {
+  if (alvo._cxHtml === html && alvo.querySelector(":scope > .cx")) return;
+  const molde = document.createElement("template"); molde.innerHTML = html;
+  if (!alvo.querySelector(":scope > .cx")) { alvo.replaceChildren(molde.content); alvo._cxHtml = html; return; }
+  const juntar = (a, b) => {
+    if (a.nodeType !== b.nodeType || (a.nodeType === 1 && a.tagName !== b.tagName) || (a.nodeType === 1 && a.dataset.cxGraf !== b.dataset.cxGraf)) { a.replaceWith(b.cloneNode(true)); return; }
+    if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+    for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+    for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+    filhos(a, b);
+  };
+  const filhos = (a, b) => { for (let i = 0; i < b.childNodes.length; i++) { if (a.childNodes[i]) juntar(a.childNodes[i], b.childNodes[i]); else a.appendChild(b.childNodes[i].cloneNode(true)); } while (a.childNodes.length > b.childNodes.length) a.lastChild.remove(); };
+  filhos(alvo, molde.content); alvo._cxHtml = html;
+}
+// A troca de aba: o conteúdo entra deslizando do lado para onde a pessoa foi, bloco a bloco (o sublinhado anda sozinho, pelo CSS).
+function animarAba(dir) {
+  if (matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  const corpo = document.querySelector(".cx-corpo"); if (!corpo?.animate) return;
+  const blocos = [...corpo.children].slice(0, 6);
+  (blocos.length ? blocos : [corpo]).forEach((el, i) => el.animate([{ opacity: 0, transform: `translateX(${dir * 22}px)` }, { opacity: 1, transform: "none" }], { duration: 260, delay: i * 35, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" }));
+}
+function trocarAba(a, render) { const ordem = (x) => ABAS.findIndex((q) => q[0] === x), dir = ordem(a) < ordem(aba) ? -1 : 1, mudou = a !== aba; aba = a; try { localStorage.setItem("corrida:temporada:aba", a); } catch {} render(); if (mudou) animarAba(dir); window.scrollTo?.({ top: 0 }); const b = document.querySelector(`.cx-aba[data-cx-aba="${a}"]`); b?.focus({ preventScroll: true }); }
 function abrirMensagens() { const d = dialogo("cxMsgDlg", "cx-msgs"); d.innerHTML = `<form method="dialog"><button class="cx-dlg-x" aria-label="Fechar">✕</button></form>${ctxAtual?.caixaMensagens || ""}`; d.showModal(); }
 // devolve true se o clique era desta tela
 function clique(alvo, render) {
@@ -289,5 +311,5 @@ setInterval(() => {
 }, 90);
 
 root.CentralUI = { h, marca, seta, tituloCard, tricolor, bandeira, dois, nomeGP };
-root.Central = { html, depois, clique, sair, usarRender(fn) { renderAtual = fn; }, aba: () => aba, estatisticas };
+root.Central = { html, depois, pintar, clique, sair, usarRender(fn) { renderAtual = fn; }, aba: () => aba, estatisticas };
 })(window);

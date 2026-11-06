@@ -24,9 +24,14 @@ Refaz a Central da carreira (`/corrida/temporada/`, solo e em grupo) pelas image
 - "Ver replay", "Explorar dados" e "Comparar pilotos" nos botões (a comparação segue no seletor da Análise).
 - Temperatura do ar e da pista na Análise.
 - A asa do carro desfocada no canto das outras abas.
-- Patrocinadores e o cavalo em relevo com detalhes: o relevo é a silhueta do logo de cada equipe.
+- Patrocinadores e o cavalo em relevo com detalhes: o fundo é o logo de cada equipe em cinza suave, um pouco à direita do centro.
 - As dicas A/B/Y só aparecem com controle conectado; no teclado aparecem Q/E, Esc e M.
 
 ## Verificação
 
 Sintaxe conferida e prints das 6 abas nos dois temas, no celular e na sala em grupo, com o console sem erros. Os resultados nos prints foram injetados só no navegador, para ver a tela com a temporada andando. A suíte fica para o CI.
+
+## Tela em grupo e abas
+
+- A Central não pisca mais quando outra pessoa age na sala: `Central.pintar` atualiza só o que mudou (e nada, se a tela é a mesma), em vez de recriar a tela a cada `estado`.
+- A troca de aba tem animação: o conteúdo entra deslizando do lado para onde se foi, bloco a bloco, e o sublinhado anda sozinho; `prefers-reduced-motion` desliga.
