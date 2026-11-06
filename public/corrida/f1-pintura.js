@@ -13,12 +13,17 @@
 //     y  512 ..  896  de cima (a frente à esquerda; +x para cima):        X = s K                Y = 704 - x K
 //     y  896 .. 1152  frente (x 0 .. 512, +x à esquerda) e traseira (x 512 .. 1024, +x à direita): Y = 896 + (1,1 - y) K
 //
-// Os patrocínios usam nomes reais em representação tipográfica aproximada; os logos das
+// Os patrocínios usam nomes reais em representação tipográfica aproximada ou desenhados no canvas (f1-marcas.js); os logos das
 // equipes vêm de logos/ (o projeto já os usa nos menus). O número do piloto é um decalque à parte (um atlas de dígitos
 // compartilhado) porque muda de carro para carro; o composto do pneu vira uma faixa na lateral do pneu (shader do pneu).
 import * as THREE from "three";
+import { desenharMarca } from "./f1-marcas.js";
 
 export const K = 1024 / 4.4, FW = 1024, FH = 1152;
+// A folha sai em 2× no carro do jogador (e na garagem) e em 1× nos outros, para um grid de 20 não pesar na memória: ESC vale durante a pintura.
+// As contas continuam em "pixels lógicos" de 1024 x 1152 (o shader também): só o canvas é maior.
+let ESC = 1;
+const PX = () => K * ESC;
 const CARBONO = "#0b0c0f";
 
 // ---------------------------------------------------------------- os logos (carregados uma vez só)
@@ -55,17 +60,17 @@ function degrade(c, a0, b0, a1, b1, paradas) { const g = c.createLinearGradient(
 // texto na vista (sempre de pé e lendo da esquerda para a direita, nos dois lados do carro); h = altura da letra em metros
 function texto(c, str, a, b, h, cor, { peso = 800, estilo = "italic", fam = "'Arial Black', Arial, Helvetica, sans-serif", larg = 0, esp = 0, borda = null, align = "center" } = {}) {
   const [x, y] = pt(c, a, b); c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
-  c.font = `${estilo} ${peso} ${Math.round(h * K)}px ${fam}`; c.textAlign = align; c.textBaseline = "middle"; c.fillStyle = cor;
-  if ("letterSpacing" in c) c.letterSpacing = esp ? Math.round(esp * K) + "px" : "0px";
-  if (borda) { c.lineWidth = Math.max(1.5, h * K * 0.12); c.strokeStyle = borda; c.lineJoin = "round"; c.strokeText(str, x, y, larg ? larg * K : undefined); }
-  c.fillText(str, x, y, larg ? larg * K : undefined); c.restore();
+  c.font = `${estilo} ${peso} ${Math.round(h * PX())}px ${fam}`; c.textAlign = align; c.textBaseline = "middle"; c.fillStyle = cor;
+  if ("letterSpacing" in c) c.letterSpacing = esp ? Math.round(esp * PX()) + "px" : "0px";
+  if (borda) { c.lineWidth = Math.max(1.5, h * PX() * 0.12); c.strokeStyle = borda; c.lineJoin = "round"; c.strokeText(str, x, y, larg ? larg * PX() : undefined); }
+  c.fillText(str, x, y, larg ? larg * PX() : undefined); c.restore();
 }
 // Letra transversal ao carro, para ser lida do cockpit (a folha superior tem o eixo lateral na vertical).
 function textoTopo(c, str, s, x, h, cor, { larg = 0, borda = null, estilo = "normal" } = {}) {
   const [px, py] = pt(c, s, x); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.translate(px, py); c.rotate(-Math.PI / 2);
-  c.font = `${estilo} 900 ${Math.round(h * K)}px Arial, sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
-  if (borda) { c.strokeStyle = borda; c.lineWidth = Math.max(2, h * K * 0.14); c.lineJoin = "round"; c.strokeText(str, 0, 0, larg ? larg * K : undefined); }
-  c.fillStyle = cor; c.fillText(str, 0, 0, larg ? larg * K : undefined); c.restore();
+  c.font = `${estilo} 900 ${Math.round(h * PX())}px Arial, sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
+  if (borda) { c.strokeStyle = borda; c.lineWidth = Math.max(2, h * PX() * 0.14); c.lineJoin = "round"; c.strokeText(str, 0, 0, larg ? larg * PX() : undefined); }
+  c.fillStyle = cor; c.fillText(str, 0, 0, larg ? larg * PX() : undefined); c.restore();
 }
 // o logo da equipe numa caixa (a0..a1 x b0..b1, em metros) sem deformar, centrado
 function logo(c, id, a0, b0, a1, b1, tinta) {
@@ -76,6 +81,11 @@ function logo(c, id, a0, b0, a1, b1, tinta) {
 }
 // nome de patrocinador em tipografia aproximada (não é o logotipo oficial)
 function patro(c, nome, a, b, h, cor, opc = {}) { texto(c, nome, a, b, h, cor, opc); }
+// a marca desenhada (f1-marcas.js) em (a, b), com altura h em metros; `giro` em radianos: em cima do carro, DE_FRENTE é o que quem vem de frente lê
+const DE_FRENTE = Math.PI / 2;
+function marca(c, id, a, b, h, { giro = 0, tinta, fundo } = {}) {
+  const [x, y] = pt(c, a, b), e = h * PX(); c.save(); c.setTransform(1, 0, 0, 1, x, y); c.rotate(giro); c.scale(e, e); desenharMarca(c, id, { tinta, fundo }); c.restore();
+}
 const mulberry = (seed) => () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
 // ---------------------------------------------------------------- as vistas
@@ -88,7 +98,7 @@ const VISTAS = {
   R: { r: [512, 896, 512, 256], m: [K, 0, 0, -K, 768, 896 + 1.1 * K] },  // (x, y)
 };
 function vista(ctx, nome, fn) {
-  const v = VISTAS[nome]; ctx.save(); ctx.beginPath(); ctx.rect(...v.r); ctx.clip(); ctx.setTransform(...v.m); fn(ctx); ctx.restore();
+  const v = VISTAS[nome]; ctx.save(); ctx.beginPath(); ctx.rect(...v.r.map((n) => n * ESC)); ctx.clip(); ctx.setTransform(...v.m.map((n) => n * ESC)); fn(ctx); ctx.restore();
 }
 const lados = (ctx, fn) => { vista(ctx, "A", (c) => fn(c, 1)); vista(ctx, "B", (c) => fn(c, -1)); };
 
@@ -99,365 +109,342 @@ const lados = (ctx, fn) => { vista(ctx, "A", (c) => fn(c, 1)); vista(ctx, "B", (
 const DESENHOS = {};
 
 // a base de qualquer carro: cor cheia em tudo e o carbono onde não aparece pintura (a barriga fica no material do assoalho)
-function base(ctx, cor) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = cor; ctx.fillRect(0, 0, FW, FH); ctx.restore(); }
+function base(ctx, cor) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = cor; ctx.fillRect(0, 0, FW * ESC, FH * ESC); ctx.restore(); }
 
-// McLaren: papaia, tampa do motor e airbox pretos com o corte em diagonal, faixa azul fina, asa traseira papaia e preta
+// o preto de baixo (assoalho e parte de baixo das caixas, subindo para trás), a sombra pintada que dá volume às caixas e as asas vistas de cima
+function baixo(c, cor) {
+  c.fillStyle = degrade(c, 0, 0.5, 0, 0.1, [[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0.3)"]]); c.fillRect(1.1, 0.1, 2.8, 0.4);
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 0.09); c.lineTo(2.1, 0.09); c.quadraticCurveTo(2.7, 0.14, 3.15, 0.2); c.quadraticCurveTo(3.55, 0.24, 3.8, 0.34); c.lineTo(4.45, 0.34); c.lineTo(4.45, 0); c.closePath(); c.fillStyle = cor; c.fill();
+}
+function asasT(c, frente, tras, bico) { ret(c, 0, -0.82, 0.66, 0.82, frente); poli(c, [[0, -0.09], [0.66, -0.14], [0.66, 0.14], [0, 0.09]], bico); ret(c, 3.82, -0.62, 4.45, 0.62, tras); }
+// os touros: o desenho que já vem no logo da equipe (só a parte de baixo dele, sem o letreiro)
+function touros(c, a0, b0, a1, b1) {
+  const L = LOGOS.get("red-bull")?.img; if (!L) return;
+  const [x0, y0] = pt(c, a0, b0), [x1, y1] = pt(c, a1, b1), w = Math.abs(x1 - x0), h = Math.abs(y1 - y0);
+  c.save(); c.setTransform(1, 0, 0, 1, Math.min(x0, x1), Math.min(y0, y1)); c.drawImage(L, L.naturalWidth * 0.5, L.naturalHeight * 0.3, L.naturalWidth * 0.5, L.naturalHeight * 0.2, 0, 0, w, h); c.restore();
+}
+// McLaren MCL40: papaia; a tampa e a barriga das caixas pretas, com o papaia em cunha no meio, e a asa traseira papaia e preta
 DESENHOS.mclaren = {
-  numero: "#ffffff",
+  numero: "#ffffff", carbono: 1, numPos: [3.46, 0.7, 9, 9],
   pintar(ctx) {
-    const PAP = "#ff8000", PRETO = "#101114";
+    const PAP = "#f47600", PRETO = "#121316";
     base(ctx, PAP);
     lados(ctx, (c) => {
-      // tampa do motor / airbox preto, com a frente cortada em diagonal e a parte de baixo papaia
-      poli(c, [[2.18, 1.1], [4.45, 1.1], [4.45, 0.42], [3.8, 0.44], [3.25, 0.53], [2.7, 0.7], [2.42, 0.56], [2.18, 0.58]], PRETO);
-      // Sidepod escuro e faixa papaia da tampa, conforme a pintura MCL40.
-      poli(c, [[1.05, 0.08], [3.85, 0.08], [3.85, 0.41], [3.45, 0.43], [2.75, 0.40], [1.55, 0.43], [1.05, 0.34]], PRETO);
-      poli(c, [[2.65, 0.43], [3.65, 0.43], [3.85, 0.53], [3.30, 0.57], [2.75, 0.57]], PAP);
-      // asa traseira: endplate papaia com a parte de baixo preta
-      poli(c, [[3.88, 0.42], [4.4, 0.42], [4.4, 0.6], [3.88, 0.6]], PRETO);
-      ret(c, 1.30, 0.41, 1.85, 0.51, "#15263d");
-      c.beginPath(); c.arc(3.25, 0.29, 0.045, 0, Math.PI * 2); c.fillStyle = "#eb001b"; c.fill();
-      c.beginPath(); c.arc(3.31, 0.29, 0.045, 0, Math.PI * 2); c.fillStyle = "#ff9f00"; c.fill();
-      patro(c, "Gemini", 3.03, 0.72, 0.12, "#ffffff", { estilo: "normal", larg: 0.62 });
-      patro(c, "VELO", 2.48, 0.55, 0.075, PRETO, { estilo: "normal", larg: 0.35 });
-      patro(c, "DP WORLD", 1.55, 0.46, 0.065, "#ffffff", { esp: 0.008 });
-      patro(c, "DELL", 3.50, 0.49, 0.08, PRETO, { estilo: "normal" });
-      patro(c, "OKX", 2.85, 0.32, 0.075, "#ffffff");
-      patro(c, "allwyn", 2.5, 0.90, 0.055, "#ffffff", { estilo: "normal" });
+      // a tampa preta, que desce em diagonal até a asa
+      c.beginPath(); c.moveTo(2.14, 1.1); c.lineTo(3.88, 1.1); c.lineTo(3.88, 0.42); c.quadraticCurveTo(3.1, 0.68, 2.62, 0.66); c.lineTo(2.14, 0.58); c.closePath(); c.fillStyle = PRETO; c.fill();
+      // a barriga preta da entrada de ar até trás
+      c.beginPath(); c.moveTo(1.05, 0); c.lineTo(1.05, 0.25); c.quadraticCurveTo(2.0, 0.4, 2.55, 0.38); c.quadraticCurveTo(3.1, 0.36, 3.88, 0.42); c.lineTo(3.88, 0); c.closePath(); c.fill();
+      baixo(c, PRETO);
+      poli(c, [[0, 0], [0.62, 0], [0.62, 0.11], [0, 0.11]], PRETO);
+      ret(c, 3.86, 0.3, 4.45, 0.62, PRETO);
+      marca(c, "gemini", 3.0, 0.76, 0.085); marca(c, "okx", 2.72, 0.27, 0.065); marca(c, "velo", 2.3, 0.53, 0.07, { tinta: PRETO }); marca(c, "dell", 3.08, 0.51, 0.05, { tinta: PRETO });
+      marca(c, "mastercard", 3.05, 0.27, 0.075); marca(c, "dropbox", 4.15, 0.72, 0.05, { tinta: PRETO }); marca(c, "dpworld", 1.72, 0.48, 0.035, { tinta: PRETO }); marca(c, "allwyn", 2.3, 0.86, 0.04);
     });
     vista(ctx, "T", (c) => {
-      // Ao lado do cockpit o preto e as faixas azul-escuras contrastam com o bico papaia.
-      ret(c, 1.80, -0.30, 2.10, -0.12, PRETO); ret(c, 1.80, 0.12, 2.10, 0.30, PRETO);
-      ret(c, 2.3, -0.3, 4.0, 0.3, PRETO); poli(c, [[2.3, 0.3], [2.3, -0.3], [2.0, -0.12], [2.0, 0.12]], PRETO);
-      ret(c, 3.9, -0.5, 4.4, 0.5, PAP); ret(c, 4.32, -0.5, 4.4, 0.5, PRETO);
-      textoTopo(c, "DHL", 4.10, 0, 0.11, PRETO, { larg: 0.65 });
+      ret(c, 1.8, -0.3, 3.9, 0.3, PRETO); poli(c, [[1.8, 0.3], [1.8, -0.3], [1.5, -0.1], [1.5, 0.1]], PRETO);
+      asasT(c, PAP, PAP, PAP); ret(c, 4.3, -0.62, 4.45, 0.62, PRETO);
+      const f = { giro: DE_FRENTE, tinta: PRETO };
+      marca(c, "dhl", 4.12, 0, 0.1, { giro: DE_FRENTE }); marca(c, "dell", 0.72, 0, 0.05, f); marca(c, "dhl", 0.42, 0, 0.05, { giro: DE_FRENTE }); marca(c, "gemini", 2.9, 0, 0.09, { giro: DE_FRENTE }); marca(c, "okx", 1.2, 0, 0.05, f);
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0.0, 0.8, 0.45, PAP); ret(c, -0.55, 0.0, 0.55, 0.15, PRETO); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0.0, 0.8, 1.0, PAP); ret(c, -0.5, 0.45, 0.5, 0.75, PRETO); patro(c, "DHL", 0, 0.8, 0.12, "#101114"); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PAP); ret(c, -0.55, 0, 0.55, 0.15, PRETO); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PAP); ret(c, -0.5, 0.3, 0.5, 0.62, PRETO); marca(c, "dhl", 0, 0.8, 0.12); });
   },
 };
 
-// Ferrari: vermelho, tampa e traseira brancas, asa traseira e a parte de baixo pretas, escudo amarelo
+// Ferrari SF-26 (as fotos oficiais do lançamento, ver halo-referencias.md): vermelho, os ombros da tampa brancos com o redondo da HP, o branco envolvendo o
+// cockpit; assoalho, parte de baixo das caixas e as duas asas pretos; o bico leva a fileira de patrocinadores, lida por quem vem de frente.
 DESENHOS.ferrari = {
   numero: "#ffffff",
+  carbono: 1,
+  numPos: [3.42, 0.62, 9, 9], // o número na barbatana, branco sobre o vermelho; a asa traseira não tem número
   pintar(ctx) {
-    const VERM = "#dc0000", BRANCO = "#f1efe9", AMAR = "#ffd200", PRETO = "#121214";
+    const VERM = "#b90d16", ESCURO = "#8e0a12", BRANCO = "#ecebe6", PRETO = "#101113";
     base(ctx, VERM);
     lados(ctx, (c) => {
-      // tampa e traseira brancas, com a frente em diagonal
-      poli(c, [[2.3, 1.1], [4.45, 1.1], [4.45, 0.4], [3.4, 0.4], [3.0, 0.5], [2.75, 0.8], [2.55, 0.62], [2.3, 0.6]], BRANCO);
-      poli(c, [[2.3, 0.6], [2.55, 0.62], [2.75, 0.8], [2.82, 0.8], [2.6, 0.58], [2.3, 0.56]], AMAR);
-      // asa traseira preta
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
-      // cockpit e rodas: linha branca no bico
-      poli(c, [[0.05, 0.15], [1.2, 0.34], [1.2, 0.37], [0.05, 0.18]], BRANCO);
-      logo(c, "ferrari", 2.55, 0.72, 2.95, 0.98);
-      logo(c, "ferrari", 1.5, 0.16, 1.9, 0.4);
-      patro(c, "Shell", 1.6, 0.42, 0.09, "#ffd200", { esp: 0.02 });
-      patro(c, "HP", 3.3, 0.7, 0.1, "#1b3fb4", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
-      patro(c, "UniCredit", 3.25, 0.24, 0.06, "#ffffff", { esp: 0.012 });
+      // o branco dos ombros: sobe em curva até a barbatana, que continua vermelha
+      c.beginPath(); c.moveTo(2.2, 0.6); c.lineTo(2.2, 1.1); c.lineTo(3.3, 1.1); c.lineTo(3.3, 0.8); c.quadraticCurveTo(3.14, 0.54, 2.8, 0.5); c.quadraticCurveTo(2.45, 0.49, 2.2, 0.56); c.closePath(); c.fillStyle = BRANCO; c.fill();
+      // a sombra pintada na barriga das caixas laterais, que dá volume sem custar nada
+      c.fillStyle = degrade(c, 0, 0.5, 0, 0.1, [[0, "rgba(60,0,4,0)"], [1, "rgba(60,0,4,0.42)"]]); c.fillRect(1.1, 0.1, 2.8, 0.4);
+      // o preto de baixo: o assoalho e a parte de baixo das caixas, subindo para trás
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 0.09); c.lineTo(2.1, 0.09); c.quadraticCurveTo(2.7, 0.14, 3.15, 0.2); c.quadraticCurveTo(3.55, 0.24, 3.8, 0.34); c.lineTo(4.45, 0.34); c.lineTo(4.45, 0); c.closePath(); c.fillStyle = PRETO; c.fill();
+      // a asa dianteira preta e a traseira preta
+      poli(c, [[0, 0], [0.62, 0], [0.62, 0.17], [0.34, 0.2], [0, 0.2]], PRETO);
+      ret(c, 3.82, 0.3, 4.45, 1.1, PRETO);
+      // as marcas, cada uma onde está no carro de verdade
+      marca(c, "hp", 2.86, 0.61, 0.17);
+      marca(c, "ibm", 2.56, 0.56, 0.048, { tinta: PRETO, fundo: BRANCO });
+      marca(c, "zyn", 2.3, 0.63, 0.05, { tinta: PRETO });
+      marca(c, "shell", 2.62, 0.3, 0.2);
+      marca(c, "ceva", 2.98, 0.3, 0.075, { tinta: "#ffffff" });
+      marca(c, "unicredit", 3.08, 0.44, 0.055, { tinta: "#ffffff" });
+      marca(c, "richardmille", 1.42, 0.46, 0.036, { tinta: "#ffffff" });
+      logo(c, "ferrari", 1.66, 0.42, 1.8, 0.56);
+      marca(c, "ambipar", 1.9, 0.135, 0.045, { tinta: "#ffffff" });
+      marca(c, "unicredit", 0.42, 0.14, 0.035, { tinta: "#ffffff" });
+      marca(c, "bitdefender", 0.72, 0.31, 0.03, { tinta: "#ffffff" });
+      marca(c, "vpower", 4.15, 0.74, 0.06, { tinta: "#ffffff" });
+      marca(c, "peroni", 4.15, 0.655, 0.045, { tinta: "#ffffff" });
     });
     vista(ctx, "T", (c) => {
-      ret(c, 2.5, -0.3, 4.0, 0.3, BRANCO); ret(c, 2.5, -0.012, 3.95, 0.012, VERM);
-      ret(c, 0.05, -0.8, 0.5, 0.8, VERM); ret(c, 0.15, -0.015, 1.0, 0.015, BRANCO);
-      // Nas imagens onboard, o cockpit e o bico imediato são brancos; as bordas continuam vermelhas.
-      ret(c, 1.30, -0.28, 2.06, 0.28, BRANCO);
-      ret(c, 3.9, -0.5, 4.4, 0.5, PRETO);
-      logo(c, "ferrari", 0.78, -0.07, 1.0, 0.07);
+      // a pele do meio: branca em volta do cockpit e afinando até a barbatana
+      const meio = [[1.34, 0.05], [1.6, 0.24], [2.1, 0.38], [2.6, 0.33], [3.0, 0.19], [3.32, 0.02]];
+      c.beginPath(); c.moveTo(meio[0][0], meio[0][1]); for (let i = 1; i < meio.length; i++) { const [a0, b0] = meio[i - 1], [a1, b1] = meio[i]; c.quadraticCurveTo(a0, b0, (a0 + a1) / 2, (b0 + b1) / 2); } c.lineTo(3.32, 0.02);
+      c.lineTo(3.32, -0.02); for (let i = meio.length - 2; i >= 0; i--) { const [a0, b0] = meio[i + 1], [a1, b1] = meio[i]; c.quadraticCurveTo(a0, -b0, (a0 + a1) / 2, -(b0 + b1) / 2); } c.lineTo(1.34, -0.05); c.closePath(); c.fillStyle = BRANCO; c.fill();
+      // as duas asas pretas; o bico vermelho passa por cima da asa dianteira
+      ret(c, 0, -0.82, 0.66, 0.82, PRETO); poli(c, [[0, -0.09], [0.66, -0.14], [0.66, 0.14], [0, 0.09]], VERM);
+      ret(c, 3.82, -0.62, 4.45, 0.62, PRETO);
+      // a fileira do bico, lida por quem vem de frente
+      const f = { giro: DE_FRENTE, tinta: "#ffffff" };
+      marca(c, "unicredit", 0.18, 0, 0.042, f); marca(c, "genesys", 0.3, 0, 0.034, f); marca(c, "pirelli", 0.4, 0, 0.038, f);
+      marca(c, "whoop", 0.5, 0, 0.038, f); marca(c, "bingx", 0.6, 0, 0.052, f); marca(c, "ibm", 0.71, 0, 0.056, { giro: DE_FRENTE, tinta: "#ffffff", fundo: VERM });
+      marca(c, "shell", 0.85, 0, 0.13, { giro: DE_FRENTE }); marca(c, "zyn", 1.17, 0, 0.06, f); marca(c, "bitdefender", 1.29, 0, 0.032, f);
+      // a asa dianteira
+      for (const l of [-1, 1]) { marca(c, "rayban", 0.2, l * 0.45, 0.07, f); marca(c, "vpower", 0.36, l * 0.42, 0.038, f); marca(c, "hp", 0.5, l * 0.32, 0.075, { giro: DE_FRENTE }); }
+      // o redondo grande na tampa e a marca dos ombros
+      marca(c, "hp", 2.96, 0, 0.17, { giro: DE_FRENTE });
+      for (const l of [-1, 1]) { marca(c, "zyn", 2.12, l * 0.3, 0.035, { giro: DE_FRENTE, tinta: PRETO }); marca(c, "ibm", 2.48, l * 0.25, 0.04, { giro: DE_FRENTE, tinta: PRETO, fundo: BRANCO }); }
+      // a asa traseira: dois redondos da HP
+      for (const l of [-1, 1]) marca(c, "hp", 4.18, l * 0.3, 0.14, { giro: DE_FRENTE });
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0.0, 0.8, 0.45, VERM); ret(c, -0.75, 0.0, 0.75, 0.08, PRETO); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0.0, 0.8, 1.0, PRETO); ret(c, -0.45, 0.2, 0.45, 0.5, VERM); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, ESCURO); ret(c, -0.8, 0, 0.8, 0.24, PRETO); ret(c, -0.16, 0.06, 0.16, 0.5, VERM); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PRETO); ret(c, -0.3, 0.36, 0.3, 0.72, VERM); });
   },
 };
 
-// Mercedes W17: preto e prata, filetes Petronas e grafismos AMG.
+// Mercedes W17: preto, as lâminas prateadas na caixa lateral, o filete verde-água e as marcas em branco
 DESENHOS.mercedes = {
-  numero: "#00d7b6",
+  numero: "#00d7b6", carbono: 1, numPos: [3.42, 0.68, 9, 9],
   pintar(ctx) {
-    const PRETO = "#0a0b0e", PRATA = "#c8cdd3", VERDE = "#00bda9";
+    const PRETO = "#0b0c0f", PRATA = "#c8cdd3", VERDE = "#00bda9", BRANCO = "#eceef0";
     base(ctx, PRETO);
     lados(ctx, (c) => {
-      // Faixa estreita acompanha o contorno das caixas laterais.
-      poli(c, [[1.95,0.40],[2.60,0.43],[3.60,0.55],[3.60,0.57],[2.60,0.46],[1.95,0.43]], VERDE);
-      // Recortes prateados verticais do padrão AMG, sobre a parte superior do sidepod.
-      for (let i = 0; i < 4; i++) {
-        const s = 2.34 + i * 0.21;
-        poli(c, [[s,0.46],[s+0.12,0.47],[s+0.16,0.61],[s+0.04,0.60]], PRATA);
-      }
-      poli(c, [[0,0.25],[1.05,0.25],[0.95,0.40],[0,0.40]], PRATA);
-      poli(c, [[0,0.40],[0.95,0.40],[0.95,0.415],[0,0.415]], VERDE);
-      // Estrelas de três pontas da tampa, em vez de pontos circulares.
-      c.save(); c.strokeStyle = "rgba(210,216,220,0.65)"; c.lineWidth = 0.010;
-      for (let row=0; row<3; row++) for (let col=0; col<6; col++) {
-        const x=2.72+col*0.18+row*0.07, y=0.68+row*0.085-col*0.014, r=0.033;
-        c.beginPath(); for (let k=0; k<3; k++) { const a=-Math.PI/2+k*2*Math.PI/3; c.moveTo(x,y); c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r); } c.stroke();
-      }
-      c.restore();
-      patro(c,"PETRONAS",2.65,0.36,0.075,"#ffffff",{estilo:"normal",larg:0.58});
-      patro(c,"TeamViewer",2.22,0.59,0.046,"#ffffff",{estilo:"normal"});
-      patro(c,"Microsoft",2.44,0.83,0.046,"#ffffff",{estilo:"normal"});
-      patro(c,"SOLERA",2.62,0.76,0.045,"#ffffff",{estilo:"normal"});
-      patro(c,"INEOS",1.55,0.43,0.055,"#ffffff",{estilo:"normal"});
-      patro(c,"IWC",0.40,0.23,0.045,"#ffffff",{estilo:"normal"});
-      patro(c,"CROWDSTRIKE",4.04,0.75,0.045,"#ffffff",{estilo:"normal"});
+      // as lâminas: um feixe em diagonal saindo do meio da caixa
+      for (let i = 0; i < 5; i++) { const s = 2.36 + i * 0.2, t = 0.2 - i * 0.012; poli(c, [[s, 0.42], [s + t, 0.42], [s + t + 0.14, 0.58], [s + 0.14, 0.58]], i < 2 ? BRANCO : PRATA); }
+      poli(c, [[2.05, 0.4], [3.35, 0.4], [3.35, 0.415], [2.05, 0.415]], VERDE);
+      poli(c, [[0, 0.25], [1.05, 0.25], [0.95, 0.4], [0, 0.4]], PRATA); poli(c, [[0, 0.4], [0.95, 0.4], [0.95, 0.415], [0, 0.415]], VERDE);
+      marca(c, "petronas", 2.72, 0.32, 0.09); marca(c, "microsoft", 2.82, 0.84, 0.05); marca(c, "solera", 3.18, 0.71, 0.036); marca(c, "teamviewer", 2.7, 0.64, 0.036); marca(c, "amg", 1.55, 0.5, 0.05, { tinta: PRATA });
+      marca(c, "signify", 1.95, 0.2, 0.04); marca(c, "iwc", 0.42, 0.21, 0.05); marca(c, "snapdragon", 4.15, 0.73, 0.036); marca(c, "crowdstrike", 4.15, 0.64, 0.03); marca(c, "ineos", 1.3, 0.42, 0.036);
     });
     vista(ctx, "T", (c) => {
-      // Asas pretas, bico prateado estreito e contorno verde-água.
-      ret(c, 0.10,-0.19,1.18,0.19,VERDE);
-      ret(c, 0.10,-0.16,1.18,0.16,"#d9dde2");
-      ret(c, 1.30,-0.28,2.08,0.28,PRATA);
-      ret(c, 2.30,-0.30,4.00,0.30,"#121418");
-      ret(c, 3.90,-0.50,4.40,0.50,"#181a1f");
-      textoTopo(c,"PETRONAS",4.10,0,0.095,"#ffffff",{larg:0.65});
-      textoTopo(c,"TeamViewer",0.25,-0.48,0.045,"#ffffff",{larg:0.35});
-      textoTopo(c,"TeamViewer",0.25,0.48,0.045,"#ffffff",{larg:0.35});
+      ret(c, 0.1, -0.19, 1.18, 0.19, VERDE); ret(c, 0.1, -0.16, 1.18, 0.16, "#d9dde2"); ret(c, 1.3, -0.28, 2.08, 0.28, PRATA); ret(c, 2.3, -0.3, 4, 0.3, "#121418");
+      asasT(c, PRETO, "#181a1f", "#d9dde2");
+      const f = { giro: DE_FRENTE, tinta: PRETO };
+      marca(c, "petronas", 4.12, 0, 0.09, { giro: DE_FRENTE }); marca(c, "petronas", 0.84, 0, 0.04, f); marca(c, "ineos", 0.56, 0, 0.04, f);
+      for (const l of [-1, 1]) marca(c, "teamviewer", 0.24, l * 0.47, 0.045, { giro: DE_FRENTE });
     });
-    vista(ctx, "F", (c) => { ret(c,-0.8,0,0.8,0.45,PRETO); ret(c,-0.18,0.2,0.18,0.45,PRATA); });
-    vista(ctx, "R", (c) => { ret(c,-0.8,0,0.8,1.0,"#16181c"); patro(c,"PETRONAS",0,0.78,0.10,"#ffffff",{estilo:"normal",larg:0.8}); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PRETO); ret(c, -0.18, 0.2, 0.18, 0.45, PRATA); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, "#16181c"); marca(c, "petronas", 0, 0.78, 0.09); });
   },
 };
 
-// Red Bull: azul-marinho fosco, bico amarelo e vermelho, tampa do motor com os touros, "ORACLE" no estilo da lateral
+// Red Bull RB22: azul-marinho fosco, os touros vermelhos na tampa, a entrada de ar amarela e o bico com amarelo e vermelho
 DESENHOS["red-bull"] = {
-  numero: "#ffffff",
+  numero: "#ffffff", carbono: 1, numPos: [3.5, 0.62, 9, 9],
   pintar(ctx) {
-    const AZUL = "#14224a", VERM = "#d3112f", AMAR = "#ffcc00", PRETO = "#0c0f1a";
+    const AZUL = "#141c42", ESC = "#0d1330", VERM = "#d3112f", AMAR = "#f7b500";
     base(ctx, AZUL);
     lados(ctx, (c) => {
-      // bico: amarelo na ponta e vermelho depois, como na frente do carro
-      poli(c, [[0, 0], [0.55, 0], [0.55, 0.5], [0, 0.5]], AMAR);
-      poli(c, [[0.55, 0.0], [1.1, 0.0], [1.1, 0.5], [0.55, 0.5]], VERM);
-      poli(c, [[2.2, 0.57], [2.5, 1.1], [2.9, 1.1], [3.0, 0.88], [2.7, 0.5]], VERM);   // airbox
-      poli(c, [[3.0, 0.88], [4.45, 0.46], [4.45, 0.5], [3.1, 0.9]], VERM);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], "#1c2b60");
-      logo(c, "red-bull", 1.1, 0.14, 2.0, 0.4);
-      patro(c, "Red Bull", 3.3, 0.66, 0.09, "#ffffff", { esp: 0.015 });
-      patro(c, "Mobil 1", 1.5, 0.4, 0.07, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
-      patro(c, "ORACLE", 2.9, 0.23, 0.09, "#ffffff", { estilo: "normal", larg: 0.72 });
+      poli(c, [[2.2, 0.72], [2.2, 1.1], [2.66, 1.1], [2.66, 0.72]], AMAR); // a entrada de ar
+      baixo(c, ESC);
+      poli(c, [[0.04, 0.12], [0.62, 0.12], [0.5, 0.3], [0.04, 0.2]], AMAR); poli(c, [[0.28, 0.12], [0.9, 0.12], [0.74, 0.36], [0.28, 0.3]], VERM);
+      ret(c, 3.86, 0.3, 4.45, 1.1, ESC);
+      touros(c, 2.68, 0.66, 3.5, 0.98);
+      marca(c, "redbull", 3.02, 0.56, 0.075, { tinta: VERM }); marca(c, "oracle", 2.78, 0.31, 0.105); marca(c, "rokt", 2.3, 0.62, 0.035); marca(c, "mobil1", 4.15, 0.72, 0.06); marca(c, "mobil1", 1.52, 0.42, 0.036);
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.5, 0.75, VERM); ret(c, 0.0, -0.16, 0.7, 0.16, AMAR); ret(c, 0.7, -0.2, 1.1, 0.2, VERM);
-      ret(c, 2.3, -0.3, 4.0, 0.3, "#102150"); ret(c, 2.3, -0.1, 2.9, 0.1, VERM);
-      // Padrão azul discreto, como o acabamento da pintura, sem textura extra na GPU.
-      const R = mulberry(22);
-      for (let i = 0; i < 400; i++) {
-        const s = 1.28 + R() * 0.88, x = -0.38 + R() * 0.76, w = 0.008 + R() * 0.023, h = 0.004 + R() * 0.013;
-        ret(c, s, x, s + w, x + h, R() > 0.5 ? "#23366a55" : "#070f2b66");
-      }
-      // Detalhes visíveis do cockpit, inspirados na imagem onboard: a marca no bico e os parceiros junto ao piloto.
-      // O símbolo dos touros é recortado do logo da equipe já incluído no jogo.
-      const marca = LOGOS.get("red-bull")?.img;
-      if (marca) {
-        const [px, py] = pt(c, 1.48, 0); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.translate(px, py); c.rotate(-Math.PI / 2);
-        c.drawImage(marca, marca.naturalWidth * 0.56, marca.naturalHeight * 0.41, marca.naturalWidth * 0.44, marca.naturalHeight * 0.20, -0.12 * K, -0.055 * K, 0.24 * K, 0.11 * K); c.restore();
-      }
-      textoTopo(c, "Red Bull", 1.60, 0, 0.11, "#e51a3a", { larg: 0.26, borda: "#ffffff" });
-      ret(c, 3.9, -0.5, 4.4, 0.5, "#1c2b60"); logo(c, "red-bull", 3.92, -0.35, 4.38, 0.35);
+      ret(c, 2.3, -0.3, 2.7, 0.3, AMAR); ret(c, 2.7, -0.1, 3.5, 0.1, VERM);
+      asasT(c, ESC, ESC, AZUL); poli(c, [[0, -0.09], [0.32, -0.12], [0.32, 0.12], [0, 0.09]], AMAR); poli(c, [[0.32, -0.12], [0.7, -0.14], [0.7, 0.14], [0.32, 0.12]], VERM);
+      for (const l of [-1, 1]) marca(c, "redbull", 0.3, l * 0.45, 0.05, { giro: DE_FRENTE, tinta: "#fff" });
+      touros(c, 3.94, -0.3, 4.4, 0.3);
+      textoTopo(c, "Red Bull", 1.6, 0, 0.11, "#e51a3a", { larg: 0.26, borda: "#ffffff" });
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, VERM); ret(c, -0.2, 0.1, 0.2, 0.45, AMAR); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, AZUL); ret(c, -0.5, 0.45, 0.5, 0.75, VERM); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, AZUL); ret(c, -0.2, 0.1, 0.2, 0.45, VERM); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, AZUL); touros(c, -0.45, 0.45, 0.45, 0.8); });
   },
 };
 
-// Racing Bulls: branco e azul-marinho, bico e airbox em amarelo, laranja e vermelho
+// Racing Bulls: azul-marinho em cima e embaixo, a grande cunha branca com VISA, os touros e a entrada de ar amarela
 DESENHOS["racing-bulls"] = {
-  numero: "#14224a",
+  numero: "#d3112f", carbono: 1, numPos: [3.5, 0.72, 9, 9],
   pintar(ctx) {
-    const BRANCO = "#f1f3f8", MAR = "#1a2c6b", AMAR = "#ffd21f", LARANJA = "#ff6a13", VERM = "#e4002b";
-    base(ctx, BRANCO);
+    const BRANCO = "#eff1f6", MAR = "#14224f", AMAR = "#f9b000", VERM = "#d3112f", LARANJA = "#ff6a13";
+    base(ctx, MAR);
     lados(ctx, (c) => {
-      poli(c, [[0, 0], [0.9, 0], [0.7, 0.5], [0, 0.5]], LARANJA); poli(c, [[0, 0], [0.45, 0], [0.35, 0.5], [0, 0.5]], AMAR);
-      poli(c, [[2.2, 0.57], [2.5, 1.1], [3.0, 1.1], [3.2, 0.86], [2.8, 0.5]], AMAR);
-      poli(c, [[2.6, 1.1], [2.95, 1.1], [3.1, 0.9], [2.8, 0.95]], VERM);
-      // traseira azul-marinho em diagonal
-      poli(c, [[3.1, 0.9], [4.45, 0.5], [4.45, 0.35], [3.3, 0.35], [3.0, 0.5]], MAR);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], MAR);
-      poli(c, [[2.95, 0.1], [3.5, 0.1], [3.3, 0.3], [2.95, 0.3]], MAR);
-      logo(c, "racing-bulls", 1.1, 0.12, 2.0, 0.42, MAR);
-      patro(c, "VISA", 1.35, 0.42, 0.075, MAR, { esp: 0.015 });
-      patro(c, "Cash App", 3.45, 0.2, 0.06, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      // a cunha branca, larga atrás e fina até o bico
+      c.beginPath(); c.moveTo(3.55, 0.16); c.lineTo(3.1, 0.54); c.quadraticCurveTo(2.0, 0.64, 1.1, 0.5); c.lineTo(0.5, 0.26); c.lineTo(1.05, 0.28); c.quadraticCurveTo(2.0, 0.42, 2.3, 0.2); c.closePath(); c.fillStyle = BRANCO; c.fill();
+      ret(c, 1.3, 0.45, 2.1, 0.6, BRANCO);
+      poli(c, [[2.2, 0.72], [2.2, 1.1], [2.66, 1.1], [2.66, 0.72]], AMAR);
+      baixo(c, MAR);
+      poli(c, [[0.04, 0.12], [0.5, 0.12], [0.42, 0.28], [0.04, 0.2]], LARANJA); ret(c, 0.05, 0, 0.6, 0.16, BRANCO);
+      ret(c, 3.86, 0.3, 4.45, 1.1, "#0e1021");
+      touros(c, 2.68, 0.64, 3.46, 0.96);
+      marca(c, "visa", 2.86, 0.31, 0.14, { tinta: MAR }); marca(c, "redbull", 3.05, 0.61, 0.055, { tinta: VERM }); marca(c, "cashapp", 2.42, 0.57, 0.045, { tinta: MAR }); marca(c, "hugo", 1.75, 0.53, 0.045, { tinta: VERM });
+      marca(c, "ford", 3.5, 0.34, 0.075); marca(c, "cashapp", 0.33, 0.08, 0.042, { tinta: MAR }); marca(c, "visa", 4.15, 0.72, 0.055, { tinta: BRANCO });
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.5, 0.75, MAR); ret(c, 0.0, -0.17, 0.9, 0.17, LARANJA); ret(c, 0.0, -0.08, 0.45, 0.08, AMAR);
-      ret(c, 2.3, -0.3, 3.0, 0.3, AMAR); ret(c, 3.0, -0.3, 4.0, 0.3, MAR); ret(c, 3.9, -0.5, 4.4, 0.5, MAR);
+      ret(c, 2.3, -0.3, 2.72, 0.3, AMAR); ret(c, 2.72, -0.3, 4, 0.3, MAR); ret(c, 1.3, -0.25, 2.1, 0.25, BRANCO);
+      asasT(c, MAR, "#0e1021", MAR); poli(c, [[0, -0.09], [0.35, -0.12], [0.35, 0.12], [0, 0.09]], LARANJA);
+      const f = { giro: DE_FRENTE, tinta: "#fff" }; marca(c, "visa", 0.86, 0, 0.09, f); marca(c, "hugo", 0.62, 0, 0.04, f); marca(c, "visa", 4.15, 0, 0.1, f);
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, BRANCO); ret(c, -0.55, 0, 0.55, 0.15, MAR); ret(c, -0.15, 0.1, 0.15, 0.45, LARANJA); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, MAR); ret(c, -0.5, 0.45, 0.5, 0.75, BRANCO); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, MAR); ret(c, -0.15, 0.1, 0.15, 0.45, LARANJA); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, MAR); ret(c, -0.5, 0.45, 0.5, 0.75, BRANCO); });
   },
 };
 
-// Aston Martin: verde de corrida escuro, filetes verde-limão, asa traseira e bico mais escuros
+// Aston Martin AMR26: verde de corrida bem escuro, filete limão e as marcas em branco
 DESENHOS["aston-martin"] = {
-  numero: "#d7e600",
+  numero: "#d7e600", carbono: 1, numPos: [3.5, 0.66, 9, 9],
   pintar(ctx) {
-    const VERDE = "#0a5c4d", ESC = "#06352c", LIMAO = "#cedc00", PRETO = "#0a1210";
+    const VERDE = "#0a4a3f", ESC = "#062d27", LIMAO = "#cedc00", PRETO = "#0a1210";
     base(ctx, VERDE);
     lados(ctx, (c) => {
-      poli(c, [[2.3, 1.1], [4.45, 1.1], [4.45, 0.38], [3.4, 0.38], [2.9, 0.55], [2.3, 0.55]], ESC);
-      // filetes limão em diagonal ao longo da tampa
-      poli(c, [[2.3, 0.55], [2.9, 0.55], [3.4, 0.38], [4.45, 0.38], [4.45, 0.35], [3.4, 0.35], [2.9, 0.52], [2.3, 0.52]], LIMAO);
-      poli(c, [[0.0, 0.18], [1.1, 0.37], [1.1, 0.4], [0.0, 0.21]], LIMAO);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
-      logo(c, "aston-martin", 1.1, 0.14, 2.0, 0.4, "#ffffff");
-      patro(c, "aramco", 3.3, 0.2, 0.08, "#ffffff", { esp: 0.01, estilo: "normal" });
-      patro(c, "Cognizant", 1.4, 0.43, 0.06, "#cedc00", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
-      patro(c, "BOSS", 2.7, 0.65, 0.09, "#cedc00");
+      c.beginPath(); c.moveTo(2.2, 0.66); c.lineTo(2.2, 1.1); c.lineTo(3.9, 1.1); c.lineTo(3.9, 0.56); c.quadraticCurveTo(3, 0.72, 2.2, 0.66); c.closePath(); c.fillStyle = ESC; c.fill();
+      c.fillStyle = LIMAO; c.fillRect(2.05, 0.405, 1.5, 0.012);
+      baixo(c, PRETO);
+      poli(c, [[0, 0.18], [1.1, 0.37], [1.1, 0.385], [0, 0.195]], LIMAO);
+      ret(c, 3.86, 0.3, 4.45, 1.1, PRETO);
+      marca(c, "aramco", 2.8, 0.31, 0.125); marca(c, "astonmartin", 3.2, 0.74, 0.042); marca(c, "maaden", 3.1, 0.64, 0.042); marca(c, "boss", 2.15, 0.52, 0.042); marca(c, "valvoline", 3.2, 0.17, 0.036); marca(c, "honda", 3.32, 0.44, 0.036);
+      marca(c, "coinbase", 4.15, 0.72, 0.065); marca(c, "cognizant", 1.72, 0.22, 0.036, { tinta: LIMAO }); marca(c, "coreweave", 2.56, 0.82, 0.03);
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.5, 0.75, ESC); ret(c, 0.15, -0.012, 1.1, 0.012, LIMAO);
-      ret(c, 2.3, -0.3, 4.0, 0.3, ESC); ret(c, 2.3, -0.012, 3.9, 0.012, LIMAO); ret(c, 3.9, -0.5, 4.4, 0.5, PRETO);
+      ret(c, 2.3, -0.3, 4, 0.3, ESC); ret(c, 2.3, -0.012, 3.9, 0.012, LIMAO); ret(c, 0.15, -0.012, 1.1, 0.012, LIMAO);
+      asasT(c, ESC, PRETO, VERDE);
+      const f = { giro: DE_FRENTE, tinta: "#fff" }; marca(c, "aramco", 0.72, 0, 0.08, f); marca(c, "coinbase", 4.15, 0, 0.08, f); marca(c, "aramco", 2.9, 0, 0.09, f);
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, VERDE); ret(c, -0.75, 0, 0.75, 0.1, LIMAO); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, PRETO); ret(c, -0.45, 0.45, 0.45, 0.75, LIMAO); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, VERDE); ret(c, -0.75, 0, 0.75, 0.1, ESC); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PRETO); ret(c, -0.45, 0.45, 0.45, 0.75, VERDE); });
   },
 };
 
-// Williams: azul-celeste na frente, azul-marinho atrás, faixa branca, patrocinador grande na caixa lateral
+// Williams FW48: azul-royal escuro em cima, azul-claro no meio da caixa, a cunha branca com KOMATSU e a asa traseira branca e azul
 DESENHOS.williams = {
-  numero: "#ffffff",
+  numero: "#ffffff", carbono: 1, numPos: [3.5, 0.58, 9, 9],
   pintar(ctx) {
-    const CEU = "#1f9fe0", MAR = "#0b2a6b", BRANCO = "#f4f6fa";
-    base(ctx, CEU);
+    const ROYAL = "#0f2f8f", ESC = "#08184f", CEU = "#3d7be0", BRANCO = "#f2f5fb";
+    base(ctx, ROYAL);
     lados(ctx, (c) => {
-      // o azul-marinho começa na caixa lateral e cobre a tampa e a traseira, em diagonal
-      poli(c, [[2.4, 1.1], [4.45, 1.1], [4.45, 0.3], [3.4, 0.3], [2.75, 0.3], [2.5, 0.55], [2.35, 0.6]], MAR);
-      poli(c, [[2.35, 0.6], [2.5, 0.55], [2.75, 0.3], [2.85, 0.3], [2.6, 0.58], [2.35, 0.64]], BRANCO);
-      poli(c, [[0, 0.17], [1.2, 0.36], [1.2, 0.39], [0, 0.2]], BRANCO);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], "#0e3a8c");
-      logo(c, "williams", 1.1, 0.14, 2.0, 0.4);
-      patro(c, "ATLASSIAN", 3.3, 0.2, 0.075, "#ffffff", { esp: 0.012 });
-      patro(c, "KOMATSU", 1.3, 0.45, 0.055, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      c.beginPath(); c.moveTo(1.1, 0.5); c.quadraticCurveTo(2.2, 0.56, 3.1, 0.46); c.lineTo(2.55, 0.34); c.lineTo(1.1, 0.34); c.closePath(); c.fillStyle = CEU; c.fill();
+      c.beginPath(); c.moveTo(3.6, 0.14); c.lineTo(3.48, 0.44); c.lineTo(3.1, 0.46); c.lineTo(2.4, 0.3); c.lineTo(2.6, 0.14); c.closePath(); c.fillStyle = BRANCO; c.fill();
+      baixo(c, ESC);
+      poli(c, [[2.3, 0.72], [2.3, 0.98], [2.66, 0.98], [2.66, 0.72]], "#101114");
+      ret(c, 3.86, 0.62, 4.45, 1.1, ESC); ret(c, 3.86, 0.3, 4.45, 0.62, BRANCO);
+      marca(c, "komatsu", 3.1, 0.28, 0.09, { tinta: ROYAL }); marca(c, "atlassian", 2.92, 0.62, 0.065); marca(c, "barclays", 2.22, 0.43, 0.042); marca(c, "duracell", 2.48, 0.85, 0.04); marca(c, "gulf", 3.55, 0.3, 0.09);
+      marca(c, "komatsu", 4.15, 0.73, 0.055); marca(c, "gulf", 4.15, 0.48, 0.1); marca(c, "keeper", 1.75, 0.22, 0.034);
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.5, 0.75, CEU); ret(c, 0.15, -0.015, 1.15, 0.015, BRANCO);
-      // Patrocínios visíveis no onboard oficial do FW48.
-      ret(c, 2.5, -0.3, 4.0, 0.3, MAR); ret(c, 3.9, -0.5, 4.4, 0.5, "#0e3a8c");
+      ret(c, 2.3, -0.3, 4, 0.3, ESC);
+      asasT(c, ESC, ESC, ROYAL);
+      const f = { giro: DE_FRENTE, tinta: "#fff" }; marca(c, "komatsu", 0.72, 0, 0.05, f); marca(c, "atlassian", 4.15, 0, 0.08, f); marca(c, "atlassian", 2.9, 0, 0.06, f); marca(c, "barclays", 0.5, 0, 0.038, f);
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, CEU); ret(c, -0.55, 0, 0.55, 0.12, MAR); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, "#0e3a8c"); ret(c, -0.45, 0.45, 0.45, 0.75, BRANCO); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, ROYAL); ret(c, -0.55, 0, 0.55, 0.12, ESC); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, ESC); ret(c, -0.45, 0.3, 0.45, 0.6, BRANCO); });
   },
 };
 
-// Audi: prata titânio, caixa lateral e traseira com degradê vermelho-alaranjado, tampa do motor preta
+// Audi R26: titânio na frente, preto atrás e o bloco vermelho de corte reto na caixa lateral
 DESENHOS.audi = {
-  numero: "#ffffff",
+  numero: "#ffffff", carbono: 1, numPos: [3.55, 0.68, 9, 9],
   pintar(ctx) {
-    const PRATA = "#b9bec4", ESC = "#4a4f57", VERM = "#ff3d0a", PRETO = "#0d0e11";
+    const PRATA = "#aeb3b8", ESC = "#3a3e45", VERM = "#e8391a", PRETO = "#0d0e11";
     base(ctx, PRATA);
     lados(ctx, (c) => {
-      poli(c, [[2.3, 1.1], [4.45, 1.1], [4.45, 0.45], [3.6, 0.45], [3.0, 0.62], [2.7, 0.62], [2.3, 0.58]], PRETO);
-      // degradê vermelho-alaranjado na caixa lateral, subindo para a traseira
-      c.fillStyle = degrade(c, 2.1, 0.3, 3.9, 0.3, [[0, "rgba(255,61,10,0)"], [0.35, "rgba(255,61,10,0.9)"], [1, "#ff3d0a"]]);
-      c.beginPath(); c.moveTo(2.05, 0.04); c.lineTo(3.95, 0.04); c.lineTo(3.95, 0.42); c.lineTo(3.4, 0.45); c.lineTo(2.9, 0.56); c.lineTo(2.05, 0.5); c.closePath(); c.fill();
-      poli(c, [[0.0, 0.0], [1.0, 0.0], [0.9, 0.4], [0.0, 0.4]], ESC);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
-      logo(c, "audi", 2.2, 0.62, 3.2, 0.96, "#ff3d0a");
-      patro(c, "REVOLUT", 3.25, 0.2, 0.09, "#ffffff", { peso: 800, estilo: "normal", fam: "Arial, sans-serif" });
-      patro(c, "NINJAONE", 1.3, 0.42, 0.05, "#14161a", { esp: 0.01 });
-      patro(c, "visitQATAR", 3.5, 0.25, 0.05, "#ffffff");
+      c.beginPath(); c.moveTo(2.42, 1.1); c.lineTo(3.9, 1.1); c.lineTo(3.9, 0.1); c.lineTo(3.3, 0.1); c.lineTo(3.3, 0.6); c.lineTo(2.7, 0.62); c.lineTo(2.42, 0.6); c.closePath(); c.fillStyle = PRETO; c.fill();
+      poli(c, [[2.58, 0.14], [3.3, 0.14], [3.3, 0.6], [2.86, 0.6]], VERM); // o bloco vermelho
+      baixo(c, PRETO);
+      poli(c, [[0, 0], [0.9, 0], [0.8, 0.26], [0, 0.26]], ESC);
+      ret(c, 3.86, 0.3, 4.45, 1.1, PRETO);
+      marca(c, "aneis", 3.0, 0.76, 0.09); marca(c, "revolut", 2.58, 0.52, 0.058, { tinta: PRETO }); marca(c, "nexo", 1.42, 0.43, 0.04, { tinta: PRETO }); marca(c, "ninjaone", 1.75, 0.13, 0.036, { tinta: PRETO }); marca(c, "visitqatar", 0.42, 0.13, 0.036);
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.5, 0.75, ESC); ret(c, 0.1, -0.2, 1.05, 0.2, PRATA);
-      // Patrocinadores visíveis ao redor do piloto na vista onboard do R26.
-      ret(c, 2.3, -0.3, 4.0, 0.3, PRETO); ret(c, 3.9, -0.5, 4.4, 0.5, PRETO);
-      c.fillStyle = degrade(c, 2.1, 0, 3.9, 0, [[0, "rgba(255,61,10,0)"], [1, "#ff3d0a"]]); c.fillRect(2.1, -0.3, 1.8, 0.1); c.fillRect(2.1, 0.2, 1.8, 0.1);
+      ret(c, 2.3, -0.3, 4, 0.3, PRETO); c.fillStyle = VERM; c.fillRect(2.7, -0.3, 0.6, 0.08); c.fillRect(2.7, 0.22, 0.6, 0.08);
+      asasT(c, ESC, PRETO, PRATA);
+      const f = { giro: DE_FRENTE, tinta: PRETO }; marca(c, "aneis", 0.72, 0, 0.055, { giro: DE_FRENTE, tinta: VERM }); marca(c, "revolut", 0.5, 0, 0.05, f); marca(c, "aneis", 4.15, 0, 0.09, { giro: DE_FRENTE, tinta: VERM }); marca(c, "aneis", 2.9, 0, 0.09, { giro: DE_FRENTE, tinta: VERM });
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, PRATA); ret(c, -0.55, 0, 0.55, 0.12, ESC); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, PRETO); ret(c, -0.45, 0.45, 0.45, 0.75, VERM); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PRATA); ret(c, -0.55, 0, 0.55, 0.12, ESC); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PRETO); ret(c, -0.45, 0.45, 0.45, 0.75, VERM); });
   },
 };
 
-// Alpine: azul-marinho, rosa no bico, nas laterais e na asa dianteira, branco em filetes
+// Alpine A526: azul-marinho com degradê azul, rosa na asa dianteira, no bico, atrás da caixa e na asa traseira
 DESENHOS.alpine = {
-  numero: "#ffffff",
+  numero: "#ffffff", carbono: 2, numPos: [3.45, 0.68, 9, 9],
   pintar(ctx) {
-    const AZUL = "#0a2a6b", ROSA = "#ff7ab8", CLARO = "#2c6fe0", BRANCO = "#f4f6fa";
+    const AZUL = "#0c1f5c", ESC = "#071338", ROSA = "#ff6fb1", CLARO = "#2a6fd6";
     base(ctx, AZUL);
     lados(ctx, (c) => {
-      poli(c, [[0, 0], [1.0, 0], [0.8, 0.3], [0, 0.3]], ROSA);
-      // faixa rosa na tampa do motor, descendo em diagonal
-      poli(c, [[2.3, 0.62], [3.0, 0.62], [4.45, 0.46], [4.45, 0.7], [3.4, 0.84], [2.9, 0.88]], ROSA);
-      poli(c, [[2.3, 0.62], [2.9, 0.88], [2.9, 0.92], [2.3, 0.66]], BRANCO);
-      poli(c, [[2.0, 0.08], [3.4, 0.08], [3.2, 0.3], [2.0, 0.3]], CLARO);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], "#081c4a");
-      logo(c, "alpine", 1.1, 0.14, 2.0, 0.4, "#ffffff");
-      patro(c, "BWT", 3.7, 0.24, 0.1, ROSA, { esp: 0.01 });
-      patro(c, "Microsoft", 1.5, 0.43, 0.06, "#ffffff", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      c.fillStyle = degrade(c, 1.4, 0, 3.2, 0, [[0, "rgba(42,111,214,0)"], [0.5, CLARO], [1, "rgba(42,111,214,0)"]]); c.fillRect(1.4, 0.14, 1.8, 0.4);
+      poli(c, [[3.2, 0.44], [3.72, 0.3], [3.86, 0.3], [3.86, 0.62], [3.4, 0.64]], ROSA); // o bloco rosa atrás da caixa
+      c.beginPath(); c.moveTo(0, 0.1); c.lineTo(1.05, 0.1); c.lineTo(0.85, 0.32); c.lineTo(0, 0.3); c.closePath(); c.fillStyle = ROSA; c.fill();
+      baixo(c, ESC);
+      ret(c, 3.86, 0.62, 4.45, 1.1, ROSA); ret(c, 3.86, 0.3, 4.45, 0.62, ESC);
+      marca(c, "bwt", 2.72, 0.33, 0.13); marca(c, "eni", 3.02, 0.72, 0.075); marca(c, "msc", 2.1, 0.5, 0.05); marca(c, "alpine", 3.55, 0.47, 0.045, { tinta: AZUL }); marca(c, "eni", 4.15, 0.72, 0.08, { tinta: ESC });
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.5, 0.75, ROSA); ret(c, 0.0, -0.17, 1.0, 0.17, ROSA); ret(c, 1.0, -0.17, 1.9, 0.17, AZUL);
-      ret(c, 1.30, -0.19, 1.75, 0.19, ROSA);
-      ret(c, 2.3, -0.3, 4.0, 0.3, AZUL); ret(c, 3.0, -0.3, 4.0, -0.12, ROSA); ret(c, 3.0, 0.12, 4.0, 0.3, ROSA);
-      ret(c, 3.9, -0.5, 4.4, 0.5, "#081c4a");
+      ret(c, 2.3, -0.3, 4, 0.3, AZUL); ret(c, 3, -0.3, 4, -0.14, ROSA); ret(c, 3, 0.14, 4, 0.3, ROSA);
+      asasT(c, ROSA, ESC, ROSA); ret(c, 1, -0.17, 1.3, 0.17, AZUL);
+      const f = { giro: DE_FRENTE, tinta: AZUL }; marca(c, "bwt", 0.7, 0, 0.08, f); marca(c, "alpine", 0.45, 0, 0.04, f); marca(c, "bwt", 4.15, 0, 0.1, { giro: DE_FRENTE }); marca(c, "eni", 2.9, 0, 0.07, { giro: DE_FRENTE });
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, AZUL); ret(c, -0.8, 0, 0.8, 0.14, ROSA); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, "#081c4a"); ret(c, -0.45, 0.45, 0.45, 0.75, ROSA); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, AZUL); ret(c, -0.8, 0, 0.8, 0.14, ROSA); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, ESC); ret(c, -0.45, 0.45, 0.45, 0.75, ROSA); });
   },
 };
 
-// Haas: branco com faixas diagonais vermelhas e pretas, traseira preta
+// Haas VF-26: branco, o GR preto e vermelho na tampa, filete vermelho, barriga preta com HAAS na caixa e bico com vermelho
 DESENHOS.haas = {
-  numero: "#111111",
+  numero: "#111111", carbono: 2, numPos: [3.55, 0.6, 9, 9],
   pintar(ctx) {
-    const BRANCO = "#f4f4f2", VERM = "#e10a2b", PRETO = "#141416";
+    const BRANCO = "#f0f0ee", VERM = "#e10a2b", PRETO = "#141416";
     base(ctx, BRANCO);
     lados(ctx, (c) => {
-      // faixas diagonais (subindo para a traseira): vermelha e preta
-      poli(c, [[0.0, 0.0], [0.9, 0.0], [1.2, 0.38], [0.0, 0.38]], VERM);
-      poli(c, [[2.95, 0.04], [3.35, 0.04], [3.95, 0.4], [3.55, 0.4]], VERM);
-      poli(c, [[3.35, 0.04], [3.75, 0.04], [4.35, 0.4], [3.95, 0.4]], PRETO);
-      poli(c, [[1.0, 0.04], [1.5, 0.04], [2.0, 0.3], [1.0, 0.3]], VERM);
-      poli(c, [[2.9, 1.1], [4.45, 1.1], [4.45, 0.52], [3.7, 0.7], [3.3, 0.9]], PRETO);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
-      logo(c, "haas", 1.55, 0.3, 2.0, 0.45);
-      patro(c, "TOYOTA", 3.3, 0.76, 0.09, "#ffffff", { esp: 0.012 });
-      patro(c, "GR", 1.7, 0.45, 0.09, PRETO);
+      c.fillStyle = VERM; c.beginPath(); c.moveTo(2.15, 0.54); c.lineTo(3.5, 0.54); c.lineTo(3.5, 0.5); c.lineTo(2.15, 0.5); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(1.2, 0.09); c.lineTo(1.2, 0.2); c.lineTo(2.25, 0.2); c.lineTo(2.3, 0.14); c.lineTo(3.86, 0.14); c.lineTo(3.86, 0); c.lineTo(1.2, 0); c.closePath(); c.fillStyle = PRETO; c.fill();
+      baixo(c, PRETO);
+      poli(c, [[0.04, 0.1], [1.05, 0.1], [0.95, 0.28], [0.04, 0.2]], VERM);
+      poli(c, [[2.2, 0.72], [2.2, 1.1], [2.56, 1.1], [2.56, 0.72]], VERM);
+      ret(c, 3.86, 0.3, 4.45, 0.46, PRETO); ret(c, 3.86, 0.86, 4.45, 1.1, VERM);
+      marca(c, "gr", 3.02, 0.65, 0.17); marca(c, "haas", 2.82, 0.33, 0.14); marca(c, "zoomex", 2.05, 0.16, 0.036); marca(c, "toyota", 1.6, 0.46, 0.036, { tinta: PRETO }); marca(c, "toyota", 4.15, 0.64, 0.045, { tinta: PRETO });
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.5, 0.75, VERM); ret(c, 0.0, -0.17, 0.9, 0.17, BRANCO); ret(c, 0.4, -0.04, 1.0, 0.04, PRETO);
-      ret(c, 3.0, -0.3, 4.0, 0.3, PRETO); ret(c, 3.9, -0.5, 4.4, 0.5, PRETO);
-      ret(c, 2.3, -0.3, 3.0, -0.18, VERM); ret(c, 2.3, 0.18, 3.0, 0.3, VERM);
+      ret(c, 2.3, -0.3, 2.62, 0.3, VERM);
+      asasT(c, VERM, PRETO, BRANCO);
+      const f = { giro: DE_FRENTE, tinta: PRETO }; marca(c, "haas", 0.72, 0, 0.055, f); marca(c, "toyota", 0.5, 0, 0.03, f); marca(c, "gr", 3.0, 0, 0.13, { giro: DE_FRENTE }); marca(c, "toyota", 4.15, 0, 0.07, { giro: DE_FRENTE, tinta: "#fff" });
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, BRANCO); ret(c, -0.8, 0, 0.8, 0.12, VERM); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, PRETO); ret(c, -0.45, 0.45, 0.45, 0.75, VERM); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, BRANCO); ret(c, -0.8, 0, 0.8, 0.12, VERM); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PRETO); ret(c, -0.45, 0.45, 0.45, 0.75, VERM); });
   },
 };
 
-// Cadillac: branco com a parte de trás se desmanchando em quadradinhos pretos (pixels), bico preto
+// Cadillac: preto de um lado e branco do outro (o carro é assimétrico), com a cunha da cor oposta com TWG e o detalhe verde-claro
 DESENHOS.cadillac = {
-  numero: "#111111",
+  numero: "#ffffff", carbono: 1, numPos: [3.5, 0.68, 9, 9],
   pintar(ctx) {
-    const BRANCO = "#f3f4f6", PRETO = "#0e0f12";
-    base(ctx, BRANCO);
-    const R = mulberry(11);
-    // os pixels: quanto mais para trás (s grande), mais quadradinhos pretos
-    const pix = (c, a0, a1, b0, b1, p) => { const q = 0.042; for (let a = a0; a < a1; a += q) for (let b = b0; b < b1; b += q) { const f = (a - a0) / (a1 - a0); if (R() < Math.pow(f, p) * 0.9) { c.fillStyle = PRETO; c.fillRect(a, b, q, q); } } };
+    const BRANCO = "#eef0f2", PRETO = "#0e0f12";
+    base(ctx, PRETO);
     lados(ctx, (c, lado) => {
-      const direita = lado > 0;
-      if (direita) ret(c, 0, 0, 4.4, 1.1, PRETO);
-      poli(c, [[0.0, 0.0], [1.0, 0.0], [0.7, 0.3], [0.0, 0.3]], PRETO);
-      pix(c, 2.1, 3.5, 0.05, 1.05, 1.8);
-      poli(c, [[3.5, 1.1], [4.45, 1.1], [4.45, 0.35], [3.5, 0.35]], PRETO);
-      poli(c, [[3.88, 0.4], [4.4, 0.4], [4.4, 0.97], [3.88, 0.97]], PRETO);
-      logo(c, "cadillac", 1.1, 0.16, 2.0, 0.4, direita ? BRANCO : PRETO);
-      patro(c, "TWG", 2.55, 0.5, 0.17, direita ? BRANCO : "#111111", { esp: 0.01 });
-      patro(c, "Claro", 1.2, 0.43, 0.05, direita ? BRANCO : "#111111", { peso: 700, estilo: "normal", fam: "Arial, sans-serif" });
+      const preto = lado > 0, fundo = preto ? PRETO : BRANCO, tinta = preto ? BRANCO : PRETO;
+      ret(c, 0.7, 0.1, 3.86, 1.1, fundo);
+      // a cunha, que afina para a frente; a letra vai na cor do fundo
+      c.beginPath(); c.moveTo(3.5, 0.12); c.lineTo(3.3, 0.5); c.quadraticCurveTo(2.4, 0.52, 1.5, 0.36); c.quadraticCurveTo(2.4, 0.3, 2.5, 0.12); c.closePath(); c.fillStyle = tinta; c.fill();
+      baixo(c, PRETO);
+      ret(c, 3.86, 0.3, 4.45, 1.1, PRETO);
+      marca(c, "twg", 2.92, 0.31, 0.14, { tinta: fundo }); marca(c, "claro", 1.8, 0.3, 0.05); marca(c, "cadillac", 1.55, 0.52, 0.055, { tinta }); marca(c, "ifs", 4.15, 0.72, 0.075); marca(c, "cadillac", 3.1, 0.72, 0.05, { tinta });
     });
     vista(ctx, "T", (c) => {
-      ret(c, 0.05, -0.75, 0.5, 0.75, PRETO); ret(c, 0.0, -0.17, 0.9, 0.17, PRETO); ret(c, 0.9, -0.17, 1.6, 0.17, BRANCO);
-      // Pintura assimétrica do carro de Pérez: o lado direito é predominantemente preto.
-      ret(c, 0.9, 0.13, 3.5, 0.8, PRETO);
-      // Telcel aparece duas vezes no painel dianteiro, ao lado do pilar do halo.
-      pix(c, 2.1, 3.5, -0.3, 0.3, 1.5); ret(c, 3.5, -0.3, 4.0, 0.3, PRETO); ret(c, 3.9, -0.5, 4.4, 0.5, PRETO);
+      ret(c, 0.9, -0.8, 3.9, 0, BRANCO); ret(c, 0.9, 0, 3.9, 0.8, PRETO); // meio a meio, como dos lados
+      asasT(c, PRETO, PRETO, PRETO);
+      const f = { giro: DE_FRENTE, tinta: "#fff" }; marca(c, "twg", 0.72, 0, 0.06, f); marca(c, "cadillac", 0.48, 0, 0.04, f); marca(c, "ifs", 4.15, 0, 0.1, f);
     });
-    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 0.45, BRANCO); ret(c, -0.8, 0, 0.8, 0.12, PRETO); });
-    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.0, PRETO); ret(c, -0.45, 0.45, 0.45, 0.75, BRANCO); });
+    vista(ctx, "F", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PRETO); });
+    vista(ctx, "R", (c) => { ret(c, -0.8, 0, 0.8, 1.1, PRETO); });
   },
 };
 
 // quais pinturas usam qual equipe: a chave é o `equipe` de MODS.pintura (pistas.js)
 export const temDesenho = (equipe) => !!DESENHOS[equipe];
 export const corDoNumero = (equipe) => DESENHOS[equipe]?.numero || "#ffffff";
+export const numPosDe = (equipe) => DESENHOS[equipe]?.numPos || null;
+// 1: as peças de lado da asa dianteira e a suspensão de trás de carbono; 2: só a suspensão (a asa da equipe é colorida)
+export const carbonoDe = (equipe) => DESENHOS[equipe]?.carbono || 0;
 
 // Marcas nos halos de 2026, inspiradas nas vistas onboard e nas parcerias de cada equipe.
 // O atlas é compartilhado entre os carros da equipe; o shader o projeta só na barra do halo.
@@ -607,14 +594,17 @@ export function aplicarCockpit(sh, textura) {
 
 // ---------------------------------------------------------------- as texturas (uma por equipe, guardada)
 const FOLHAS = new Map();
-export function folhaDaEquipe(equipe) {
+export function folhaDaEquipe(equipe, alta = false) {
   if (!DESENHOS[equipe]) return null;
-  if (FOLHAS.has(equipe)) return FOLHAS.get(equipe);
-  const cv = document.createElement("canvas"); cv.width = FW; cv.height = FH;
+  const chave = equipe + (alta ? "|2" : "|1");
+  if (FOLHAS.has(chave)) return FOLHAS.get(chave);
+  ESC = alta ? 2 : 1;
+  const cv = document.createElement("canvas"); cv.width = FW * ESC; cv.height = FH * ESC;
   const ctx = cv.getContext("2d"); DESENHOS[equipe].pintar(ctx);
   lados(ctx, (c) => ret(c, 2.1, 0.39, 2.35, 0.46, CARBONO)); // a entrada de ar das caixas laterais é escura em qualquer pintura
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.userData.cv = cv; FOLHAS.set(equipe, t); return t;
+  ESC = 1;
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = alta ? 8 : 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.userData.cv = cv; FOLHAS.set(chave, t); return t;
 }
 // para quem quiser ver a folha pronta (a ferramenta de conferência)
 export function desenharFolha(ctx, equipe) { DESENHOS[equipe]?.pintar(ctx); }
@@ -645,6 +635,7 @@ uniform sampler2D dig;
 uniform vec2 numero;   // dígitos do número (dezena, unidade); unidade < 0: sem número
 uniform vec3 corNum;
 uniform vec4 numPos;   // onde ficam os números: (s, y) na lateral da tampa e (s, y) na asa traseira
+uniform float carb;    // ver carbonoDe
 varying vec3 vPc;
 varying vec3 vNc;
 #ifdef NOVO
@@ -685,6 +676,8 @@ export const LIV_FRAG_MAIN = `
     c = mix(c, vec3(0.015), clamp(d.g, 0.0, 1.0));
     c = mix(c, corNum, clamp(d.r, 0.0, 1.0));
   }
+  // (de cima a asa continua com a pintura da folha, onde ficam as marcas)
+  c = mix(c, vec3(0.012), max(step(0.5, carb) * step(carb, 1.5) * step(0.24, abs(p.x)) * step(p.z, 0.68) * (1.0 - a.y), step(0.5, carb) * step(0.42, abs(p.x)) * step(3.35, p.z) * step(p.y, 0.62)));
 #ifdef FUNDO
   c = mix(c, mk, max(step(p.y, 0.2), step(n.y, -0.2))); // o assoalho e a barriga seguem de carbono
 #endif
@@ -740,14 +733,14 @@ if (tetoCarro > 0.0) {
   m.needsUpdate = true;
 }
 const VERNIZ_DECL = "uniform float uVerniz;\n";
-const VERNIZ_ASPERO = 0.52;    // a rugosidade da pintura de dia vira (no máximo) isso: acetinado
-const VERNIZ_CAMADA = 0.28;    // a força da camada de verniz (baixa)
-const VERNIZ_CAMADA_ASP = 0.38;// a rugosidade dela: alta, o reflexo do céu sai macio e não espelhado
-const VERNIZ_CEU = 1.8;        // quanto a camada amplia o reflexo do céu
+const VERNIZ_ASPERO = 0.64;    // a rugosidade da pintura de dia vira (no máximo) isso: acetinado
+const VERNIZ_CAMADA = 0.14;    // a força da camada de verniz (baixa)
+const VERNIZ_CAMADA_ASP = 0.5;// a rugosidade dela: alta, o reflexo do céu sai macio e não espelhado
+const VERNIZ_CEU = 1.2;        // quanto a camada amplia o reflexo do céu
 // (os tetos ficam bem abaixo do limiar do bloom: com 0,22 + 0,85 os pontinhos de brilho do sol passavam dele e o bloom os espalhava em
 // "estrelas" piscando nos carros)
-const VERNIZ_TETO_SOL = 0.06;  // o brilho direto do sol na camada não passa disso
-const VERNIZ_TETO_BASE = 0.3;  // e o da tinta por baixo, de dia
+const VERNIZ_TETO_SOL = 0.03;  // o brilho direto do sol na camada não passa disso
+const VERNIZ_TETO_BASE = 0.14;  // e o da tinta por baixo, de dia
 export function aplicarVerniz(sh) {
   sh.uniforms.uVerniz = VERNIZ;
   sh.fragmentShader = VERNIZ_DECL + sh.fragmentShader
@@ -786,7 +779,20 @@ export const FAIXAS = { macio: "#e8202a", medio: "#ffd100", duro: "#f4f4f4", chu
 // Os secos são slicks; o de chuva recebe canais no piso. O padrão usa a posição local, então gira junto com a roda.
 export const PNEU_VERT_DECL = "attribute vec2 aro;\nattribute float pneuLat;\nvarying vec2 vAro;\nvarying float vPneuLat;\n";
 export const PNEU_VERT_MAIN = "\nvAro = aro; vPneuLat = pneuLat;";
-export const PNEU_FRAG_DECL = "uniform vec3 faixa;\nuniform float faixaOn;\nuniform float pneuChuva;\nuniform float pneuTom;\nvarying vec2 vAro;\nvarying float vPneuLat;\n";
+export const PNEU_FRAG_DECL = "uniform vec3 faixa;\nuniform float faixaOn;\nuniform float pneuChuva;\nuniform float pneuTom;\nuniform sampler2D pneuLetras;\nvarying vec2 vAro;\nvarying float vPneuLat;\n";
+// As letras da lateral do pneu, uma textura só para todos os carros: vermelho = a marca (branca), verde = o nome do composto (na cor da faixa).
+let LETRAS_PNEU = null;
+export function texturaDasLetrasDoPneu() {
+  if (LETRAS_PNEU) return LETRAS_PNEU;
+  const cv = document.createElement("canvas"); cv.width = 2048; cv.height = 96; const x = cv.getContext("2d");
+  x.fillStyle = "#000"; x.fillRect(0, 0, 2048, 96); x.textBaseline = "middle"; x.textAlign = "center";
+  for (const o of [0, 1024]) {
+    x.font = "italic 900 74px Arial, sans-serif"; x.fillStyle = "#ff0000"; x.fillText("PIRELLI", o + 300, 50);
+    x.font = "italic 900 80px Arial, sans-serif"; x.fillStyle = "#00ff00"; x.fillText("P ZERO", o + 760, 50);
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.NoColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
+  LETRAS_PNEU = t; return t;
+}
 export const PNEU_FRAG_MAIN = `
 {
   float rr = length(vAro);
@@ -803,4 +809,13 @@ export const PNEU_FRAG_MAIN = `
     diffuseColor.rgb *= 1.0 - pneuChuva * piso * max(linhas * 0.34, centro * 0.4);
   }
   diffuseColor.rgb = mix(diffuseColor.rgb, faixa, banda);
+  // A lateral: borracha mais fosca e escura, com as letras (lidas certo dos dois lados do carro).
+  if (abs(vPneuLat) > 0.55 && rr > 0.8 && rr < 0.98) {
+    vec2 uvL = vec2(-(atan(vAro.y, vAro.x) / 6.28318 + 0.5) * sign(vPneuLat), 1.0 - (rr - 0.815) / 0.135);
+    if (uvL.y > 0.0 && uvL.y < 1.0) {
+      vec2 l = texture2D(pneuLetras, uvL).rg;
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86), l.r * 0.9);
+      diffuseColor.rgb = mix(diffuseColor.rgb, faixa, l.g * max(faixaOn, 0.0));
+    }
+  }
 }`;

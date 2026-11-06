@@ -1,11 +1,11 @@
 # Referências visuais das pinturas de 2026
 
-As pinturas deste jogo usam um modelo 3D compartilhado, então são aproximações das cores, posições e marcas; os nomes são desenhados em tipografia comum, não são logotipos oficiais. As fotos são referências, não arquivos incorporados ao jogo.
+As pinturas deste jogo usam um modelo 3D compartilhado, então são aproximações das cores, posições e marcas; as marcas são desenhadas no canvas (`f1-marcas.js`), imitando a cor e o traço das originais, sem nenhuma imagem baixada. As fotos são referências, não arquivos incorporados ao jogo.
 
 - Todas as equipes: [carros em pista no Bahrein](https://www.autosport.com/f1/galleries/the-2026-f1-cars-final-liveries-on-track-in-photos-/11763/).
-- McLaren: [câmera onboard](https://motorsport.hu/f1/2026-elso-belso-kameras-felvetelek-bahrein-teszt).
-- Ferrari: [foto do cockpit SF-26](https://www.formulapassion.it/f1/f1-news/scheda-tecnica-ferrari-sf26-power-unit-telaio-sospensioni-cambio), imagem fornecida pelo jogador e [câmera onboard](https://www.sportbible.com/f1/lewis-hamilton-charles-leclerc-ferrari-baku-gp-192285-20250921).
-- Mercedes: [fotografia onboard](https://www.formule1fr.com/news/russell-une-amende-avec-sursis-apres-avoir-jete-son-appui-tete-au-canada).
+- McLaren: [lançamento do MCL40](https://www.mclaren.com/racing/formula-1/2026/mclaren-racing-reveal-livery-for-the-mclaren-mastercard-formula-1-teams-2026-challenger/) e [câmera onboard](https://motorsport.hu/f1/2026-elso-belso-kameras-felvetelek-bahrein-teszt).
+- Ferrari: [fotos oficiais do lançamento da SF-26](https://us.speedcafe.com/f1-news-2026-ferrari-car-livery-gallery-lewis-hamilton-charles-leclerc), [foto do cockpit SF-26](https://www.formulapassion.it/f1/f1-news/scheda-tecnica-ferrari-sf26-power-unit-telaio-sospensioni-cambio), imagem fornecida pelo jogador e [câmera onboard](https://www.sportbible.com/f1/lewis-hamilton-charles-leclerc-ferrari-baku-gp-192285-20250921).
+- Mercedes: [lançamento do W17](https://www.mercedesamgf1.com/news/mercedes-amg-f1-2026-challenger-w17-revealed) e [fotografia onboard](https://www.formule1fr.com/news/russell-une-amende-avec-sursis-apres-avoir-jete-son-appui-tete-au-canada).
 - Red Bull: [fotografias do RB22](https://www.redbull.com/us-en/galleries/oracle-red-bull-racing-rb22-photos) e imagem fornecida pelo jogador.
 - Racing Bulls: [referência onboard](https://x.com/F1/status/1987929998590710179) e [parceria Tudor](https://visacashapprb-prod-8b9bbfc38e40.herokuapp.com/int-en/partners/vcarb-tudor-partner).
 - Aston Martin: [câmera onboard](https://www.eldesmarque.com/motor/formula-1/20260315/fernando-alonso-amr26-checo-perez_18_018620507.html).
