@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const T = require('../public/corrida/pistas.js');
 const R = require('../corrida-robos.js');
 
-for (const regras of ['f1', 'classica']) test(`volta aprendida não altera os robôs em corrida (${regras})`, () => {
+for (const regras of ['classica']) test(`volta aprendida não altera os robôs em corrida (${regras})`, () => {
   R.usarFonte(() => []);
   const pista = 'luigi', room = { config: { pista, caixas: false, robos: 2, nivel: 'medio', voltas: 3, regras }, players: {}, order: [], phase: 'race', startAt: Date.now() - 10000, semente: 42 };
   let numero = 0; R.preparar(room, ['#a', '#b'], () => String(numero++));

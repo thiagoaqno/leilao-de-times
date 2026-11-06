@@ -1,6 +1,6 @@
-// Corrida da Galera — a Central da carreira solo (/corrida/temporada/): o topo com a equipe, as abas Central, Calendário, Classificação,
-// Desenvolvimento e Contratos, tudo na cor da equipe (`--eq`, `--eq2`) em cima da garagem 3D (garagem3d.js, parada como foto; no Desenvolvimento ela vira
-// a vitrine do carro, com os rótulos das peças). Só desenha: os números vêm do save que o servidor manda, e as ações continuam em sede.js
+// Corrida da Galera — a Central da carreira (/corrida/temporada/): o topo com a equipe e as abas Central, Calendário, Classificação, Análise,
+// Desenvolvimento e Contratos, poucos números em faixas finas, na cor da equipe (`--eq`, `--eq2`), em tema claro ou escuro (`corrida:tema`), com o carro do
+// estúdio (estudio3d.js) na Central e no Desenvolvimento, onde ganha os rótulos das peças. Só desenha: os números vêm do save que o servidor manda, e as ações continuam em sede.js
 // (os mesmos eventos de sempre: montagem, desenvolver, iniciarGP...). A temporada em grupo segue com a tela de grupo.js.
 (function (root) {
 const h = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -16,54 +16,64 @@ for (const tipo of ["pointerdown", "keydown", "input"]) document.addEventListene
 const salvo = (() => { try { return localStorage.getItem("corrida:temporada:aba"); } catch { return null; } })();
 if (ABAS.some((a) => a[0] === salvo)) aba = salvo;
 
-// ---------- o tema: as cores saem da equipe ----------
+// ---------- o tema: as cores saem da equipe; claro (o padrão) ou escuro, guardado no navegador ----------
+const CHAVE_TEMA = "corrida:tema";
+let escuro = (() => { try { return localStorage.getItem(CHAVE_TEMA) === "escuro"; } catch { return false; } })();
 function luz(c) { const m = /^#?([0-9a-f]{6})$/i.exec(c || ""); if (!m) return 0.3; const n = parseInt(m[1], 16); return (0.2126 * (n >> 16 & 255) + 0.7152 * (n >> 8 & 255) + 0.0722 * (n & 255)) / 255; }
 function coresDa(equipe) {
   const e = Pilotos().EQUIPES[equipe] || {}, p = root.Pistas?.MODS?.pintura?.[e.pintura] || {}, c1 = e.cor || "#e10600";
   const c2 = [p.c2, p.c, "#ffffff"].find((c) => c && luz(c) > 0.32 && c.toLowerCase() !== c1.toLowerCase()) || "#ffffff";
   return { c1, c2 };
 }
-function tema(equipe) {
-  const { c1, c2 } = coresDa(equipe), r = document.documentElement.style;
-  r.setProperty("--eq", c1); r.setProperty("--eq2", c2); r.setProperty("--eq-txt", luz(c1) > 0.58 ? "#08090c" : "#fff");
-  document.body.classList.add("cx-on");
+function aplicarTema() {
+  document.body.classList.toggle("cx-escuro", escuro);
+  const b = document.querySelector("[data-cx-tema]"); if (b) { b.setAttribute("aria-pressed", String(escuro)); b.querySelector("b").textContent = escuro ? "Ligado" : "Desligado"; }
 }
-function sair() { document.body.classList.remove("cx-on"); garagem?.parar(); garagem = null; document.getElementById("cxFundo")?.remove(); document.getElementById("cxRotulos")?.remove(); }
+function tema(equipe) {
+  const { c1, c2 } = coresDa(equipe), r = document.documentElement.style, l = luz(c1);
+  r.setProperty("--eq", c1); r.setProperty("--eq2", c2); r.setProperty("--eq-txt", l > 0.58 ? "#08090c" : "#fff");
+  // a cor nas linhas e nas barras precisa aparecer no fundo: a equipe clara escurece no tema claro, e a equipe escura clareia no tema escuro
+  r.setProperty("--eq-no-claro", l > 0.62 ? `color-mix(in srgb,${c1} 58%,#000)` : c1); r.setProperty("--eq-no-escuro", l < 0.14 ? `color-mix(in srgb,${c1} 52%,#fff)` : c1);
+  document.body.classList.add("cx-on"); aplicarTema();
+}
+function sair() { document.body.classList.remove("cx-on", "cx-escuro"); garagem?.parar(); garagem = null; document.getElementById("cxFundo")?.remove(); }
 
-// ---------- a garagem de fundo ----------
+// ---------- o fundo: o estúdio, o emblema em relevo e o carro ----------
+const vistaAgora = () => (aba === "desenvolvimento" ? (innerWidth < 1000 ? "devCelular" : "dev") : innerWidth < 1000 ? "centralCelular" : "central");
 function ligarFundo(equipe) {
   let host = document.getElementById("cxFundo");
-  if (!host) { host = document.createElement("div"); host.id = "cxFundo"; host.setAttribute("aria-hidden", "true"); host.innerHTML = '<div class="cx-veu"></div>'; document.body.prepend(host); }
-  const vistaAgora = () => (aba === "desenvolvimento" ? (innerWidth < 1000 ? "devCelular" : "dev") : "sede");
+  if (!host) { host = document.createElement("div"); host.id = "cxFundo"; host.setAttribute("aria-hidden", "true"); host.innerHTML = '<i class="cx-relevo"></i>'; document.body.prepend(host); }
+  host.dataset.aba = aba;
+  const relevo = host.querySelector(".cx-relevo"), url = `url("/api/corrida/logo/${encodeURIComponent(equipe)}")`;
+  if (relevo.dataset.eq !== equipe) { relevo.dataset.eq = equipe; relevo.style.setProperty("--logo", url); }
   if (garagem) { garagem.trocarEquipe(equipe); garagem.vista(vistaAgora()); return; }
   if (criando) return; criando = true;
   const iniciarQuandoLivre = () => {
     if (!document.body.classList.contains("cx-on") || garagem) { criando = false; return; }
-    if (document.hidden || performance.now() - ultimaInteracao < 1800) { setTimeout(iniciarQuandoLivre, 1000); return; }
+    if (document.hidden || performance.now() - ultimaInteracao < 900) { setTimeout(iniciarQuandoLivre, 500); return; }
     const iniciar = () => {
       if (!document.body.classList.contains("cx-on") || garagem) { criando = false; return; }
-      (modGaragem ? Promise.resolve(modGaragem) : import("/corrida/garagem3d.js")).then((m) => {
+      (modGaragem ? Promise.resolve(modGaragem) : import("/corrida/temporada/estudio3d.js")).then((m) => {
         modGaragem = m; criando = false;
         if (!document.body.classList.contains("cx-on") || garagem) return;
-        let carroPronto = false, ultimoRotulo = -Infinity;
-        garagem = m.criarGaragem(host, { leve: true, entradaCarro: true, aoCarregar: () => { carroPronto = true; posicionarRotulos(); }, aoDesenhar: () => { if (carroPronto) host.classList.add("cx-carro-pronto"); const agora = performance.now(); if (agora - ultimoRotulo >= 1000 / 30) { ultimoRotulo = agora; posicionarRotulos(); } } });
+        let ultimoRotulo = -Infinity;
+        garagem = m.criarEstudio(host, { aoCarregar: () => { host.classList.add("cx-carro-pronto"); posicionarRotulos(); }, aoDesenhar: () => { const agora = performance.now(); if (agora - ultimoRotulo >= 1000 / 30) { ultimoRotulo = agora; posicionarRotulos(); } } });
         if (!garagem) return;
         garagem.vista(vistaAgora(), true); garagem.trocarEquipe(ctxAtual?.s?.equipe || equipe);
-      }).catch((e) => { criando = false; console.warn("garagem 3D indisponível", e); });
+      }).catch((e) => { criando = false; console.warn("estúdio 3D indisponível", e); });
     };
     if (typeof requestIdleCallback === "function") requestIdleCallback(iniciar, { timeout: 2000 }); else setTimeout(iniciar, 0);
   };
-  setTimeout(iniciarQuandoLivre, 1800);
+  setTimeout(iniciarQuandoLivre, 300);
 }
-addEventListener("resize", () => { if (document.body.classList.contains("cx-on") && garagem) garagem.vista(aba === "desenvolvimento" ? (innerWidth < 1000 ? "devCelular" : "dev") : "sede"); posicionarRotulos(); }, { passive: true });
+addEventListener("resize", () => { if (document.body.classList.contains("cx-on") && garagem) garagem.vista(vistaAgora()); posicionarRotulos(); }, { passive: true });
 
 // ---------- pedacinhos ----------
 const marca = (id, cls = "") => `<img class="cx-logo ${cls}" src="/api/corrida/logo/${encodeURIComponent(id)}" alt="" onerror="this.style.display='none'">`;
 const seta = '<svg class="cx-seta" viewBox="0 0 24 14" aria-hidden="true"><path d="M1 7h21M15 1l7 6-7 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg>';
-const tituloCard = (t, sub = "") => `<header class="cx-tit"><i aria-hidden="true"></i><div><h3>${t}</h3>${sub ? `<small>${sub}</small>` : ""}</div></header>`;
+const tituloCard = (t, sub = "") => `<header class="cx-tit"><h3>${t}</h3>${sub ? `<small>${sub}</small>` : ""}</header>`;
 const tricolor = () => '<i class="cx-tri" aria-hidden="true"></i>';
 const BR = '<svg class="cx-bandeira-br" viewBox="0 0 28 20" role="img" aria-label="Brasil"><rect width="28" height="20" rx="2" fill="#009b3a"/><path d="M14 2.6 25.4 10 14 17.4 2.6 10Z" fill="#fedf00"/><circle cx="14" cy="10" r="4.4" fill="#002776"/></svg>';
-const CAP = (cor, cor2) => `<svg class="cx-capacete" viewBox="0 0 120 96" aria-hidden="true"><path d="M8 60C6 26 32 6 64 6c28 0 50 17 52 44 .5 8-4 12-10 12H70c-8 0-11 6-11 14 0 8-5 14-16 14-22 0-33-14-35-30Z" fill="${h(cor)}"/><path d="M22 72c18-2 26-14 30-30 3-13 16-20 34-20" fill="none" stroke="${h(cor2)}" stroke-width="7" stroke-linecap="round"/><path d="M60 32h46c7 0 11 5 11 12v3c0 6-4 9-10 9H62c-7 0-10-5-10-11s2-13 8-13Z" fill="#0a0b0f"/><path d="M64 37h38" stroke="#ffffff55" stroke-width="3" stroke-linecap="round"/><path d="M20 28C30 14 46 8 64 8" fill="none" stroke="#ffffff50" stroke-width="3" stroke-linecap="round"/></svg>`;
 const sobrenome = (n) => String(n || "").trim().split(/\s+/).at(-1).toUpperCase();
 const sigla = (nome) => String(nome || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().slice(0, 3);
 const bandeira = (id) => Gar().bandeira(id);
@@ -71,53 +81,42 @@ const estatisticas = (gps, id = "voce") => { let v = 0, p = 0, r = 0; for (const
 const nomeGP = (id, curto) => { const i = Gi()?.get(id), real = i?.real; const p = root.Pistas?.PISTAS[id]; if (real) return String(i.gp).replace("Grande Prêmio", "GP"); return p?.name || curto; };
 const finalDe = (l) => (!l ? "" : l.dnf ? "DNF" : l.nc ? "NC" : `P${l.pos}`);
 
-// ---------- a Central ----------
+// ---------- a Central: o carro, a próxima etapa e três números ----------
+const pontoCor = (estado) => (estado === "cumprido" || estado === "caminho" ? "ok" : estado === "falhou" || estado === "risco" ? "ruim" : "meio");
+const ROT_OBJ = { caminho: "No caminho", cumprido: "Concluído", falhou: "Não cumprido", risco: "Em risco", aberto: "Em andamento" };
+const previsaoHTML = (prev) => (prev ? `<span class="cx-clima">${root.PrevisaoUI?.icone ? `<span class="cx-clima-ic">${root.PrevisaoUI.icone(prev.nivel)}</span>` : ""}<span>${h(prev.titulo)} · ${prev.pct}% de chuva</span></span>` : "");
+function tendencia(c, eu) { // subiu ou desceu no campeonato depois do último GP
+  if (!c.gps.length) return "";
+  const tabDe = c.tabelasDe || ((res) => Reg().tabelas({ ...c.s, resultados: res })), antes = tabDe(c.s.resultados.filter((r) => r !== c.gps.at(-1))).pilotos.findIndex((p) => p.id === "voce");
+  return antes > eu ? '<svg class="cx-sobe" viewBox="0 0 12 10" role="img" aria-label="subiu"><path d="M6 0l6 10H0z"/></svg>' : antes < eu ? '<svg class="cx-desce" viewBox="0 0 12 10" role="img" aria-label="desceu"><path d="M6 10L0 0h12z"/></svg>' : "";
+}
 function central(c) {
-  const { s, t, im, prox, terminou, ativo, previsao, botao, gps } = c, eu = t.pilotos.findIndex((p) => p.id === "voce"), info = prox && Gi()?.get(prox.pista);
-  const foto = prox ? Gi()?.fundoDe(prox.pista) : null, traco = prox && root.GpSobre ? root.GpSobre.mapaSvg(prox.pista, "cx-traco") : "";
-  const prev = previsao && root.F1Regras?.descreverPrevisao ? root.F1Regras.descreverPrevisao(previsao, s.voltas) : null;
-  const dados = prox ? [info?.circuito || prox.nome, info?.real && info.km ? `${String(info.km.toFixed(3)).replace(".", ",")} km` : "", `${s.voltas} voltas`].filter(Boolean).map(h).join(" • ") : "";
-  const proxCard = prox
-    ? `<section class="cx-card cx-prox" style="--foto:${foto ? `url('${h(foto)}')` : "none"}"><span class="cx-prox-foto" aria-hidden="true"></span>
-      <div class="cx-prox-topo"><i aria-hidden="true"></i><b>${ativo ? "GP em andamento" : "Próxima etapa"}</b><span>•</span><em>Rodada ${dois(s.gp + 1)} / ${dois(s.tamanho)}</em></div>
-      <div class="cx-prox-traco">${traco}</div>
-      <div class="cx-prox-meio"><h2>${h(nomeGP(prox.pista, prox.nome))}</h2><p>${dados} <span class="cx-sub-grid">· classificação · grid de 22 carros</span></p></div>
-      <div class="cx-prox-pe"><div class="cx-clima">${prev ? `${root.PrevisaoUI?.icone ? `<span class="cx-clima-ic">${root.PrevisaoUI.icone(prev.nivel)}</span>` : ""}<span><small>Previsão</small><b>${h(prev.titulo)}</b></span><strong>${prev.pct}%<small> de chuva</small></strong>` : ""}</div>${botao}</div></section>`
-    : `<section class="cx-card cx-prox cx-fim"><div class="cx-prox-topo"><i aria-hidden="true"></i><b>Bandeirada final</b></div><div class="cx-prox-meio"><h2>Temporada ${s.ano} concluída</h2><p>Campeão: ${h(t.pilotos[0].nome)} · Construtores: ${h(t.equipes[0].nome)}. O caixa e o carro seguem para o próximo ano.</p></div><div class="cx-prox-pe"><div></div>${botao}</div></section>`;
-  // o campeonato: os cinco primeiros (e eu, se estou fora)
-  const lista = t.pilotos.slice(0, 5); if (eu >= 5) lista[4] = t.pilotos[eu];
-  const cor = (e) => Pilotos().EQUIPES[e]?.cor || "#fff";
-  const camp = `<section class="cx-card cx-camp">${tituloCard("Campeonato de pilotos", `Temporada ${dois(s.ano)}`)}<ol class="cx-top">${lista.map((p) => `<li class="${p.id === "voce" ? "eu" : ""}"><button type="button" class="cx-linha" data-cx-aba="classif"><b>${t.pilotos.indexOf(p) + 1}</b><i style="--c:${h(cor(p.equipe))}"></i>${p.id === "voce" ? marca(s.equipe) : ""}<span>${h(sobrenome(p.nome))}</span><strong>${p.pontos}</strong></button></li>`).join("")}</ol>
-    ${tricolor()}<div class="cx-nums">${[[c.minhas.v, c.minhas.v === 1 ? "Vitória" : "Vitórias"], [c.minhas.p, c.minhas.p === 1 ? "Pódio" : "Pódios"], [c.minhas.r, c.minhas.r === 1 ? "Volta rápida" : "Voltas rápidas"]].map(([n, r]) => `<div class="cx-num"><b>${n}</b><small>${r}</small></div>`).join("")}</div></section>`;
-  // o desenvolvimento: o que está mais forte e os pontos que sobram
-  const E = Eq(), usado = E.custoDaMontagem(s.montagem), limite = E.EQUIPES[s.equipe].orcamento + (s.bonus || 0);
-  const dev = `<section class="cx-card cx-dev" data-cx-ir="desenvolvimento">${tituloCard("Desenvolvimento", `${h(Pilotos().EQUIPES[s.equipe].sigla)} • Programa de evolução`)}<p class="cx-recurso"><span>Pontos livres</span><b>${limite - usado}</b><em>de ${limite}</em></p>
-    ${["aero", "chassi", "motor"].map((k) => { const n = s.montagem[k], pc = Math.round(n / E.MAX_NIVEL * 100); return `<div class="cx-barra"><span>${h(ATTR.find((a) => a[0] === k)[1])}</span><i><u style="width:${pc}%"></u></i><b>${pc}%</b></div>`; }).join("")}
-    <button type="button" class="cx-mais" data-cx-aba="desenvolvimento">Gerenciar melhorias ${seta}</button></section>`;
-  // a rivalidade: o rival da temporada ou o piloto mais perto na tabela
-  const rivalId = c.rival?.id || (t.pilotos[eu === 0 ? 1 : eu - 1])?.id, rv = t.pilotos.find((p) => p.id === rivalId), meus = t.pilotos[eu]?.pontos || 0, seus = rv?.pontos || 0;
-  const { c1, c2 } = coresDa(s.equipe), rc = coresDa(rv?.equipe || s.equipe), posRv = t.pilotos.indexOf(rv) + 1, total = Math.max(1, meus + seus), pct = Math.round(meus / total * 100);
-  const riv = `<section class="cx-card cx-riv">${tituloCard(c.rival ? "Rival da temporada" : "Rivalidade")}<div class="cx-versus"><div class="cx-v-lado">${CAP(c1, c2)}<div><span>${h(sobrenome(s.nome))}</span><b>${meus}</b></div></div><em>VS</em><div class="cx-v-lado dir"><div><span>${h(sobrenome(rv?.nome))}</span><b>${seus}</b></div>${CAP(rc.c1, rc.c2)}</div></div>
-    <div class="cx-v-barra" role="img" aria-label="${meus} pontos contra ${seus}"><u style="width:${s.gp ? pct : 50}%"></u></div><small class="cx-v-txt">${c.rival ? `${c.rival.encontros} ${c.rival.encontros === 1 ? "disputa" : "disputas"} • à frente ${c.rival.venceu} • atrás ${c.rival.perdeu}` : `Disputa pelo ${Math.min(eu + 1, posRv)}º lugar`}</small></section>`;
-  // o objetivo
-  const objetivo = `<section class="cx-card cx-obj">${marca(s.equipe, "cx-marca-dagua")}${tituloCard(`Objetivo da ${h(Pilotos().EQUIPES[s.equipe].nome)}`)}<div class="cx-obj-corpo"><h4>${terminou ? `Top ${im.meta.temporada} no ano` : `Termine no top ${im.meta.gp}`}</h4><p>${terminou ? `Você fechou em ${im.classificacao}º` : `Próxima corrida • ${h(prox.nome)}`}</p><span class="cx-selo">${terminou ? (im.classificacao <= im.meta.temporada ? "Cumprido" : "Não cumprido") : "Em andamento"}</span></div>
-    <div class="cx-conf"><small>Confiança da diretoria</small><i><u style="width:${im.confianca}%"></u></i><b>${im.confianca}%</b></div></section>`;
-  return `<div class="cx-g-central">${proxCard}${camp}<div class="cx-g-baixo">${dev}${riv}${objetivo}</div></div>`;
+  const { s, t, prox, terminou, ativo, previsao, botao, gps } = c, eu = t.pilotos.findIndex((p) => p.id === "voce"), E = Eq(), eq = Pilotos().EQUIPES[s.equipe];
+  const prev = previsao && root.F1Regras?.descreverPrevisao ? root.F1Regras.descreverPrevisao(previsao, s.voltas) : null, traco = prox && root.GpSobre ? root.GpSobre.mapaSvg(prox.pista, "cx-traco") : "";
+  const limite = E.EQUIPES[s.equipe].orcamento + (s.bonus || 0), usado = E.custoDaMontagem(s.montagem), o = Reg().objetivos(s, c.t).pilotos, meus = t.pilotos[eu]?.pontos || 0, dif = (t.pilotos[0]?.pontos || 0) - meus;
+  const acao = botao.replace("Avançar para o fim de semana", "Continuar carreira");
+  const direita = prox
+    ? `<aside class="cx-cn-prox"><small class="cx-rot">${ativo ? "GP em andamento" : "Próxima etapa"}</small><div class="cx-cn-gp"><div><h2>${h(prox.nome)}</h2><p>Etapa ${dois(s.gp + 1)} de ${dois(s.tamanho)}</p></div><span class="cx-cn-traco">${traco}</span></div>${previsaoHTML(prev)}${acao}</aside>`
+    : `<aside class="cx-cn-prox"><small class="cx-rot">Bandeirada final</small><div class="cx-cn-gp"><div><h2>Temporada ${dois(s.ano)}</h2><p>Campeão: ${h(t.pilotos[0].nome)}</p></div></div>${acao}</aside>`;
+  const lideranca = !gps.length ? "Ainda sem corridas" : eu === 0 ? `${meus} pontos · líder` : `${meus} pontos · ${dif} para o líder`;
+  return `<div class="cx-g-central"><div class="cx-cn-ola"><small class="cx-rot">${c.grupo ? `Sala ${h(c.grupo)}` : "Carreira"} · Temporada ${dois(s.ano)}</small><h2>${terminou ? "Temporada encerrada." : "A próxima vitória começa aqui."}</h2><p>${h(eq.nome)} · Piloto titular ${tricolor()}</p></div>${direita} <div class="cx-cn-carro"><small class="cx-rot">Seu carro</small><b>${h(eq.nome)} · nota ${notaDe(s.equipe, s.montagem)}</b></div> <div class="cx-numeros"><button type="button" data-cx-aba="classif"><small class="cx-rot">Campeonato</small><strong>${gps.length ? `${eu + 1}º` : "—"} ${tendencia(c, eu)}</strong><span>${lideranca}</span></button> <button type="button" data-cx-aba="desenvolvimento"><small class="cx-rot">Desenvolvimento</small><strong>${limite - usado} <em>${limite - usado === 1 ? "ponto livre" : "pontos livres"}</em></strong><i class="cx-prog"><u style="width:${usado / Math.max(1, limite) * 100}%"></u></i><span>${usado} de ${limite} pontos usados</span></button> <button type="button" data-cx-aba="contratos"><small class="cx-rot">Objetivo da temporada</small><strong class="menor">Terminar no top ${o.alvo}</strong><span><i class="cx-ponto ${pontoCor(o.estado)}"></i>${ROT_OBJ[o.estado] || ""}${gps.length ? ` · atual: ${o.atual}º` : ""}</span></button></div></div>`;
 }
 
 // ---------- o Calendário ----------
 function calendario(c) {
   const { s, gps, prox, botao, previsao } = c, feitos = gps.length;
   const prev = previsao && root.F1Regras?.descreverPrevisao ? root.F1Regras.descreverPrevisao(previsao, s.voltas) : null;
+  const ok = '<svg class="cx-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.6 4.6L19 7"/></svg>';
   const cards = s.calendario.map((e, i) => {
-    const r = gps.find((g) => g.gp === i), eu = r?.linhas.find((l) => l.piloto === "voce"), foto = Gi()?.fundoDe(e.pista), traco = root.GpSobre ? root.GpSobre.mapaSvg(e.pista, "cx-traco") : "", atual = i === s.gp;
-    return `<button type="button" class="cx-card cx-gp ${r ? "feito" : ""} ${atual ? "atual" : ""}" data-gp="${i}" style="--foto:${foto ? `url('${h(foto)}')` : "none"}" aria-label="${h(e.nome)}: ver o circuito">
-      <span class="cx-gp-topo"><b>${dois(i + 1)}</b><i>•</i>${bandeira(e.pista)}<strong>${h(e.nome)}</strong>${atual ? marca(s.equipe) : ""}</span>
-      <span class="cx-gp-foto"><span class="cx-gp-traco">${traco}</span></span>
-      <span class="cx-gp-pe">${r ? `<svg class="cx-ok" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7 12 3.4 3.4L17 9"/></svg><em>Concluído</em><b>${finalDe(eu)} • ${eu?.pontos || 0} pts</b>` : atual ? `<u>${c.ativo ? "GP em andamento" : "Próxima etapa"}</u>` : "<em>A disputar</em>"}</span></button>`;
+    const r = gps.find((g) => g.gp === i), eu = r?.linhas.find((l) => l.piloto === "voce"), foto = Gi()?.fundoDe(e.pista), traco = root.GpSobre ? root.GpSobre.mapaSvg(e.pista, "cx-traco") : "", atual = i === s.gp, info = Gi()?.get(e.pista);
+    return `<button type="button" class="cx-gp ${r ? "feito" : ""} ${atual ? "atual" : ""}" data-gp="${i}" aria-label="${h(e.nome)}: ver o circuito">
+      <span class="cx-gp-foto" style="--foto:${foto ? `url('${h(foto)}')` : "none"}"><span class="cx-gp-traco">${traco}</span></span>
+      <span class="cx-gp-nome"><em>${dois(i + 1)}</em>${bandeira(e.pista)}<span><b>${h(e.nome)}</b><small>${h(info?.real ? info.cidade : "")}</small></span></span>
+      <span class="cx-gp-pe">${r ? `${ok}<span>Concluído</span><b>${finalDe(eu)} · ${eu?.pontos || 0} pts</b>` : atual ? `<i class="cx-ponto vivo"></i><span>${c.ativo ? "GP em andamento" : "Próxima etapa"}</span>` : '<i class="cx-ponto vazio"></i><span>A disputar</span>'}</span></button>`;
   }).join("");
-  const barra = prox ? `<section class="cx-card cx-gpbar">${bandeira(prox.pista)}<h3>${h(nomeGP(prox.pista, prox.nome))}</h3><p>Etapa ${dois(s.gp + 1)} / ${dois(s.tamanho)} • ${c.ativo ? "GP em andamento" : "Próxima corrida"}</p>${prev ? `<div class="cx-clima">${root.PrevisaoUI?.icone ? `<span class="cx-clima-ic">${root.PrevisaoUI.icone(prev.nivel)}</span>` : ""}<b>${prev.pct}% • ${h(prev.titulo)}</b></div>` : ""}${botao}</section>` : `<section class="cx-card cx-gpbar"><h3>Temporada concluída</h3><p>Todas as ${s.tamanho} etapas disputadas</p>${botao}</section>`;
-  return `<div class="cx-cabeca"><div class="cx-cab-tit"><i aria-hidden="true"></i><div><h2>Calendário da temporada</h2><small>Temporada ${dois(s.ano)} • ${feitos} de ${s.tamanho} etapas concluídas</small></div>${tricolor()}</div><div class="cx-formato"><span>Formato da temporada</span><b>${s.tamanho} GPs</b><em>${s.voltas} voltas</em></div></div>
+  const info = prox && Gi()?.get(prox.pista), km = info?.real && info.km ? `${String(info.km.toFixed(3)).replace(".", ",")} km · ` : "";
+  const barra = prox ? `<section class="cx-gpbar"><div><small class="cx-rot">${c.ativo ? "GP em andamento" : "Próxima etapa"}</small><h3>${h(nomeGP(prox.pista, prox.nome))}</h3></div><span class="cx-gpbar-traco">${root.GpSobre ? root.GpSobre.mapaSvg(prox.pista, "cx-traco") : ""}</span><div class="cx-gpbar-dados"><span>${km}${s.voltas} voltas</span>${previsaoHTML(prev)}</div>${botao}</section>` : `<section class="cx-gpbar"><div><small class="cx-rot">Bandeirada final</small><h3>Temporada concluída</h3></div>${botao}</section>`;
+  return `<div class="cx-cabeca"><div><h2>Calendário da temporada</h2><small class="cx-rot">Temporada ${dois(s.ano)} · ${feitos} de ${s.tamanho} etapas concluídas</small></div><div class="cx-formato"><small class="cx-rot">Formato</small><b>${s.tamanho} GPs</b></div></div>
     <div class="cx-cal" style="--n:${s.tamanho}">${cards}</div>${barra}`;
 }
 function abrirGP(i) {
@@ -130,34 +129,33 @@ function dialogo(id, cls) { let d = document.getElementById(id); if (!d) { d = d
 
 // ---------- a Classificação ----------
 function classificacao(c) {
-  const { s, t, gps, prox, im } = c, E = Pilotos().EQUIPES, passadas = new Map(gps.map((g) => [g.gp, g])), eu = t.pilotos.findIndex((p) => p.id === "voce"), meus = t.pilotos[eu]?.pontos || 0, lider = t.pilotos[0]?.pontos || 0;
+  const { s, t, gps, prox } = c, E = Pilotos().EQUIPES, passadas = new Map(gps.map((g) => [g.gp, g])), eu = t.pilotos.findIndex((p) => p.id === "voce"), meus = t.pilotos[eu]?.pontos || 0, lider = t.pilotos[0]?.pontos || 0;
   const tabDe = c.tabelasDe || ((res) => Reg().tabelas({ ...s, resultados: res })); // (na temporada em grupo, as contas são as da sala)
   const antes = gps.length ? tabDe(s.resultados.filter((r) => r !== gps.at(-1))) : null;
-  const seta2 = (lista, id, i) => { const a = lista ? lista.findIndex((x) => x.id === id) : i; return a > i ? '<svg class="cx-sobe" viewBox="0 0 12 10" role="img" aria-label="ganhou posição"><path d="M6 0l6 10H0z"/></svg>' : a < i ? '<svg class="cx-desce" viewBox="0 0 12 10" role="img" aria-label="perdeu posição"><path d="M6 10L0 0h12z"/></svg>' : "<i>—</i>"; };
-  const colunas = s.calendario.map((e, i) => `<th class="cx-col ${i === s.gp ? "agora" : ""}" scope="col" title="${h(e.nome)}">${bandeira(e.pista)}<small>${h(sigla(e.nome))}</small></th>`).join("");
+  const seta2 = (lista, id, i) => { const a = lista ? lista.findIndex((x) => x.id === id) : i; return a > i ? '<svg class="cx-sobe" viewBox="0 0 12 10" role="img" aria-label="ganhou posição"><path d="M6 0l6 10H0z"/></svg>' : a < i ? '<svg class="cx-desce" viewBox="0 0 12 10" role="img" aria-label="perdeu posição"><path d="M6 10L0 0h12z"/></svg>' : ""; };
+  const colunas = s.calendario.map((e, i) => `<th class="cx-col ${i === s.gp ? "agora" : ""} ${passadas.has(i) ? "" : "falta"}" scope="col" title="${h(e.nome)}">${bandeira(e.pista)}<small>${h(sigla(e.nome))}</small></th>`).join("");
   let corpo;
   if (tabela === "pilotos") {
     const quem = gps.length ? new Set(gps.flatMap((g) => g.linhas.map((l) => l.piloto))) : new Set(c.idsGrid || ["voce", ...Reg().pilotosNoGrid(s).map((p) => p.id)]);
-    corpo = t.pilotos.filter((p) => quem.has(p.id)).map((p, i) => `<tr class="${p.id === "voce" ? "eu" : p.id === c.rival?.id ? "rival" : ""}" data-piloto="${h(p.id)}" tabindex="0"><td class="p">${i + 1}</td><td class="m">${seta2(antes?.pilotos.filter((x) => quem.has(x.id)), p.id, i)}</td><td class="n"><i style="--c:${h(E[p.equipe]?.cor || "#fff")}"></i>${p.id === "voce" ? marca(s.equipe) : ""}<b>${h(sobrenome(p.nome))}</b></td><td class="e">${h(E[p.equipe]?.nome || "")}</td>${s.calendario.map((_, g) => { const r = passadas.get(g), l = r?.linhas.find((x) => x.piloto === p.id); return `<td class="v">${!r ? "—" : !l ? "" : l.dnf ? '<em>DNF</em>' : l.nc ? "<em>NC</em>" : l.pontos}</td>`; }).join("")}<td class="t">${p.pontos}</td><td class="d">${i ? -(lider - p.pontos) : "—"}</td></tr>`).join("");
+    corpo = t.pilotos.filter((p) => quem.has(p.id)).map((p, i) => `<tr class="${p.id === "voce" ? "eu" : ""}" data-piloto="${h(p.id)}" tabindex="0"><td class="p">${i + 1}</td><td class="m">${seta2(antes?.pilotos.filter((x) => quem.has(x.id)), p.id, i)}</td><td class="n"><i style="--c:${h(E[p.equipe]?.cor || "#888")}"></i><b>${h(sobrenome(p.nome))}</b></td>${s.calendario.map((_, g) => { const r = passadas.get(g), l = r?.linhas.find((x) => x.piloto === p.id); return `<td class="v">${!r ? "—" : !l ? "" : l.dnf ? "<em>DNF</em>" : l.nc ? "<em>NC</em>" : l.pontos}</td>`; }).join("")}<td class="t">${p.pontos}</td><td class="d">${i ? -(lider - p.pontos) : "—"}</td></tr>`).join("");
   } else {
     const liderE = t.equipes[0]?.pontos || 0;
-    corpo = t.equipes.map((e, i) => `<tr class="${e.id === s.equipe ? "eu" : ""}"><td class="p">${i + 1}</td><td class="m">${seta2(antes?.equipes, e.id, i)}</td><td class="n"><i style="--c:${h(E[e.id]?.cor || "#fff")}"></i>${marca(e.id)}<b>${h(e.nome.toUpperCase())}</b></td><td class="e">${h(E[e.id]?.sigla || "")}</td>${s.calendario.map((_, g) => { const r = passadas.get(g); return `<td class="v">${r ? r.linhas.filter((l) => l.equipe === e.id).reduce((a, l) => a + l.pontos, 0) : "—"}</td>`; }).join("")}<td class="t">${e.pontos}</td><td class="d">${i ? -(liderE - e.pontos) : "—"}</td></tr>`).join("");
+    corpo = t.equipes.map((e, i) => `<tr class="${e.id === s.equipe ? "eu" : ""}"><td class="p">${i + 1}</td><td class="m">${seta2(antes?.equipes, e.id, i)}</td><td class="n"><i style="--c:${h(E[e.id]?.cor || "#888")}"></i><b>${h(e.nome.toUpperCase())}</b></td>${s.calendario.map((_, g) => { const r = passadas.get(g); return `<td class="v">${r ? r.linhas.filter((l) => l.equipe === e.id).reduce((a, l) => a + l.pontos, 0) : "—"}</td>`; }).join("")}<td class="t">${e.pontos}</td><td class="d">${i ? -(liderE - e.pontos) : "—"}</td></tr>`).join("");
   }
   // a campanha: a posição a cada GP (a linha sobe quando o piloto sobe)
-  const pontosEvol = gps.map((g, i) => { const tb = tabDe(s.resultados.filter((r) => r.ano !== s.ano || gps.indexOf(r) <= i)); return tb.pilotos.findIndex((p) => p.id === "voce") + 1; });
-  const W = 300, H = 56, x = (i) => (pontosEvol.length > 1 ? i / (pontosEvol.length - 1) : 0.5) * (W - 10) + 5, y = (p) => 6 + (p - 1) / 21 * (H - 12);
-  const linha = pontosEvol.map((p, i) => `${x(i).toFixed(1)},${y(p).toFixed(1)}`).join(" ");
-  const grafico = pontosEvol.length ? `<svg class="cx-evol" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sua posição a cada GP"><polygon points="${x(0).toFixed(1)},${H} ${linha} ${x(pontosEvol.length - 1).toFixed(1)},${H}"/><polyline points="${linha}"/>${pontosEvol.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p).toFixed(1)}" r="3"><title>${h(s.calendario[gps[i].gp]?.nome)}: ${p}º</title></circle>`).join("")}</svg>` : '<p class="cx-vazio">A linha aparece depois do primeiro GP.</p>';
+  const evol = gps.map((g, i) => tabDe(s.resultados.filter((r) => r.ano !== s.ano || gps.indexOf(r) <= i)).pilotos.findIndex((p) => p.id === "voce") + 1);
+  const W = 300, H = 76, mx = Math.max(...evol, 2), mn = Math.min(...evol, mx - 1), x = (i) => 26 + (evol.length > 1 ? i / (evol.length - 1) : 0.5) * (W - 34), y = (p) => 8 + (p - mn) / Math.max(1, mx - mn) * (H - 20);
+  const grafico = evol.length ? `<svg class="cx-evol" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sua posição a cada GP">${[mn, mx].map((p) => `<text x="18" y="${(y(p) + 4).toFixed(1)}" text-anchor="end">${p}º</text><line x1="26" x2="${W - 8}" y1="${y(p).toFixed(1)}" y2="${y(p).toFixed(1)}"/>`).join("")}<polyline points="${evol.map((p, i) => `${x(i).toFixed(1)},${y(p).toFixed(1)}`).join(" ")}"/>${evol.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p).toFixed(1)}" r="3"><title>${h(s.calendario[gps[i].gp]?.nome)}: ${p}º</title></circle>`).join("")}</svg>` : '<p class="cx-vazio">A linha aparece depois do primeiro GP.</p>';
   const dif = lider - meus, seloDif = eu === 0 ? (gps.length ? `${meus - (t.pilotos[1]?.pontos || 0)} pontos à frente` : "Tudo por fazer") : `${dif} ${dif === 1 ? "ponto" : "pontos"} para o líder`;
   const top3 = t.equipes.slice(0, 3); const minhaE = t.equipes.findIndex((e) => e.id === s.equipe); if (minhaE > 2) top3[2] = t.equipes[minhaE];
-  const lidera = t.equipes[0], difE = lidera.pontos - (t.equipes[1]?.pontos || 0);
-  return `<div class="cx-g-classif"><div class="cx-c-esq"><div class="cx-cabeca compacta"><div class="cx-cab-tit"><i aria-hidden="true"></i><div><h2>Classificação do campeonato</h2><small>Temporada ${dois(s.ano)} • ${gps.length} de ${s.tamanho} etapas concluídas</small></div></div></div>
-      <div class="cx-c-filtros"><div class="cx-troca" role="tablist"><button type="button" role="tab" class="${tabela === "pilotos" ? "on" : ""}" aria-selected="${tabela === "pilotos"}" data-cx-tabela="pilotos">Pilotos</button><button type="button" role="tab" class="${tabela === "equipes" ? "on" : ""}" aria-selected="${tabela === "equipes"}" data-cx-tabela="equipes">Construtores</button></div><span class="cx-chip">${s.tamanho} GPs</span><span class="cx-leg"><svg class="cx-sobe" viewBox="0 0 12 10" aria-hidden="true"><path d="M6 0l6 10H0z"/></svg>Ganhou posição</span><span class="cx-leg"><svg class="cx-desce" viewBox="0 0 12 10" aria-hidden="true"><path d="M6 10L0 0h12z"/></svg>Perdeu posição</span></div>
-      <section class="cx-card cx-tabela">${tituloCard(tabela === "pilotos" ? "Campeonato de pilotos" : "Campeonato de construtores")}<div class="cx-t-rolo"><table style="--n:${s.calendario.length}"><thead><tr><th class="p" scope="col">Pos</th><th class="m"></th><th class="n" scope="col" colspan="2">${tabela === "pilotos" ? "Piloto / equipe" : "Equipe"}</th>${colunas}<th class="t" scope="col">Pts</th><th class="d" scope="col">Dif.</th></tr></thead><tbody>${corpo}</tbody></table></div></section>
-      <p class="cx-rodape-t">Dif.: pontos para o líder • — : etapas ainda não disputadas</p></div>
-    <aside class="cx-c-dir"><section class="cx-card cx-camp2">${marca(s.equipe, "cx-marca-dagua")}<div class="cx-camp2-topo">${marca(s.equipe)}<div><small>Sua campanha</small><h3>${gps.length ? `${eu + 1}º lugar` : "Temporada nova"}</h3><span>${h(s.nome)}</span></div></div><div class="cx-camp2-pts"><b>${meus}</b><small>pontos</small><span class="cx-selo">${h(seloDif)}</span></div>${tricolor()}<div class="cx-nums">${[[c.minhas.v, c.minhas.v === 1 ? "Vitória" : "Vitórias"], [c.minhas.p, c.minhas.p === 1 ? "Pódio" : "Pódios"], [s.tamanho - s.gp, "Etapas restantes"]].map(([n, r]) => `<div class="cx-num"><b>${n}</b><small>${r}</small></div>`).join("")}</div><small class="cx-rot">Evolução no campeonato</small>${grafico}</section>
-      <section class="cx-card cx-cons">${tituloCard("Construtores")}<ol class="cx-top">${top3.map((e) => `<li class="${e.id === s.equipe ? "eu" : ""}"><button type="button" class="cx-linha" data-cx-tabela="equipes"><b>${t.equipes.indexOf(e) + 1}</b>${marca(e.id)}<span>${h(e.nome.toUpperCase())}</span><strong>${e.pontos}</strong></button></li>`).join("")}</ol><p class="cx-cons-txt">${gps.length ? `${h(lidera.nome)} lidera por ${difE} ${difE === 1 ? "ponto" : "pontos"}` : "Ninguém pontuou ainda"}</p><button type="button" class="cx-contorno" data-cx-tabela="equipes">Ver construtores ${seta}</button></section>
-      ${prox ? `<button type="button" class="cx-card cx-prox-mini" data-cx-aba="calendario">${bandeira(prox.pista)}<span><small>Próxima etapa</small><b>${h(nomeGP(prox.pista, prox.nome))}</b></span><em>${dois(s.gp + 1)} / ${dois(s.tamanho)}</em></button>` : ""}</aside></div>`;
+  const difE = t.equipes[0].pontos - (t.equipes[1]?.pontos || 0), nums = [[c.minhas.v, c.minhas.v === 1 ? "Vitória" : "Vitórias"], [c.minhas.p, c.minhas.p === 1 ? "Pódio" : "Pódios"], [s.tamanho - s.gp, "Etapas restantes"]];
+  return `<div class="cx-g-classif"><div class="cx-c-esq"><div class="cx-cabeca"><div><h2>Classificação do campeonato</h2><small class="cx-rot">Temporada ${dois(s.ano)} · ${gps.length} de ${s.tamanho} etapas concluídas</small></div></div>
+      <div class="cx-subabas" role="tablist"><button type="button" role="tab" class="${tabela === "pilotos" ? "on" : ""}" aria-selected="${tabela === "pilotos"}" data-cx-tabela="pilotos">Pilotos</button><button type="button" role="tab" class="${tabela === "equipes" ? "on" : ""}" aria-selected="${tabela === "equipes"}" data-cx-tabela="equipes">Construtores</button></div>
+      <div class="cx-tabela"><table style="--n:${s.calendario.length}"><thead><tr><th class="p" scope="col">Pos.</th><th class="m"></th><th class="n" scope="col">${tabela === "pilotos" ? "Piloto" : "Equipe"}</th>${colunas}<th class="t" scope="col">Pts</th><th class="d" scope="col">Dif.</th></tr></thead><tbody>${corpo}</tbody></table></div></div>
+    <aside class="cx-c-dir"><section><small class="cx-rot">Sua campanha</small><div class="cx-camp"><strong>${gps.length ? `${eu + 1}º` : "—"} ${seta2(antes?.pilotos, "voce", eu)}</strong><div><b>${h(s.nome)}</b><span>${meus} pontos</span><em>${h(seloDif)}</em></div></div><div class="cx-nums">${nums.map(([n, r]) => `<div><b>${n}</b><small>${r}</small></div>`).join("")}</div></section>
+      <section><h3>Construtores</h3><ol class="cx-top">${top3.map((e) => `<li class="${e.id === s.equipe ? "eu" : ""}"><button type="button" data-cx-tabela="equipes"><span>${t.equipes.indexOf(e) + 1}</span>${marca(e.id)}<b>${h(e.nome)}</b><strong>${e.pontos}</strong></button></li>`).join("")}</ol><small class="cx-nota">${gps.length ? `${h(t.equipes[0].nome)} lidera por ${difE} ${difE === 1 ? "ponto" : "pontos"}` : "Ninguém pontuou ainda"}</small></section>
+      <section><h3>Sua evolução</h3>${grafico}</section>
+      ${prox ? `<button type="button" class="cx-prox-mini" data-cx-aba="calendario">${bandeira(prox.pista)}<span><small class="cx-rot">Próxima etapa</small><b>${h(nomeGP(prox.pista, prox.nome))}</b></span><em>Etapa ${dois(s.gp + 1)} de ${dois(s.tamanho)}</em></button>` : ""}</aside></div>`;
 }
 function abrirPiloto(id) {
   const c = ctxAtual; if (!c) return; const p = c.t.pilotos.find((x) => x.id === id); if (!p) return;
@@ -169,6 +167,7 @@ function abrirPiloto(id) {
 }
 
 // ---------- o Desenvolvimento ----------
+// ---------- o Desenvolvimento ----------
 function notaDe(equipe, m) { return Gar().notaGeral(Eq().ficha(Eq().specDaEquipe(equipe, m))); }
 function desenvolvimento(c) {
   const { s, ativo, terminou } = c, E = Eq(), limite = E.EQUIPES[s.equipe].orcamento + (s.bonus || 0), usado = E.custoDaMontagem(s.montagem), livres = limite - usado, pode = !ativo && !terminou;
@@ -177,19 +176,18 @@ function desenvolvimento(c) {
   const dif = fD.map((f, i) => ({ r: f.rotulo, d: f.nota - fA[i].nota })).filter((x) => x.d), custoDev = 12 + (s.bonus || 0) * 6;
   const motivo = !pode ? (ativo ? "O GP está aberto: a montagem espera o fim da corrida." : "A temporada acabou.") : maxou ? "Esta peça já está no nível máximo." : livres <= 0 ? "Sem pontos livres. Tire de outra peça ou desenvolva mais um ponto." : "";
   const abas = ATTR.map(([id, nome]) => `<button type="button" class="${id === k ? "on" : ""}" aria-pressed="${id === k}" data-cx-attr="${id}">${h(nome)}</button>`).join("");
-  const painel = `<aside class="cx-card cx-dv-painel">${tituloCard(h(atual[1]), h(atual[2]))}<span class="cx-selo">${maxou ? `Nível ${n} • máximo` : `Nível ${n} → ${n + 1}`}</span><h4>${h(peca.nome)}</h4><p>${h(peca.desc)}</p>
+  const painel = `<aside class="cx-dv-painel"><div class="cx-dv-pontos"><small class="cx-rot">Pontos livres</small><strong>${livres}</strong></div><small class="cx-rot">Melhoria selecionada</small><h3>${h(atual[2])}</h3><span class="cx-dv-nivel">${maxou ? `Nível ${n} · máximo` : `Nível ${n} → ${n + 1}`}</span><h4>${h(peca.nome)}</h4><p>${h(peca.desc)}</p>
       <dl><div><dt>Custo</dt><dd>1 ponto</dd></div><div><dt>Melhora</dt><dd class="cx-verde">${h(peca.bom)}</dd></div><div><dt>Cobra em troca</dt><dd>${h(peca.custa)}</dd></div></dl>
-      <div class="cx-dv-nota"><span>Desempenho</span><b>${nA}${!maxou ? ` <svg viewBox="0 0 24 14" aria-hidden="true"><path d="M1 7h21M15 1l7 6-7 6" fill="none" stroke="currentColor" stroke-width="2.4"/></svg> <em class="${nD >= nA ? "cx-verde" : "cx-verm"}">${nD}</em>` : ""}</b></div><div class="cx-dv-barra"><u style="width:${Math.min(nA, nD)}%"></u>${nD > nA ? `<s style="left:${nA}%;width:${nD - nA}%"></s>` : ""}</div>
-      <h5>Prévia do carro</h5><ul>${dif.length ? dif.map((x) => `<li><span>${h(x.r)}</span><b class="${x.d > 0 ? "cx-verde" : "cx-verm"}">${x.d > 0 ? "+" : ""}${x.d}</b></li>`).join("") : '<li><span>Sem mudança visível na nota</span><b>—</b></li>'}</ul>
+      <small class="cx-rot">Impacto previsto</small><ul>${dif.length ? dif.map((x) => `<li><span>${h(x.r)}</span><b class="${x.d > 0 ? "cx-verde" : "cx-verm"}">${x.d > 0 ? "+" : ""}${x.d}</b></li>`).join("") : '<li><span>Sem mudança visível na nota</span><b>—</b></li>'}<li class="total"><span>Desempenho do carro</span><b>${nA}${!maxou ? ` → ${nD}` : ""}</b></li></ul>
       <button type="button" class="cx-bt" data-ponto="${k}" data-delta="1" ${!pode || maxou || livres <= 0 ? "disabled" : ""}>Instalar melhoria ${seta}</button>
-      <div class="cx-dv-acoes"><button type="button" class="cx-contorno" data-ponto="${k}" data-delta="-1" ${!pode || n <= 0 ? "disabled" : ""}>Tirar 1 nível</button><button type="button" class="cx-contorno" data-ponto-zerar ${!pode || !usado ? "disabled" : ""}>Zerar tudo</button></div>
-      <small class="cx-dv-saldo">${motivo || `Saldo depois da melhoria: <b>${livres - 1} ${livres - 1 === 1 ? "ponto" : "pontos"}</b>`}</small></aside>`;
+      <small class="cx-dv-saldo">${motivo || `Saldo após a melhoria: ${livres - 1} ${livres - 1 === 1 ? "ponto" : "pontos"}`}</small>
+      <div class="cx-dv-acoes"><button type="button" class="cx-link" data-ponto="${k}" data-delta="-1" ${!pode || n <= 0 ? "disabled" : ""}>Tirar 1 nível</button><button type="button" class="cx-link" data-ponto-zerar ${!pode || !usado ? "disabled" : ""}>Zerar tudo</button></div></aside>`;
   const CURTO = { aero: "Aero", chassi: "Chassi", motor: "Potência", freios: "Freios", suspensao: "Suspensão", confiab: "Durabilidade" };
-  const geral = ATTR.map(([id]) => { const nome = CURTO[id], nv = s.montagem[id]; return `<button type="button" class="cx-dv-mini ${id === k ? "on" : ""}" data-cx-attr="${id}"><span>${h(nome)}</span><b>${nv}<small>/${max}</small></b><i><u style="width:${nv / max * 100}%"></u></i></button>`; }).join("");
+  const geral = ATTR.map(([id]) => { const nome = CURTO[id], nv = s.montagem[id]; return `<button type="button" class="cx-dv-mini ${id === k ? "on" : ""}" data-cx-attr="${id}"><span>${h(nome)}</span><b>${nv}<small>/${max}</small></b><i class="cx-prog"><u style="width:${nv / max * 100}%"></u></i></button>`; }).join("");
   const rotulos = ATTR.map(([id, , peca2]) => `<button type="button" class="cx-rotulo ${id === k ? "on" : ""}" data-cx-attr="${id}" data-rotulo="${id}"><i></i><span>${h(peca2)}</span></button>`).join("");
-  return `<div class="cx-g-dev"><div class="cx-dv-esq"><div class="cx-cabeca compacta"><div class="cx-cab-tit"><i aria-hidden="true"></i><div class="cx-cab-linha"><h2>Evolução do carro</h2><small>Temporada ${dois(s.ano)}</small></div></div><div class="cx-recurso-pill"><span>Pontos livres</span><b>${livres}</b></div></div>
-      <div class="cx-dv-abas">${abas}</div><div class="cx-dv-palco" id="cxDvPalco" title="Arraste para girar o carro"><svg class="cx-linhas" id="cxLinhas" aria-hidden="true"></svg>${rotulos}<small class="cx-dv-dica">Arraste para girar</small></div></div>${painel}
-    <section class="cx-card cx-dv-base"><div class="cx-dv-geral"><div class="cx-dv-rot"><i aria-hidden="true"></i><h3>Desempenho geral</h3></div><div class="cx-dv-minis">${geral}</div></div><div class="cx-dv-prox"><div class="cx-dv-rot"><i aria-hidden="true"></i><div><h3>Orçamento do carro</h3><small>${s.bonus}/4 melhorias • caixa ${c.dinheiro(s.caixa)}</small></div></div><div class="cx-v-barra fina"><u style="width:${(s.bonus || 0) / 4 * 100}%"></u></div><button type="button" class="cx-contorno" id="${c.idDesenvolver || "desenvolver"}" ${s.bonus >= 4 || ativo || terminou ? "disabled" : ""}>${s.bonus >= 4 ? "Limite atingido" : `+1 ponto • ${c.dinheiro(custoDev)}`}</button></div></section></div>`;
+  return `<div class="cx-g-dev"><div class="cx-dv-esq"><div class="cx-cabeca"><div><small class="cx-rot">Temporada ${dois(s.ano)} · ${h(c.eq.nome)}</small><h2>Desenvolvimento do carro</h2></div></div>
+      <div class="cx-subabas cx-dv-abas">${abas}</div><div class="cx-dv-palco" id="cxDvPalco" title="Arraste para girar o carro"><svg class="cx-linhas" id="cxLinhas" aria-hidden="true"></svg>${rotulos}<small class="cx-dv-dica">Arraste para girar</small></div></div>${painel}
+    <section class="cx-dv-base"><div class="cx-dv-geral"><small class="cx-rot">Desempenho do carro</small><div class="cx-dv-minis">${geral}</div></div><div class="cx-dv-prox"><small class="cx-rot">Orçamento do carro</small><div class="cx-dv-orc"><b>${s.bonus}/4 melhorias</b><span>Caixa ${h(c.dinheiro(s.caixa))}</span></div><i class="cx-prog"><u style="width:${(s.bonus || 0) / 4 * 100}%"></u></i><button type="button" class="cx-link" id="${c.idDesenvolver || "desenvolver"}" ${s.bonus >= 4 || ativo || terminou ? "disabled" : ""}>${s.bonus >= 4 ? "Limite atingido" : `+1 ponto · ${c.dinheiro(custoDev)}`}</button></div></section></div>`;
 }
 function posicionarRotulos() {
   if (aba !== "desenvolvimento" || !garagem) return;
@@ -217,29 +215,52 @@ document.addEventListener("pointerdown", (e) => { if (e.target.closest?.("#cxDvP
 document.addEventListener("pointermove", (e) => { if (arrasto != null) { garagem?.girar((e.clientX - arrasto) * 0.009); arrasto = e.clientX; } brilho(e); }, { passive: true });
 for (const ev of ["pointerup", "pointercancel"]) document.addEventListener(ev, () => { arrasto = null; });
 function brilho(e) {
-  const c = e.target.closest?.(".cx-card,.cx-bt,.cx-contorno,.cx-linha,.cx-aba,.cx-ob"); if (!c) return;
+  const c = e.target.closest?.(".cx-bt"); if (!c) return;
   const r = c.getBoundingClientRect(); c.style.setProperty("--mx", `${e.clientX - r.left}px`); c.style.setProperty("--my", `${e.clientY - r.top}px`);
-  if (c.matches(".cx-gp,.cx-dev,.cx-riv,.cx-obj,.cx-stat")) { c.style.setProperty("--rx", `${((e.clientY - r.top) / r.height - 0.5) * -4}deg`); c.style.setProperty("--ry", `${((e.clientX - r.left) / r.width - 0.5) * 4}deg`); }
 }
 
 // ---------- a tela inteira ----------
 function html(c) {
   ctxAtual = c; const { s, eq, codigoHTML } = c;
-  const rotulo = (id, nome) => (c.grupo && id === "contratos" ? "Equipe" : nome), nomeAba = rotulo(aba, ABAS.find((a) => a[0] === aba)?.[1] || "");
+  const rotulo = (id, nome) => (c.grupo && id === "contratos" ? "Equipe" : nome);
   const corpo = aba === "calendario" ? calendario(c) : aba === "classif" ? classificacao(c) : aba === "desenvolvimento" ? desenvolvimento(c) : aba === "contratos" ? root.CentralContrato.html(c) : aba === "analise" ? root.CentralAnalise.html(c) : central(c);
+  const ajustes = `<button type="button" class="cx-tema" data-cx-tema aria-pressed="${escuro}"><span>Modo escuro</span><b>${escuro ? "Ligado" : "Desligado"}</b></button><p class="cx-menu-caixa"><span>Caixa</span><b>${h(c.dinheiro(s.caixa))}</b></p>`;
   return `<div class="cx ${c.grupo ? "cx-grupo" : ""}" data-aba="${h(aba)}">
-    <header class="cx-topo"><div class="cx-faixa"><a class="cx-faixa-logo" href="/corrida/" title="Voltar ao menu da Corrida">${marca(s.equipe)}</a><i class="cx-barrinha" aria-hidden="true"></i><h1>${h(eq.nome)}</h1><i class="cx-barrinha" aria-hidden="true"></i><span>${aba === "central" ? (c.grupo ? `Sala ${h(c.grupo)}` : "Central da carreira") : `Carreira / ${h(nomeAba)}`}</span>${tricolor()}</div>
-      <div class="cx-conta">${marca(s.equipe)}<b>${h(s.nome)}</b>${BR}<div class="cx-caixa"><small>Caixa</small><strong>${h(c.dinheiro(s.caixa))}</strong></div><details class="cx-menu"><summary aria-label="Ajustes da carreira"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.7h4l.4-2.7a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg></summary><div class="cx-menu-corpo">${c.menuHTML || '<a href="/corrida/">Menu da Corrida</a><button class="ghost" data-radio-botao aria-label="Voz do engenheiro"></button><button id="novoCodigo">Gerar novo código de recuperação</button><small>O código antigo deixa de valer.</small><button id="excluirCarreira" class="discreto">Excluir carreira</button>'}</div></details></div></header>
+    <header class="cx-topo"><div class="cx-faixa"><a class="cx-faixa-logo" href="/corrida/" title="Voltar ao menu da Corrida">${marca(s.equipe)}</a><i class="cx-barrinha" aria-hidden="true"></i><h1>${h(eq.nome)}</h1></div>
+      <div class="cx-conta">${BR}<i class="cx-barrinha" aria-hidden="true"></i><b>${h(s.nome)}</b><button type="button" class="cx-perfil" data-cx-aba="contratos" aria-label="${c.grupo ? "Minha equipe" : "Meu contrato"}" title="${c.grupo ? "Minha equipe" : "Meu contrato"}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3.4"/><path d="M5.5 19c1.200-3 3.600-4.400 6.500-4.400s5.300 1.400 6.500 4.400"/></svg></button><details class="cx-menu"><summary aria-label="Ajustes da carreira"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.400 13a7.600 7.600 0 0 0 0-2l2.100-1.600-2-3.400-2.500 1a7.600 7.600 0 0 0-1.700-1L15 3.300h-4l-.4 2.700a7.600 7.600 0 0 0-1.700 1l-2.500-1-2 3.400L6.600 11a7.600 7.600 0 0 0 0 2l-2.100 1.600 2 3.400 2.500-1a7.600 7.600 0 0 0 1.700 1l.4 2.700h4l.4-2.700a7.600 7.600 0 0 0 1.700-1l2.500 1 2-3.400ZM13 15.500a3.500 3.500 0 1 1 0-7 3.500 3.500 0 0 1 0 7Z" transform="translate(-1 0)"/></svg></summary><div class="cx-menu-corpo">${ajustes}${c.menuHTML || '<a href="/corrida/">Menu da Corrida</a><button class="ghost" data-radio-botao aria-label="Voz do engenheiro"></button><button id="novoCodigo">Gerar novo código de recuperação</button><small>O código antigo deixa de valer.</small><button id="excluirCarreira" class="discreto">Excluir carreira</button>'}</div></details></div></header>
     <nav class="cx-abas" role="tablist" aria-label="Seções da carreira">${ABAS.map(([id, nome]) => `<button type="button" role="tab" class="cx-aba ${id === aba ? "on" : ""}" aria-selected="${id === aba}" data-cx-aba="${id}">${rotulo(id, nome)}</button>`).join("")}</nav>
     ${codigoHTML}<main class="cx-corpo" role="tabpanel">${corpo}</main>
-    <footer class="cx-pe"><div class="cx-dicas"><span class="gp"><kbd class="r">A</kbd> Selecionar</span><span class="gp"><kbd class="r">B</kbd> Voltar</span><span class="gp"><kbd class="r">LB</kbd><kbd class="r">RB</kbd> Trocar aba</span><span class="kb"><kbd>Q</kbd><kbd>E</kbd> Trocar aba</span><span class="kb"><kbd>Esc</kbd> Voltar</span><button type="button" class="cx-msg" data-cx-msg><kbd class="r gp">Y</kbd><kbd class="kb">M</kbd> Mensagens <em>${c.nMensagens}</em></button></div>${tricolor()}<div class="cx-salvo"><svg class="cx-ok" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7 12 3.4 3.4L17 9"/></svg>Progresso salvo</div></footer></div>`;
+    <footer class="cx-pe"><div class="cx-dicas"><span class="gp"><kbd class="r">A</kbd> Selecionar</span><span class="gp"><kbd class="r">B</kbd> Voltar</span><span class="gp"><kbd>LB</kbd><kbd>RB</kbd> Trocar aba</span><span class="kb"><kbd>Q</kbd><kbd>E</kbd> Trocar aba</span><span class="kb"><kbd>Esc</kbd> Voltar</span><button type="button" class="cx-msg" data-cx-msg><kbd class="r gp">Y</kbd><kbd class="kb">M</kbd> Mensagens · ${c.nMensagens}</button></div><div class="cx-salvo"><svg class="cx-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.600 4.600L19 7"/></svg>Salvo</div></footer></div>`;
 }
 function depois(c) { tema(c.s.equipe); ligarFundo(c.s.equipe); requestAnimationFrame(posicionarRotulos); root.Radio?.desenharBotoes?.(); root.CentralAnalise?.ligarGraficos(); }
-function trocarAba(a, render) { aba = a; try { localStorage.setItem("corrida:temporada:aba", a); } catch {} render(); window.scrollTo?.({ top: 0 }); const b = document.querySelector(`.cx-aba[data-cx-aba="${a}"]`); b?.focus({ preventScroll: true }); }
+// Põe o HTML novo na tela mexendo só no que mudou: quem está olhando não vê a tela piscar quando outro jogador age, e o que não mudou segue no lugar.
+function pintar(alvo, html) {
+  if (alvo._cxHtml === html && alvo.querySelector(":scope > .cx")) return;
+  const molde = document.createElement("template"); molde.innerHTML = html;
+  if (!alvo.querySelector(":scope > .cx")) { alvo.replaceChildren(molde.content); alvo._cxHtml = html; return; }
+  const juntar = (a, b) => {
+    if (a.nodeType !== b.nodeType || (a.nodeType === 1 && a.tagName !== b.tagName) || (a.nodeType === 1 && a.dataset.cxGraf !== b.dataset.cxGraf)) { a.replaceWith(b.cloneNode(true)); return; }
+    if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+    for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+    for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+    filhos(a, b);
+  };
+  const filhos = (a, b) => { for (let i = 0; i < b.childNodes.length; i++) { if (a.childNodes[i]) juntar(a.childNodes[i], b.childNodes[i]); else a.appendChild(b.childNodes[i].cloneNode(true)); } while (a.childNodes.length > b.childNodes.length) a.lastChild.remove(); };
+  filhos(alvo, molde.content); alvo._cxHtml = html;
+}
+// A troca de aba: o conteúdo entra deslizando do lado para onde a pessoa foi, bloco a bloco (o sublinhado anda sozinho, pelo CSS).
+function animarAba(dir) {
+  if (matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  const corpo = document.querySelector(".cx-corpo"); if (!corpo?.animate) return;
+  const blocos = [...corpo.children].slice(0, 6);
+  (blocos.length ? blocos : [corpo]).forEach((el, i) => el.animate([{ opacity: 0, transform: `translateX(${dir * 22}px)` }, { opacity: 1, transform: "none" }], { duration: 260, delay: i * 35, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" }));
+}
+function trocarAba(a, render) { const ordem = (x) => ABAS.findIndex((q) => q[0] === x), dir = ordem(a) < ordem(aba) ? -1 : 1, mudou = a !== aba; aba = a; try { localStorage.setItem("corrida:temporada:aba", a); } catch {} render(); if (mudou) animarAba(dir); window.scrollTo?.({ top: 0 }); const b = document.querySelector(`.cx-aba[data-cx-aba="${a}"]`); b?.focus({ preventScroll: true }); }
 function abrirMensagens() { const d = dialogo("cxMsgDlg", "cx-msgs"); d.innerHTML = `<form method="dialog"><button class="cx-dlg-x" aria-label="Fechar">✕</button></form>${ctxAtual?.caixaMensagens || ""}`; d.showModal(); }
 // devolve true se o clique era desta tela
 function clique(alvo, render) {
   if (root.CentralAnalise?.clique(alvo, render) || root.CentralContrato?.clique(alvo, render)) return true;
+  if (alvo.hasAttribute("data-cx-tema")) { escuro = !escuro; try { localStorage.setItem(CHAVE_TEMA, escuro ? "escuro" : "claro"); } catch {} aplicarTema(); return true; }
   if (alvo.dataset.cxAba) { trocarAba(alvo.dataset.cxAba, render); return true; }
   if (alvo.dataset.cxTabela) { tabela = alvo.dataset.cxTabela; if (aba !== "classif") return (trocarAba("classif", render), true); render(); return true; }
   if (alvo.dataset.cxAttr) { attr = alvo.dataset.cxAttr; render(); document.querySelector(`.cx-dv-abas [data-cx-attr="${attr}"]`)?.focus({ preventScroll: true }); return true; }
@@ -290,5 +311,5 @@ setInterval(() => {
 }, 90);
 
 root.CentralUI = { h, marca, seta, tituloCard, tricolor, bandeira, dois, nomeGP };
-root.Central = { html, depois, clique, sair, usarRender(fn) { renderAtual = fn; }, aba: () => aba, estatisticas };
+root.Central = { html, depois, pintar, clique, sair, usarRender(fn) { renderAtual = fn; }, aba: () => aba, estatisticas };
 })(window);

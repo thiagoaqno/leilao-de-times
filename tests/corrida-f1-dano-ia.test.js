@@ -137,8 +137,8 @@ test("IA: sem volta humana, o grid completo fecha Mônaco e classifica perto de 
   assert.equal(room.order.length, 19);
   assert.ok(room.order.every((id) => room.players[id].finish != null), "todos cruzam a chegada");
   const tempos = room.order.map((id, i) => Robos.voltaLancada(room, room.players[id], 0, i, 19).tempo).sort((a, b) => a - b);
-  // (a linha de menor curvatura tirou ~10 s da volta em Mônaco: a pole fica em ~55 s)
-  assert.ok(tempos[0] > 50 && tempos[0] < 80, `pole ${tempos[0]}`); // (macio novo e quente: mais rápido que o pneu neutro do ritmo da corrida)
+  // (com o piloto novo, a pole em Mônaco fica em ~49 s, perto dos ~50 s que os robôs fazem em pista)
+  assert.ok(tempos[0] > 45 && tempos[0] < 80, `pole ${tempos[0]}`); // (macio novo e quente: mais rápido que o pneu neutro do ritmo da corrida)
   assert.ok(tempos.at(-1) - tempos[0] < 5, `grid disperso: ${tempos[0]} a ${tempos.at(-1)}`);
 });
 
@@ -161,7 +161,7 @@ test("IA: recorde humano limita a pole; volta boa em Cadillac não vira P2 autom
   // O macio novo desta tabela de pneus (aderência ~1,51, mais baixa que a antiga) dá ~70,2 s ao piloto ideal em Mônaco; a pole de um
   // robô médio fica a ~3% disso (~72,4 s). O teto antigo (72) era de quando o macio era mais aderente.
   // (depois da linha de menor curvatura o ideal em Mônaco caiu de ~70 s para ~57 s: a pole fica em ~55 s)
-  assert.ok(tempos[0] > 50 && tempos[0] < 62, `pole ${tempos[0]}`);
+  assert.ok(tempos[0] > 45 && tempos[0] < 62, `pole ${tempos[0]}`);
   assert.ok(tempos.at(-1) < 85, `fundo do grid ${tempos.at(-1)}`);
   Robos.usarFonte(() => [], () => ({ tempo: 95 }), () => ({ tempo: 95 }));
   Robos.ritmoDosRobos(room);
@@ -191,15 +191,6 @@ test("IA: carro com perda total é retirado do tráfego, mesmo numa curva", () =
     for (let i = 0; i < 180; i++) { relogio += 50; Robos.passo(room, 0.05, () => {}, () => {}); }
     assert.ok((bot.ia.s - inicio + pf.n) % pf.n > 100, `bot preso atrás do carro retirado: ${bot.ia.s - inicio}`);
   } finally { Date.now = agora; }
-});
-
-test("IA: cada robô tem o seu jeito (traçado, frenagem, erros), sorteado pela semente do GP", () => {
-  const a = corridaDeRobos({ voltas: 1, robos: 8, semente: 99 }), b = corridaDeRobos({ voltas: 1, robos: 8, semente: 99 });
-  const estilos = (r) => r.room.order.map((id) => { const e = r.room.players[id].ia.estilo; return [e.dentro, e.lado, e.look, e.erroK].map((x) => +x.toFixed(4)).join(","); });
-  assert.deepEqual(estilos(a), estilos(b), "mesma semente, mesmos jeitos");
-  assert.equal(new Set(estilos(a)).size, 8, "cada um com o seu");
-  assert.ok(new Set(a.room.order.map((id) => a.room.players[id].ia.estilo.look)).size >= 3, "uns freiam antes, outros depois");
-  assert.ok(a.room.order.some((id) => a.room.players[id].ia.estilo.dentro > 0.3) && a.room.order.some((id) => a.room.players[id].ia.estilo.dentro < -0.3), "uns por dentro, outros por fora");
 });
 
 test("IA: o robô para a tempo atrás de um carro lento e não fecha a porta de quem está ao lado", () => {

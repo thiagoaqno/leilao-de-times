@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perfis dos pilotos · F1</title>
+<style>
+:root{font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#f4f0ff;background:#101322}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 72% 12%,#3b2f63 0,transparent 37%),#101322}
+button,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:wait}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px clamp(18px,4vw,54px);border-bottom:1px solid #ffffff25}
+header a{color:#d5c5ff;text-decoration:none;font-weight:700}.marca{color:#ffcf68;font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}
+main{max-width:1180px;margin:auto;padding:clamp(20px,4vw,48px)}h1{font-size:clamp(30px,4vw,50px);line-height:1.04;margin:8px 0 12px}.lead{color:#bcb9d0;max-width:680px;margin:0 0 26px}
+.layout{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr);gap:22px;align-items:start}.lista,.editor{border:1px solid #ffffff20;background:#181b30db;border-radius:16px;overflow:hidden}
+.lista button{display:flex;width:100%;justify-content:space-between;gap:10px;padding:9px 16px;border:0;background:none;color:inherit;text-align:left}.lista button:hover{background:#ffffff0d}.lista button[aria-current="true"]{background:#ffcf6820;color:#ffcf68;font-weight:700}.lista small{color:#9a97b0}.lista i{font-style:normal;color:#ffcf68}
+.editor{padding:clamp(18px,3vw,30px)}.editor h2{margin:0;font-size:28px}.sub{color:#bcb9d0;margin:2px 0 20px}
+.campo{display:grid;grid-template-columns:minmax(150px,230px) minmax(0,1fr) 44px;gap:4px 14px;align-items:center;padding:9px 0;border-top:1px solid #ffffff14}.campo label{font-weight:650}.campo small{grid-column:1;color:#9a97b0;font-size:13px}.campo input{grid-column:2;grid-row:1/3;width:100%;accent-color:#ffcf68}.campo output{grid-column:3;grid-row:1/3;text-align:right;font-variant-numeric:tabular-nums;font-weight:700}.campo.mudou output{color:#ffcf68}
+select{background:#101322;color:inherit;border:1px solid #ffffff30;border-radius:8px;padding:7px 10px}
+.acoes{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:20px}.acoes button{padding:10px 18px;border-radius:10px;border:1px solid #ffffff30;background:none;color:inherit;font-weight:700}#salvar{background:#ffcf68;border-color:#ffcf68;color:#1a1420}
+#estado{min-height:1.4em;margin:12px 0 0;color:#bcb9d0}#estado.erro{color:#ff9a9a}#estado.ok{color:#8fe3a8}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.lista{display:flex;overflow-x:auto}.lista button{min-width:150px}.campo{grid-template-columns:1fr 44px}.campo small{grid-column:1/3}.campo input{grid-column:1;grid-row:auto}.campo output{grid-column:2;grid-row:1}}
+</style>
+</head>
+<body>
+<header><div class="marca">Galera / Corrida F1 / Admin</div><nav><a href="/admin/carreira">Painel da carreira</a></nav></header>
+<main><div class="marca">Controle dos pilotos</div><h1>Perfis dos pilotos</h1><p class="lead">Cada valor vai de 0 a 1 e muda o jeito de o robô pilotar e disputar. O ajuste vale a partir da próxima corrida.</p>
+<div class="layout"><nav class="lista" id="lista" aria-label="Pilotos"></nav>
+<section class="editor" aria-live="polite"><h2 id="nome">Carregando…</h2><p class="sub" id="sub"></p><div id="campos"></div>
+<div class="campo"><label for="box">Estratégia de box</label><small>Quando prefere parar</small><span></span><select id="box" style="grid-column:2;grid-row:1/3;justify-self:start"></select></div>
+<div class="acoes"><button id="salvar" disabled>Salvar perfil</button><button id="repor" disabled>Restaurar original</button></div><p id="estado" role="status"></p></section></div></main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
+let dados, atual;
+const avisar = (t, c = "") => { $("estado").textContent = t; $("estado").className = c; };
+function lista() { $("lista").innerHTML = dados.pilotos.map((p) => `<button data-id="${esc(p.id)}" aria-current="${p.id === atual?.id}"><span>${esc(p.nome)}${p.editadoEm ? " <i>•</i>" : ""}</span><small>${esc(p.sigla)}</small></button>`).join(""); }
+function marcar() { document.querySelectorAll("[data-campo]").forEach((el) => { const v = +el.value; el.nextElementSibling.textContent = v.toFixed(2); el.parentElement.classList.toggle("mudou", Math.abs(v - atual.original[el.dataset.campo]) > 0.001); }); }
+function mostrar(id) {
+  atual = dados.pilotos.find((p) => p.id === id); if (!atual) return; lista();
+  $("nome").textContent = atual.nome;
+  $("sub").textContent = `${atual.sigla} · nº ${atual.numero} · ritmo ${atual.ritmo}${atual.editadoEm ? ` · editado em ${new Date(atual.editadoEm).toLocaleString("pt-BR")}` : " · perfil original"}`;
+  $("campos").innerHTML = dados.campos.map(([c, nome, dica]) => `<div class="campo"><label for="c-${c}">${esc(nome)}</label><small>${esc(dica)}</small><input id="c-${c}" data-campo="${c}" type="range" min="0" max="1" step="0.01" value="${atual.perfil[c]}"><output></output></div>`).join("");
+  $("box").innerHTML = dados.boxes.map((b) => `<option ${b === atual.perfil.box ? "selected" : ""}>${esc(b)}</option>`).join("");
+  $("salvar").disabled = $("repor").disabled = false; marcar(); avisar("");
+}
+async function pedir(metodo, corpo) {
+  $("salvar").disabled = $("repor").disabled = true;
+  try {
+    const r = await fetch(`/admin/pilotos/api/${encodeURIComponent(atual.id)}`, { method: metodo, credentials: "same-origin", headers: { "Content-Type": "application/json", "X-CSRF-Token": dados.csrf }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const d = await r.json(); if (!r.ok) throw Error(d.erro || "Não foi possível salvar.");
+    atual.perfil = d.perfil; atual.editadoEm = metodo === "POST" ? Date.now() : null; mostrar(atual.id);
+    avisar(metodo === "POST" ? "Perfil salvo. Vale a partir da próxima corrida." : "Perfil original restaurado.", "ok");
+  } catch (e) { avisar(e.message, "erro"); $("salvar").disabled = $("repor").disabled = false; }
+}
+$("lista").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) mostrar(b.dataset.id); });
+$("campos").addEventListener("input", marcar);
+$("salvar").addEventListener("click", () => { const perfil = { box: $("box").value }; document.querySelectorAll("[data-campo]").forEach((el) => { perfil[el.dataset.campo] = +el.value; }); pedir("POST", { perfil }); });
+$("repor").addEventListener("click", () => pedir("DELETE"));
+fetch("/admin/pilotos/api", { credentials: "same-origin" }).then(async (r) => { const d = await r.json(); if (!r.ok) throw Error(d.erro); return d; }).then((d) => { dados = d; mostrar(d.pilotos[0].id); }).catch((e) => { $("nome").textContent = "Não foi possível abrir"; avisar(e.message, "erro"); });
+</script>
+</body>
+</html>

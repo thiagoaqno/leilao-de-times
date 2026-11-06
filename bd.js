@@ -131,6 +131,12 @@ function salvarTimePokemonGinasio(treinador, time, ator) {
     ON CONFLICT(treinador) DO UPDATE SET time_json=excluded.time_json, ator=excluded.ator, atualizado_em=excluded.atualizado_em`)
     .run(treinador, JSON.stringify(time), ator, Date.now());
 }
+const perfisPilotoCorrida = () => bd().prepare("SELECT piloto, perfil_json, ator, atualizado_em FROM corrida_perfis_piloto").all();
+function salvarPerfilPilotoCorrida(piloto, perfil, ator) {
+  bd().prepare(`INSERT INTO corrida_perfis_piloto (piloto, perfil_json, ator, atualizado_em) VALUES (?, ?, ?, ?)
+    ON CONFLICT(piloto) DO UPDATE SET perfil_json = excluded.perfil_json, ator = excluded.ator, atualizado_em = excluded.atualizado_em`).run(piloto, JSON.stringify(perfil), ator, Date.now());
+}
+const reporPerfilPilotoCorrida = (piloto) => bd().prepare("DELETE FROM corrida_perfis_piloto WHERE piloto = ?").run(piloto);
 const reporTimePokemonGinasio = (treinador) => bd().prepare("DELETE FROM ginasio_times_pokemon WHERE treinador = ?").run(treinador);
 
 // Fotos recortadas da Carreira. URL nula guarda uma busca sem resultado para não repetir a cada visita.
@@ -452,5 +458,5 @@ function nivelDeTodosAdmin(treinador, nivel, ator) {
 const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, tipo, captura, antes, depois, criado_em FROM moderacao_pokemon WHERE treinador = ? ORDER BY id DESC LIMIT ?").all(treinador, limite)
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
-module.exports = { melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { perfisPilotoCorrida, salvarPerfilPilotoCorrida, reporPerfilPilotoCorrida, melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
 Object.assign(module.exports, { excluirTemporadaCorrida, criarTemporadaCorrida, temporadaCorridaPorToken, temporadaCorridaPorId, recuperarTemporadaCorrida, salvarTemporadaCorrida, novoCodigoTemporadaCorrida, salvarSalaTemporadaCorrida, salasTemporadaCorrida, apagarSalaTemporadaCorrida });

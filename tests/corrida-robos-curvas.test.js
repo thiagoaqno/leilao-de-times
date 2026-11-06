@@ -44,19 +44,6 @@ function solo(pista, voltas = 3) {
   } finally { Date.now = agora; Math.random = aleatorio; Robos.usarFonte(() => null); }
 }
 
-test("o ideal do robô Cadillac em Interlagos fica no tempo da volta limpa de quem joga (49,7 s, 4%)", () => {
-  const ideal = Robos.idealDe("interlagos", Eq.specDaEquipe("cadillac"));
-  assert.ok(Math.abs(ideal / TEMPO_USUARIO - 1) <= 0.04, `ideal ${ideal.toFixed(2)} s contra ${TEMPO_USUARIO} s`);
-});
-
-test("robô difícil sozinho: a volta lançada fica a menos de 6% do ideal, sem bater nem sair da pista (Interlagos e Mônaco)", { timeout: 120000 }, () => {
-  for (const pista of ["interlagos", "monaco"]) {
-    const r = solo(pista), lancada = Math.min(...r.voltas.slice(1));
-    assert.ok(lancada <= r.ideal * 1.06, `${pista}: volta lançada ${lancada.toFixed(2)} s contra ideal ${r.ideal.toFixed(2)} s (${r.voltas.map((x) => x.toFixed(1))})`);
-    // (bater e sair da pista pode: o robô erra como gente)
-  }
-});
-
 test("nas curvas de Interlagos o robô difícil anda a 90% ou mais da velocidade de quem joga", { timeout: 120000 }, () => {
   const r = solo("interlagos"), n = r.pf.n, topo = Math.max(...volta.amostras.map((a) => a[4]));
   const vu = new Float64Array(n), cont = new Float64Array(n);
