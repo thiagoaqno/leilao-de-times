@@ -81,13 +81,13 @@ async function entrar({ codigo, nome }) {
 // ---------- a porta de entrada (dentro do formulário da sede solo) ----------
 function formulario() {
   return `<form id="gnova" autocomplete="off"><label for="gnome">Seu nome</label><input id="gnome" name="nome" maxlength="8" placeholder="até 8 letras" value="${h(ler("corrida:temporada:nome") || "")}">
-    <button class="primary" type="submit">Abrir sala com os amigos</button></form>
-    <form id="gentra" autocomplete="off" style="margin-top:12px"><label for="gcodigo">Já tenho um código de sala</label><input id="gcodigo" name="codigo" maxlength="5" placeholder="5 letras" style="text-transform:uppercase"><button type="submit">Entrar na sala</button></form>`;
+    <button class="cx-bt" type="submit">Abrir sala com os amigos</button></form>
+    <form id="gentra" autocomplete="off" style="margin-top:12px"><label for="gcodigo">Já tenho um código de sala</label><input id="gcodigo" name="codigo" maxlength="5" placeholder="5 letras" style="text-transform:uppercase"><button class="cx-bt" type="submit">Entrar na sala</button></form>`;
 }
 function telaDoConvite(erro) {
-  app.innerHTML = `<div class="abertura"><section><div class="taglinha">Temporada com os amigos · 2026</div><h1>Sala<span>${h(CODIGO_URL)}</span></h1><p class="explica">Escolha seu nome para entrar. Cada amigo assume uma equipe (ou dois dividem a mesma) e todos disputam a mesma temporada.</p></section>
-    <section class="folha"><h2>Entrar na sala</h2>${erro ? `<p role="alert" style="color:#ff9a9a">${h(erro)}</p>` : ""}<form id="gnomeconv" autocomplete="off"><label for="gnome">Seu nome</label><input id="gnome" name="nome" maxlength="8" placeholder="até 8 letras" required value="${h(ler("corrida:temporada:nome") || "")}">
-    <button class="primary" type="submit">Entrar →</button></form><div class="or"><a href="/corrida/temporada/">Voltar à temporada solo</a></div></section></div>`;
+  const id = Object.keys(Pilotos.EQUIPES)[0], E = window.EntradaCarreira;
+  app.innerHTML = E.convite({ codigo: CODIGO_URL, erro, nome: ler("corrida:temporada:nome") || "", equipe: id, nomeEquipe: Pilotos.EQUIPES[id].nome });
+  E.ligarConvite(id);
 }
 
 // ---------- a sala antes da temporada ----------
@@ -104,6 +104,7 @@ function listaDePessoas() {
   return `<ul class="pessoas">${S.pessoas.map((p) => `<li class="${p.online ? "on" : ""}"><i class="bolinha" title="${p.online ? "na sala" : "ausente"}"></i><b>${h(p.nome)}${p.id === S.eu ? " (você)" : ""}</b>${p.host ? `<em>anfitrião</em>` : ""}<span>${p.equipe ? `<i class="faixa" style="--c:${h(equipe(p.equipe).cor)}"></i>${h(equipe(p.equipe).nome)}${p.carro != null ? ` · carro ${p.carro + 1}` : ""}` : "sem equipe: só acompanha"}</span>${eh && p.id !== S.eu ? `<button class="small ghost" data-cargo="${h(p.id)}">Tornar anfitrião</button>` : ""}</li>`).join("")}</ul>`;
 }
 function telaDaSala() {
+  window.Central?.sair(); // (a sala de espera ainda tem o visual próprio; a entrada e o convite usam o estúdio da Central)
   const eh = S.eu === S.host, alguem = S.pessoas.some((p) => p.equipe);
   document.documentElement.style.setProperty("--eq", S.minhaEquipe ? equipe(S.minhaEquipe).cor : "#e10600");
   atualizarTela(`<div class="cabecalho"><div class="identidade"><div><small>Temporada com os amigos</small><h1>Sala ${h(S.codigo)}</h1></div></div><div class="dinheiro"><small>${S.pessoas.length} de ${G.MAX_PESSOAS} pessoas</small><button id="gconvite" class="small">Copiar convite</button></div></div>

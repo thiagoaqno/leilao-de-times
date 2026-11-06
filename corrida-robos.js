@@ -835,7 +835,7 @@ function passoFantasma(room, p, ia, pf, dt, now) {
     Contato.depoisDoPasso(room, p, car, now - dt * 1000 + (s + 1) * Sim.PASSO * 1000, [], false); // (só guarda o histórico)
   }
   ia.s = car.idx; ia.v = car.v; ia.lat = Sim.quadro(tr, car.x, car.y, car.idx).lat; ia.box = null; p.box = null;
-  p.pos = { x: car.x, y: car.y, z: car.z, a: car.a, v: car.v, vx: car.vx, vy: car.vy, r: car.r, prog: car.prog, at: now };
+  p.pos = { x: car.x, y: car.y, z: car.z, a: car.a, v: car.v, vx: car.vx, vy: car.vy, r: car.r, prog: car.prog, at: room.relogioRobos ?? now };
 }
 function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   const tr = Sim.criarPista(T.PISTAS[room.config.pista], room.config.pista), car = ia.sim;
@@ -991,7 +991,15 @@ function passoF1(room, p, ia, pf, dt, now, setor, emit, outros) {
   ia.s = car.idx; ia.v = car.v; ia.lat = Sim.quadro(tr, car.x, car.y, car.idx).lat;
   ia.pneu = car.pneu; ia.ers = car.ers; ia.box = car.box?.fase ? car.box : null; p.box = ia.box;
   if (estavaNoBox && !p.box) p.boxFant = now + Contato.BOX_FANTASMA_MS; // saiu do corredor: mais 2 s de fantasma
-  p.pos = { x: car.x, y: car.y, z: car.z, a: car.a, v: car.v, vx: car.vx, vy: car.vy, r: car.r, prog: car.prog, at: now };
+  p.pos = { x: car.x, y: car.y, z: car.z, a: car.a, v: car.v, vx: car.vx, vy: car.vy, r: car.r, prog: car.prog, at: room.relogioRobos ?? now };
+}
+// Quanto os robôs de F1 andam neste ciclo: o tempo real que passou, em passos inteiros da física. O timer não bate certinho (no Windows, de 46 a 62 ms): andar sempre
+// 50 ms e carimbar a hora real fazia a tela ver o carro frear e acelerar. `room.relogioRobos` é a hora exata em que os robôs estão, e é ela que vai na pose.
+function tempoDoPasso(room, agora = Date.now()) {
+  if (room.relogioRobos == null || agora - room.relogioRobos > 250) room.relogioRobos = agora - Sim.PASSO * 1000; // (no começo, ou depois de um engasgo longo: não tenta recuperar)
+  const n = Math.floor((agora - room.relogioRobos) / (Sim.PASSO * 1000));
+  room.relogioRobos += n * Sim.PASSO * 1000;
+  return n * Sim.PASSO;
 }
 // um passo (dt em segundos). setor(p, s) é o mesmo onSector dos humanos; emit manda eventos para a sala
 function passo(room, dt, setor, emit) {
@@ -1107,4 +1115,4 @@ function passo(room, dt, setor, emit) {
 }
 function possivel(pista, spec) { return perfilF1(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0), 1); }
 possivel.topo = (pista, spec) => topoDe(perfil(pista, spec || F1Equipes.specDaEquipe("mclaren"), 0));
-module.exports = { transito, prepararTracado, tracadoPronto, linhaF1Pronta, idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };
+module.exports = { tempoDoPasso, transito, prepararTracado, tracadoPronto, linhaF1Pronta, idealDe, possivel, forcaDoContato, preparar, remover, largar, passo, NIVEIS, RITMO, GRID_F1, aprender, usarFonte, aprendido, tempoDaVolta, perfil, ritmoDosRobos, prazoDeChegada, voltaLancada, duracaoDaClassificacao, escolherComposto, decidirParada };

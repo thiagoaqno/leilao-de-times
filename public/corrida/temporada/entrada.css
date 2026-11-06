@@ -1,0 +1,58 @@
+/* A entrada da Carreira F1 e o convite da sala: o mesmo estúdio e os mesmos tokens da Central (central.css). */
+body.cx-entrada .bar{display:block;position:absolute;inset:0 0 auto;z-index:3;background:none;border:0;box-shadow:none;pointer-events:none}
+body.cx-entrada .bar .bar-in{max-width:none;padding:10px clamp(16px,2.6vw,48px)}
+body.cx-entrada .bar a,body.cx-entrada .bar button{pointer-events:auto;color:var(--cx-tx2);background:none;border-color:var(--cx-lin)}
+body.cx-entrada .bar a:hover,body.cx-entrada .bar button:hover{color:var(--cx-tx)}
+.cxe{position:relative;z-index:1;box-sizing:border-box;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,400px);grid-template-rows:auto auto 1fr auto auto;column-gap:clamp(24px,4vw,72px);padding:clamp(44px,6vh,56px) clamp(16px,2.6vw,48px) clamp(16px,3vh,28px);color:var(--cx-tx);font-family:var(--cx-f)}
+.cxe *{box-sizing:border-box}
+.cxe-topo{grid-column:1;grid-row:1}
+.cxe-faixa{display:flex;align-items:center;gap:clamp(12px,1.4vw,20px)}
+.cxe-faixa i{width:1px;height:28px;background:var(--cx-lin)}
+.cxe-logo{display:grid;place-items:center;width:clamp(38px,3.2vw,52px);height:clamp(38px,3.2vw,52px)}.cxe-logo img{max-width:100%;max-height:100%;object-fit:contain}
+.cxe-faixa h2{margin:0;font-size:clamp(15px,1.3vw,20px);font-weight:500;letter-spacing:.34em;text-transform:uppercase}
+.cxe-capa{grid-column:1;grid-row:2;margin-top:clamp(14px,3vh,30px);animation:cxe-entra .5s var(--cx-t) both}
+.cxe-capa h1{margin:clamp(6px,1vh,10px) 0 0;color:var(--cx-tx);font:500 clamp(36px,4.6vw,76px)/1.04 var(--cx-f);letter-spacing:-.035em;text-transform:none}
+.cxe-capa h1 span{color:var(--eq-at);letter-spacing:.04em}
+.cxe-capa p{max-width:440px;margin:12px 0 0;color:var(--cx-tx2);font-size:clamp(14px,1.1vw,17px);line-height:1.5}
+.cxe-ficha{grid-column:1;grid-row:4;align-self:end;display:flex;flex-direction:column;gap:2px;margin-top:12px;animation:cxe-entra .3s var(--cx-t) both}
+.cxe-ficha b{font-size:clamp(18px,1.7vw,26px);font-weight:600}.cxe-ficha span{color:var(--cx-tx2);font-size:clamp(13px,1vw,15px)}
+.cxe-equipes{grid-column:1;grid-row:5;display:flex;gap:clamp(2px,.5vw,8px);margin-top:clamp(10px,1.8vh,16px);padding-top:clamp(8px,1.4vh,12px);border-top:1px solid var(--cx-lin);overflow-x:auto;scrollbar-width:none}
+.cxe .cxe-eq{position:relative;flex:1 0 46px;max-width:92px;height:clamp(44px,6.4vh,58px);display:grid;place-items:center;padding:6px;background:none;border:0;cursor:pointer;opacity:.62;transition:opacity .15s,background .15s,transform .18s var(--cx-t)}
+.cxe .cxe-eq img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 0 1px #0009) saturate(.85)}
+.cxe .cxe-eq::after{content:"";position:absolute;inset:auto 8% 0;height:3px;background:var(--c);transform:scaleX(0);transition:transform .22s var(--cx-t)}
+.cxe .cxe-eq:hover,.cxe .cxe-eq:focus-visible{opacity:1;background:var(--cx-hover);transform:translateY(-2px)}.cxe .cxe-eq:hover::after{transform:scaleX(.5)}
+.cxe .cxe-eq.on{opacity:1}.cxe .cxe-eq.on img{filter:drop-shadow(0 0 1px #0009)}.cxe .cxe-eq.on::after{transform:scaleX(1)}
+.cxe-painel{grid-column:2;grid-row:1/-1;align-self:center;display:flex;flex-direction:column;padding-left:clamp(20px,2.4vw,40px);border-left:1px solid var(--cx-lin);animation:cxe-entra .5s .06s var(--cx-t) both}
+.cxe-abas{display:flex;gap:clamp(12px,1.4vw,20px);border-bottom:1px solid var(--cx-lin)}
+.cxe .cxe-abas button{position:relative;padding:8px 2px 11px;background:none;border:0;color:var(--cx-tx2);font:500 clamp(13px,1vw,15px) var(--cx-f);white-space:nowrap;cursor:pointer;transition:color .15s}
+.cxe .cxe-abas button::after{content:"";position:absolute;inset:auto 0 -1px;height:3px;background:var(--eq-at);transform:scaleX(0);transition:transform .22s var(--cx-t)}
+.cxe .cxe-abas button:hover,.cxe .cxe-abas button:focus-visible{color:var(--cx-tx)}.cxe .cxe-abas button:hover::after{transform:scaleX(.5)}.cxe .cxe-abas button.on{color:var(--cx-tx);font-weight:800}.cxe .cxe-abas button.on::after{transform:scaleX(1)}
+.cxe-corpo{padding-top:clamp(12px,2vh,20px);animation:cxe-entra .28s var(--cx-t) both}.cxe-corpo[hidden]{display:none}
+.cxe-corpo h3{margin:0 0 6px;color:var(--cx-tx);font:600 clamp(20px,1.8vw,28px) var(--cx-f);letter-spacing:-.01em;text-transform:none}
+.cxe form{display:flex;flex-direction:column;margin:0}
+.cxe label{display:block;margin:clamp(9px,1.5vh,14px) 0 5px;color:var(--cx-tx2);font:600 11px/1.3 var(--cx-f);letter-spacing:.18em;text-transform:uppercase}
+.cxe input,.cxe select{width:100%;height:clamp(40px,5.4vh,46px);padding:0 12px;background:var(--cx-sup);border:1px solid var(--cx-lin);border-radius:0;color:var(--cx-tx);font:500 15px var(--cx-f);transition:border-color .15s,background .15s}
+.cxe select option{color:#17181b;background:#f6f3ef}
+.cxe input::placeholder{color:var(--cx-tx2);opacity:.8}
+.cxe input:hover,.cxe select:hover{border-color:var(--cx-tx2)}.cxe input:focus,.cxe select:focus{outline:2px solid var(--eq-at);outline-offset:-1px;border-color:transparent}
+.cxe .cxe-oculto{position:absolute;width:1px;height:1px;padding:0;border:0;opacity:0;pointer-events:none}
+.cxe-duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cxe .cx-bt{display:inline-flex;align-items:center;justify-content:center;gap:12px;width:100%;margin-top:clamp(14px,2.4vh,22px);padding:clamp(11px,1.6vh,14px) 18px;background:var(--eq);border:0;border-radius:0;color:var(--eq-txt);font:700 clamp(15px,1.15vw,18px) var(--cx-f);cursor:pointer;text-transform:none;transition:filter .15s,transform .18s var(--cx-t),box-shadow .2s}
+.cxe .cx-bt:hover,.cxe .cx-bt:focus-visible{filter:brightness(1.1);transform:translateY(-2px);box-shadow:var(--cx-sombra)}.cxe .cx-bt:hover .cx-seta{transform:translateX(5px)}
+.cxe .cx-seta{width:22px;height:13px;transition:transform .18s var(--cx-t)}
+.cxe-dica{margin:0;color:var(--cx-tx2);font-size:14px;line-height:1.5}
+.cxe-erro{margin:6px 0 0;color:var(--cx-verm);font-size:14px}
+.cxe-link{display:inline-block;margin-top:14px;color:var(--cx-tx2);font-size:14px}.cxe-link:hover{color:var(--cx-tx)}
+.cxe-grupo #gentra{margin-top:clamp(14px,2.4vh,22px)!important;padding-top:clamp(2px,.6vh,8px);border-top:1px solid var(--cx-lin)}
+.cxe-grupo #gentra .cx-bt,.cxe-grupo #gentra button{background:none;border:1px solid var(--cx-tx2);color:var(--cx-tx)}
+.cxe-pe{margin-top:clamp(14px,2.6vh,24px);padding-top:10px;border-top:1px solid var(--cx-lin)}
+.cxe .cxe-tema{display:flex;justify-content:space-between;width:100%;padding:6px 0;background:none;border:0;color:var(--cx-tx2);font:500 14px var(--cx-f);cursor:pointer}.cxe .cxe-tema:hover{color:var(--cx-tx)}.cxe-tema b{color:var(--cx-tx);font-weight:700}
+@keyframes cxe-entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (max-width:1000px){
+  .cxe{display:flex;flex-direction:column;padding-inline:16px}
+  .cxe-capa h1{font-size:clamp(32px,9vw,52px)}
+  .cxe-ficha{align-self:flex-start;margin-top:min(46vw,300px)}
+  .cxe-painel{align-self:stretch;margin-top:16px;padding:14px 0 0;border-left:0;border-top:1px solid var(--cx-lin)}
+  .cxe .cxe-eq{flex:0 0 52px}
+}
+@media (prefers-reduced-motion:reduce){.cxe,.cxe *{animation:none!important;transition-duration:.01ms!important}}
