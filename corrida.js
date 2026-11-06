@@ -246,8 +246,12 @@ module.exports = function attachCorrida(io) {
     if (room.order.some((id) => room.players[id].bot)) {
       let tique = 0;
       const emit = (event, data) => nsp.to(room.code).emit(event, data);
+      room.relogioRobos = null;
       room.botTimer = setInterval(() => {
-        Robos.passo(room, 0.05, (p, s) => { if (onSector(room, p, s)) broadcast(room); }, (e, d) => {
+        // nas regras de F1, os robôs andam o tempo real que passou (o timer não bate certinho em 50 ms: Robos.tempoDoPasso)
+        const dtRobos = room.config.regras === "f1" ? Robos.tempoDoPasso(room) : 0.05;
+        if (dtRobos <= 0) return;
+        Robos.passo(room, dtRobos, (p, s) => { if (onSector(room, p, s)) broadcast(room); }, (e, d) => {
           if (e === "box") { concluirParada(room, room.players[d.id], d); return broadcast(room); } // um robô acabou a parada
           if (e === "batida") { if (aplicarBatida(room, room.players[d.id], d.forca, d.tipo, Date.now(), d.chave)) broadcast(room); return; } // um robô bateu (no muro ou em outro carro)
           emit(e, d); if (e === "item:box" || e === "item:use") broadcast(room);
