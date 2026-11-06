@@ -1,18 +1,19 @@
-# Refaz a entrada da carreira F1 no visual da Central e ajusta a música
+# Rádio novo da corrida: estrategista, objetivo da corrida, observador e nomes
 
-A tela de entrada de `/corrida/temporada/` e o convite da sala com os amigos ainda estavam no visual antigo. Agora usam o estúdio, a cor da equipe e o tema claro ou escuro da Central.
+- **Estrategista:** assim que há volta de referência, avisa em que volta a chuva vem ou para, por voz e na tela (`estrategistaDaChuva` em `hud.js`). É uma estimativa: a hora da chuva vem do roteiro do clima, e a volta sai do seu ritmo.
+- **Engenheiro:** na largada da carreira, diz o objetivo daquela corrida (a meta do GP, `im.meta.gp`). Fora da carreira não fala.
+- **Observador (spotter):** segunda voz que avisa carro à esquerda, à direita e pista livre (`observador` em `hud.js`). Os áudios saem de `ferramentas/radio-engenheiro.js`; defina `ELEVENLABS_VOICE_SPOTTER` para a voz dele (sem ela, usa a do engenheiro).
+- **Nomes:** `dolllyin`, `nikao` e `1kizzy` no rádio. `1kizzy` é falado "Kizzy" e `dolllyin`, "Dollyin".
+- **Faxina:** apagados os 99 mp3 soltos na raiz do repositório; nenhum código os usava.
 
-- **Entrada** (`temporada/entrada.js`, `entrada.css`): carro grande, faixa com as 11 equipes (hover e marcação na cor de cada uma) e um painel à direita com três abas: Nova temporada, Recuperar e Com os amigos. Antes, os três formulários ficavam empilhados na mesma coluna.
-- **Convite** (`?sala=CÓDIGO`): o mesmo visual, só com o nome para entrar.
-- **Modo escuro:** um botão no painel, usando a mesma preferência da Central (`corrida:tema`).
-- Os campos, os ids e as ações não mudaram. Só quem usa a sala com os amigos ou o código de recuperação precisa abrir a aba antes; dois testes e2e ganharam esse clique.
-- A sala de espera ainda tem o visual antigo e fica para o próximo PR, junto com o carregamento.
+## Para ouvir
 
-## Música (`public/carreira/musica.js`, na Carreira de Treinador, na Corrida e na Carreira F1)
-
-- A lista é embaralhada ao abrir: começa numa música diferente e não repete até dar a volta.
-- O volume padrão é 5%. O volume guardado só vale se a pessoa mexeu nele depois desta mudança, porque os saves antigos guardavam o padrão de 40%. Por isso, quem tinha ajustado à mão volta para 5% uma vez.
+Os áudios novos não vão neste PR: sem os mp3, cada fala nova fica em silêncio e o aviso de chuva aparece só na tela. Depois do merge, rode `gerar-radio.bat` (com `--refazer` para regravar todos).
 
 ## Verificação
 
-Conferido no navegador embutido, em servidor local: entrada nos temas claro e escuro, troca de equipe, abas, convite, volume em 5% e música diferente ao abrir, sem erros no console. A criação de uma carreira pelo formulário novo chegou à Central com a equipe escolhida. Em largura estreita conferi só o desenho (800 px); não testei num celular de verdade. O carro aparece com renderização por software, e não numa placa de vídeo. Não rodei a suíte local (regra do projeto); o CI confere.
+Só sintaxe conferida (`node --check`): não houve corrida nem áudio de teste nesta mudança. O CI confere a suíte.
+
+## Fora deste PR
+
+A tela de câmera e retrovisores fixa no lobby, com visual novo.

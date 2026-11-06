@@ -44,7 +44,7 @@ export function hud() {
   const luz = !!race.luzes;
   let big = "";
   if (left > 0) { const n = Math.ceil(left); big = !luz && n <= 3 ? String(n) : ""; if (!luz && n <= 3 && race.beeped !== n) { race.beeped = n; Sound.beep(false); } }
-  else if (left > -1) { big = luz ? "" : "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); radioF1("largada"); } }
+  else if (left > -1) { big = luz ? "" : "VAI!"; if (race.beeped !== 0) { race.beeped = 0; Sound.beep(true); radioF1("largada"); objetivoDaCorrida(); } }
   luzesDaLargada(left);
   const f1on = cfg.regras === "f1" && E.S.phase === "race"; // o HUD novo (torre e painel) só nas regras de F1; no arcade fica o antigo
   const f1mfd = cfg.regras === "f1" && E.S.phase === "quali";
@@ -233,7 +233,38 @@ function avisoDeChuva(m) {
   if (vistos.has(chave)) return; vistos.add(chave);
   radioF1(aviso[0], { forcar: true }); toast(aviso[1], 4200);
 }
+// O estrategista diz em que volta a chuva vem (ou para), assim que dá para estimar: pela volta de referência de quem joga. É uma estimativa pelo roteiro do clima.
+function estrategistaDaChuva(m) {
+  const S = E.S, F = window.F1Regras, ref = m && (m.best || m.last);
+  if (!ref || m.finish != null || S.phase !== "race" || !S.clima || !S.clima.chove || !F.proximaMudanca || !(clima.t >= 0)) return;
+  const mud = F.proximaMudanca(S.clima, clima.t); if (!mud || (mud.tipo !== "comeca" && mud.tipo !== "para")) return;
+  const vistos = race.chuvaPrevista || (race.chuvaPrevista = new Set()), chave = S.startAt + ":" + mud.quando; if (vistos.has(chave)) return;
+  const volta = (m.laps || 0) + 1 + Math.floor(mud.em / ref); if (volta > (S.config.voltas || 0)) return; // só depois do fim da corrida: não interessa
+  vistos.add(chave);
+  window.Radio?.frase?.([mud.tipo === "comeca" ? "chuvavolta" : "secavolta", `volta-${volta}`], "estrategista", { forcar: true });
+  toast(mud.tipo === "comeca" ? `🌧️ Estrategista: chuva prevista na volta ${volta}` : `🌤️ Estrategista: a chuva deve parar na volta ${volta}`, 6000);
+}
+// O engenheiro diz o objetivo desta corrida na largada (na carreira: sede.js e grupo.js guardam a meta do GP ao abrir a Central).
+function objetivoDaCorrida() {
+  if (race.objetivoDito) return; race.objetivoDito = true;
+  let o = null; try { o = JSON.parse(localStorage.getItem("corrida:objetivoGP")); } catch { /* sem armazenamento */ }
+  if (!o || !(o.gp >= 1) || Date.now() - o.em > 3 * 60 * 60 * 1000) return;
+  window.Radio?.frase?.(o.gp === 1 ? ["objetivovencer", "objetivofim"] : ["objetivo", `top-${Math.min(20, o.gp)}`], "objetivo", { forcar: true });
+}
+// O observador: carro emparelhado à esquerda ou à direita, e "livre" quando ele sai.
+function observador(now) {
+  const c = race.car; if (!c || c.v < 60 || !race.ghosts) return;
+  const O = race.spot || (race.spot = { lado: 0, em: 0, conta: 0 }), fx = Math.cos(c.a), fy = Math.sin(c.a); let lado = 0, perto = Infinity;
+  for (const gh of race.ghosts.values()) {
+    const dx = gh.x - c.x, dy = gh.y - c.y, fr = dx * fx + dy * fy, la = -dx * fy + dy * fx, d = Math.abs(la);
+    if (Math.abs(fr) < 48 && d > 14 && d < 62 && d < perto) { perto = d; lado = la > 0 ? 1 : -1; }
+  }
+  if (lado === O.lado || now - O.em < 1800) return;
+  const antes = O.lado; O.lado = lado; O.em = now;
+  if (lado) radioF1(lado > 0 ? "spotdir" : "spotesq", { forcar: true }); else if (antes) radioF1("spotlivre");
+}
 function hudF1(m, st, now) {
+  estrategistaDaChuva(m); observador(now);
   const t0 = performance.now(); if (t0 - (race.hudF1T || 0) < 100) return; race.hudF1T = t0;
   avisoDeChuva(m);
   if (race.pneu && m && m.finish == null && m.started && race.pneu.desgaste > window.F1Regras.PENHASCO * 0.75 && race.pneu.desgaste <= window.F1Regras.PENHASCO) radioF1("pneu");

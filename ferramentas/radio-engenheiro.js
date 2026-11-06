@@ -12,10 +12,11 @@ const PASTA = path.join(__dirname, "..", "public", "corrida", "radio");
 // a voz: --voz <id> (o GERAR-VOZES-CORRIDA.bat passa), senão ELEVENLABS_VOICE_ID, senão a padrão do engenheiro
 const argv = process.argv.slice(2), iv = argv.indexOf("--voz");
 const VOZ = (iv >= 0 ? String(argv[iv + 1] || "").trim() : "") || (process.env.ELEVENLABS_VOICE_ID || "").trim() || "pNInz6obpgDQGcFmaJgB";
+const VOZ_SPOTTER = (process.env.ELEVENLABS_VOICE_SPOTTER || "").trim() || VOZ; // a voz do observador (spot*.mp3); sem ela, a mesma do engenheiro
 const refazer = argv.includes("--refazer"), estimar = argv.includes("--estimar");
 
 async function gerar(chave, f) {
-  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(VOZ)}?output_format=mp3_44100_64`, {
+  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${String(f.id).startsWith("spot") ? VOZ_SPOTTER : VOZ}?output_format=mp3_44100_64`, {
     method: "POST",
     headers: { "xi-api-key": chave, "Content-Type": "application/json", Accept: "audio/mpeg" },
     body: JSON.stringify({ text: f.texto, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.8, similarity_boost: 0.75, style: 0, use_speaker_boost: true } }),

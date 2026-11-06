@@ -4,6 +4,10 @@
 (function (root) {
 // só o que um engenheiro diria NO MEIO da corrida (e no fim dela), em tom sério; 4 a 5 variações por situação
 const SITUACOES = {
+  // o observador (spotter): outra voz (ferramentas/radio-engenheiro.js, ELEVENLABS_VOICE_SPOTTER), só o carro ao lado e a pista livre
+  spotesq: ["Carro à esquerda.", "À esquerda.", "Esquerda, esquerda."],
+  spotdir: ["Carro à direita.", "À direita.", "Direita, direita."],
+  spotlivre: ["Livre.", "Pista livre.", "Passou. Livre."],
   largada: ["Luzes se apagando. Largada limpa.", "Atenção na primeira curva. Sem riscos.", "Boa largada. Agora encontre o ritmo.", "Cuidado com o tráfego na primeira volta.", "Largada feita. Proteja a posição."],
   voltarapida: ["Volta mais rápida da corrida. Bom ritmo.", "Melhor volta registrada. Mantenha assim.", "Esse é o ritmo que precisamos.", "Volta mais rápida. Continue consistente.", "Bom setor final. Volta mais rápida."],
   ganhou: ["Posição ganha. Mantenha o ritmo.", "Boa manobra. Agora consolide.", "Ganhamos a posição. Foco no próximo.", "Limpo. Abra uma margem agora.", "Boa. Próximo carro a um segundo."],
@@ -36,7 +40,7 @@ const SITUACOES = {
   corridaseca: ["A pista está seca no momento.", "Condições de pista seca por enquanto."],
 };
 // situações que passam na frente do intervalo mínimo entre falas
-const URGENTES = ["box", "safety"];
+const URGENTES = ["box", "safety", "spotesq", "spotdir", "spotlivre"];
 const lista = [];
 for (const [quando, textos] of Object.entries(SITUACOES)) textos.forEach((texto, i) => lista.push({ id: `${quando}-${i + 1}`, texto, quando }));
 
@@ -48,7 +52,7 @@ const NOMES = {
   hadjar: "Hadjar", lawson: "Lawson", lindblad: "Lindblad", alonso: "Alonso", stroll: "Stroll", albon: "Albon", sainz: "Sainz", hulkenberg: "Hülkenberg",
   bortoleto: "Bortoleto", gasly: "Gasly", colapinto: "Colapinto", ocon: "Ocon", bearman: "Bearman", perez: "Pérez", bottas: "Bottas",
   // a galera (o nome que a pessoa usa na sala, sem acento e em minúsculas, vira o id)
-  tabba: "Tabba", kizzy: "Kizzy", notizin: "Notizin", sho: "Shô", dollyin: "Dollyin", atrox: "Átrox", jv: "Jota Vê", verago: "Verago",
+  tabba: "Tabba", kizzy: "Kizzy", "1kizzy": "Kizzy", notizin: "Notizin", sho: "Shô", dollyin: "Dollyin", dolllyin: "Dollyin", atrox: "Átrox", jv: "Jota Vê", verago: "Verago", nikao: "Nikão",
 };
 const PECAS_TEXTO = {
   // as aberturas
@@ -71,7 +75,12 @@ const PECAS_TEXTO = {
   afastando: ["Ele está abrindo.", "Ele está mais rápido agora.", "Estamos perdendo tempo para ele."],
   lider: ["Você está liderando.", "P1. Ninguém à frente.", "Pista livre. Você é o líder."],
 };
-const PECAS = [];
+// o estrategista (a volta da chuva) e o engenheiro (o objetivo desta corrida): abertura + número
+const VOLTAS_PECA = 60, TOPS_PECA = 20;
+const PECAS = [{ id: "chuvavolta", texto: "Aqui é o estrategista. A previsão é de chuva na" }, { id: "secavolta", texto: "Aqui é o estrategista. A chuva deve parar na" },
+  { id: "objetivo", texto: "O objetivo desta corrida: terminar entre os" }, { id: "objetivovencer", texto: "O objetivo desta corrida é vencer. Vamos buscar." }, { id: "objetivofim", texto: "Vamos em frente." }];
+for (let v = 1; v <= VOLTAS_PECA; v++) PECAS.push({ id: `volta-${v}`, texto: `volta ${v}.` });
+for (let n = 2; n <= TOPS_PECA; n++) PECAS.push({ id: `top-${n}`, texto: `${n} primeiros.` });
 for (const [id, texto] of Object.entries(NOMES)) PECAS.push({ id: `nome-${id}`, texto });
 for (const [k, texto] of Object.entries(PECAS_TEXTO.gap)) PECAS.push({ id: `gap-${k}`, texto });
 for (const [quando, textos] of Object.entries(PECAS_TEXTO)) if (Array.isArray(textos)) textos.forEach((texto, i) => PECAS.push({ id: `${quando}-${i + 1}`, texto, quando }));
