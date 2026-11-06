@@ -2,7 +2,7 @@
 // ver f1/2026/LICENCA.txt). O modelo vem com 31 malhas e 28 materiais; aqui, UMA vez por arquivo, ele vira poucas peças (menos chamadas de
 // desenho que o carro clássico): o corpo todo num material só (a pintura de equipe de f1-pintura.js), o flap da asa traseira (gira com o
 // DRS), cada roda inteira (pneu, aro e disco, com cor por vértice), o volante e as luzes. f1.js usa o que sai daqui (`construir2026`).
-// Os decalques de patrocinadores do modelo (marcas de verdade) e o número 27 NÃO entram: a pintura das equipes tem os patrocínios inventados.
+// Os decalques de patrocinadores do modelo e o número 27 NÃO entram: as marcas das equipes vêm da pintura (f1-pintura.js e f1-marcas.js).
 // Medidas em metros do carro (o comprimento fica igual ao do modelo clássico, TAM); a frente é −z, como em todo o jogo.
 import * as THREE from "three";
 import { aroDaRoda } from "./f1-pintura.js";
@@ -24,7 +24,7 @@ const COR = {
   glass: "#2b434d", sauber_mirror_right: "#20252b", chrome: "#2a2d33", black_s: "#101113", driver_color: "#dcec1c", gp21_cinture: "#202329",
   whitelight: "#cfd2d6", chrome_ao: "#8d9298", kers_red: "#c81414", kers_yellow: "#e6dc20", kers_green: "#12c035",
   indicator_lights: "#a4a8ac", vehicle_revs_type2: "#0a0b0d",
-  tread_medium: "#111113", sauber_wheel_hub: "#34373d", discs: "#55504a",
+  tread_medium: "#0d0d0e", sauber_wheel_hub: "#141518", discs: "#3a3633",
 };
 const SEM_NOME = (m) => m.name.replace(/\.\d+$/, "");
 const DESCARTA = new Set(["sauber_decals", "sauber_number_27", "sw_decals"]); // patrocinadores de verdade e o número 27 do modelo
