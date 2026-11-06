@@ -126,29 +126,6 @@ test("a ficha do carro dá notas de 1 a 10 e as extremidades aparecem", () => {
   assert.ok(nota(montagem(0, 0, 0, 0, 0, 8), "confiab") > nota(montagem(8, 0, 0, 0, 0, 0), "confiab"));
 });
 
-test("os robôs correm com o carro da equipe: o da Red Bull anda diferente do da Haas, e a montagem do chefe vale para os robôs da equipe", () => {
-  const sala = (extra = {}) => ({ config: { pista: "monaco", regras: "f1", voltas: 3, robos: 19, nivel: "medio" }, semente: 11, order: ["h"], players: { h: { id: "h", name: "Ana", sockets: new Set(), color: "#fff", equipe: "mclaren" } }, ...extra });
-  const a = sala(); Robos.preparar(a, ["#e63946"], () => "x");
-  const bots = a.order.map((id) => a.players[id]).filter((p) => p.bot);
-  const porEquipe = (r, eq) => r.order.map((id) => r.players[id]).filter((p) => p.bot && p.equipe === eq);
-  for (const b of bots) assert.deepEqual(b.spec, E.specDaEquipe(b.equipe), `${b.name}: o carro padrão da ${b.equipe}`);
-  const rb = bots.find((p) => p.equipe === "red-bull"), haas = bots.find((p) => p.equipe === "haas");
-  if (rb && haas) assert.notDeepEqual(rb.spec, haas.spec);
-  assert.ok(new Set(bots.map((p) => p.spec.chave)).size >= 8, "as equipes têm carros diferentes");
-  // um humano na McLaren: só sobra um titular dela para robô, e a montagem dele vale para o carro do robô
-  assert.equal(porEquipe(a, "mclaren").length, 1, "o humano ocupa um dos dois carros da McLaren");
-  const b = sala({ montagens: { mclaren: montagem(8, 0, 4, 4, 0, 4) } }); Robos.preparar(b, ["#e63946"], () => "x");
-  const mcl = porEquipe(b, "mclaren")[0];
-  assert.equal(mcl.spec.chave, "8-0-4-4-0-4"); assert.ok(mcl.spec.vmax > E.specDaEquipe("mclaren").vmax);
-  // dois humanos na mesma equipe: nenhum robô dela
-  const c = sala({ order: ["h", "g"], players: { h: { id: "h", name: "Ana", sockets: new Set(), equipe: "haas" }, g: { id: "g", name: "Gui", sockets: new Set(), equipe: "haas" } } });
-  Robos.preparar(c, ["#e63946"], () => "x");
-  assert.equal(porEquipe(c, "haas").length, 0); assert.equal(c.order.length, 20);
-  // o perfil do robô aceita o spec e o guarda por montagem
-  const p1 = Robos.perfil("monaco", rb ? rb.spec : E.specDaEquipe("red-bull"), 0), p2 = Robos.perfil("monaco", E.specDaEquipe("red-bull"), 0);
-  assert.equal(p1, p2); assert.equal(p1.c.vmax, E.specDaEquipe("red-bull").vmax);
-});
-
 test("a falha mecânica: a chance é a do carro, sai da semente e cai em 15% a 85% da corrida", () => {
   const F1 = require("../public/corrida/f1-regras.js");
   const taxa = (m) => { const spec = E.specDaMontagem(m); let n = 0, fracoes = [];

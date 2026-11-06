@@ -8,9 +8,10 @@
 "use strict";
 const CACHE = new Map();
 // pts: [{ x, y, tx, ty }] da pista (cíclica); max: o maior deslocamento lateral do centro do carro (u), um número ou um Float64Array por ponto (Baku: a pista estreita
-// entre as barreiras da Cidade Velha). Devolve Float64Array(lat).
-function otimizar(pts, max0) {
-  const M = typeof max0 === "number" ? () => max0 : (i) => max0[i];
+// entre as barreiras da Cidade Velha), ou { lo, hi } com o limite de cada lado por ponto. `externas`: o máximo de iterações do conjunto ativo. Devolve Float64Array(lat).
+function otimizar(pts, max0, externas = 40) {
+  const porLado = max0 && max0.hi, M = typeof max0 === "number" ? () => max0 : (i) => max0[i];
+  const Hi = porLado ? (i) => max0.hi[i] : M, Lo = porLado ? (i) => max0.lo[i] : (i) => -M(i);
   const n = pts.length, nx = new Float64Array(n), ny = new Float64Array(n), cx = new Float64Array(n), cy = new Float64Array(n);
   for (let i = 0; i < n; i++) { nx[i] = -pts[i].ty; ny[i] = pts[i].tx; cx[i] = pts[i].x; cy[i] = pts[i].y; }
   const dx = new Float64Array(n), dy = new Float64Array(n);
@@ -30,7 +31,7 @@ function otimizar(pts, max0) {
   const g = new Float64Array(n), g0 = new Float64Array(n), r = new Float64Array(n), p = new Float64Array(n), Ap = new Float64Array(n), tmp = new Float64Array(n);
   grad(l, g0); // g(l) = A l + g0 (a função é quadrática)
   const A = (v, out) => { grad(v, tmp); for (let i = 0; i < n; i++) out[i] = tmp[i] - g0[i]; };
-  for (let externa = 0; externa < 40; externa++) {
+  for (let externa = 0; externa < externas; externa++) {
     let mudou = false;
     // gradiente conjugado nos pontos livres: min 1/2 d·A d + g·d com d só nos livres
     grad(l, g);
@@ -44,15 +45,15 @@ function otimizar(pts, max0) {
       const alfa = rr / pAp; let rr2 = 0;
       // passo até a beira mais próxima (se algum ponto passa do limite, para ali e prende)
       let tmax = alfa, qual = -1;
-      for (let i = 0; i < n; i++) if (!prisao[i] && p[i] !== 0) { const alvo = p[i] > 0 ? M(i) : -M(i), t = (alvo - l[i]) / p[i]; if (t < tmax) { tmax = t; qual = i; } }
+      for (let i = 0; i < n; i++) if (!prisao[i] && p[i] !== 0) { const alvo = p[i] > 0 ? Hi(i) : Lo(i), t = (alvo - l[i]) / p[i]; if (t < tmax) { tmax = t; qual = i; } }
       for (let i = 0; i < n; i++) if (!prisao[i]) { l[i] += tmax * p[i]; r[i] -= tmax * Ap[i]; }
-      if (qual >= 0) { prisao[qual] = p[qual] > 0 ? 1 : -1; l[qual] = prisao[qual] * M(qual); mudou = true; break; }
+      if (qual >= 0) { prisao[qual] = p[qual] > 0 ? 1 : -1; l[qual] = prisao[qual] > 0 ? Hi(qual) : Lo(qual); mudou = true; break; }
       for (let i = 0; i < n; i++) rr2 += r[i] * r[i];
       const beta = rr2 / rr; rr = rr2;
       for (let i = 0; i < n; i++) p[i] = prisao[i] ? 0 : r[i] + beta * p[i];
     }
     // prende os que passaram, solta os presos cujo gradiente puxa para dentro
-    for (let i = 0; i < n; i++) if (!prisao[i] && Math.abs(l[i]) > M(i)) { l[i] = Math.sign(l[i]) * M(i); prisao[i] = Math.sign(l[i]); mudou = true; }
+    for (let i = 0; i < n; i++) if (!prisao[i] && (l[i] > Hi(i) || l[i] < Lo(i))) { prisao[i] = l[i] > 0 ? 1 : -1; l[i] = prisao[i] > 0 ? Hi(i) : Lo(i); mudou = true; }
     grad(l, g);
     for (let i = 0; i < n; i++) if (prisao[i] && g[i] * prisao[i] > 0) { prisao[i] = 0; mudou = true; } // o gradiente de J cresce para fora: volta para dentro
     if (!mudou && externa > 0) break;
