@@ -8,6 +8,8 @@ import { montarF1, coresDa, f1Pronto, soltarF1 } from "/corrida/f1.js";
 const reduz = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 // `pos` e `alvo` em metros; `tela` desloca a imagem (fração da tela); `giro` é o ângulo do carro
 const VISTAS = {
+  entrada: { pos: [0, 1.2, 9.2], alvo: [0, 0.42, 0], fov: 29, tela: [-0.2, 0.14], giro: 4.2 },
+  entradaCelular: { pos: [0, 1.2, 7.6], alvo: [0, 0.42, 0], fov: 32, tela: [0, 0.06], giro: 4.2 },
   central: { pos: [0, 1.2, 8.1], alvo: [0, 0.42, 0], fov: 29, tela: [-0.03, 0.08], giro: 4.2 },
   centralCelular: { pos: [0, 1.2, 6.8], alvo: [0, 0.42, 0], fov: 32, tela: [0, -0.1], giro: 4.2 },
   dev: { pos: [0, 1.25, 10.4], alvo: [0, 0.42, 0], fov: 29, tela: [-0.22, 0.08], giro: 4.2 },

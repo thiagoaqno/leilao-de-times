@@ -1,26 +1,18 @@
-# Acaba com as microtravadas dos robôs de F1 e mostra as rodas esterçando
+# Refaz a entrada da carreira F1 no visual da Central e ajusta a música
 
-O servidor avançava os robôs sempre 50 ms a cada ciclo, mas carimbava a posição com a hora real, e o timer não bate certinho. No Windows, ele roda a cada ~62 ms: os robôs andavam ~20% mais devagar que o tempo real e a tela via o carro frear e acelerar. Em servidor Linux o timer é mais preciso, então o efeito deve ser menor (não medido lá).
+A tela de entrada de `/corrida/temporada/` e o convite da sala com os amigos ainda estavam no visual antigo. Agora usam o estúdio, a cor da equipe e o tema claro ou escuro da Central.
 
-Agora os robôs de F1 andam o tempo real que passou, em passos inteiros da física (`Robos.tempoDoPasso`), e a pose leva a hora exata em que eles estão (`room.relogioRobos`). As outras regras não mudam.
+- **Entrada** (`temporada/entrada.js`, `entrada.css`): carro grande, faixa com as 11 equipes (hover e marcação na cor de cada uma) e um painel à direita com três abas: Nova temporada, Recuperar e Com os amigos. Antes, os três formulários ficavam empilhados na mesma coluna.
+- **Convite** (`?sala=CÓDIGO`): o mesmo visual, só com o nome para entrar.
+- **Modo escuro:** um botão no painel, usando a mesma preferência da Central (`corrida:tema`).
+- Os campos, os ids e as ações não mudaram. Só quem usa a sala com os amigos ou o código de recuperação precisa abrir a aba antes; dois testes e2e ganharam esse clique.
+- A sala de espera ainda tem o visual antigo e fica para o próximo PR, junto com o carregamento.
 
-## Medição
+## Música (`public/carreira/musica.js`, na Carreira de Treinador, na Corrida e na Carreira F1)
 
-22 robôs em Mônaco, com timer real, o mesmo envio de 30 ms e o mesmo suavizador do navegador (`Pose.Outro`), desenhando a 60 Hz, numa máquina Windows.
+- A lista é embaralhada ao abrir: começa numa música diferente e não repete até dar a volta.
+- O volume padrão é 5%. O volume guardado só vale se a pessoa mexeu nele depois desta mudança, porque os saves antigos guardavam o padrão de 40%. Por isso, quem tinha ajustado à mão volta para 5% uma vez.
 
-| Tremida na velocidade desenhada | Antes | Depois |
-| --- | --- | --- |
-| p50 | 3,5% | 0,3% |
-| p95 | 22,2% | 2,7% |
-| p99 | 49,2% | 4,6% |
-| Quadros que parecem travar | 1,35% | 0% |
+## Verificação
 
-Os tempos de volta em tempo real ficam mais rápidos no Windows, porque os robôs não perdem mais os ~20%.
-
-## Rodas esterçando
-
-As rodas dos robôs já viravam, mas pouco: numa corrida real, 2,5° na maior parte do tempo e 13° em curva (p50 e p90), o que quase não aparece com a câmera atrás do carro. A tela agora usa a guinada que vem do servidor em vez de recalcular quadro a quadro, e a curva leve aparece mais (`Pose.volanteVisto`): pela conta sobre a bancada, 6,6° e 16°, com o mesmo batente de ~24°. Só muda o desenho dos carros dos outros; a física e o carro do jogador não mudam.
-
-## Testes
-
-Novo `tests/corrida-relogio-robos.test.js`, com o `volanteVisto`. Não rodei a suíte local (regra do projeto); o CI confere.
+Conferido no navegador embutido, em servidor local: entrada nos temas claro e escuro, troca de equipe, abas, convite, volume em 5% e música diferente ao abrir, sem erros no console. A criação de uma carreira pelo formulário novo chegou à Central com a equipe escolhida. Em largura estreita conferi só o desenho (800 px); não testei num celular de verdade. O carro aparece com renderização por software, e não numa placa de vídeo. Não rodei a suíte local (regra do projeto); o CI confere.

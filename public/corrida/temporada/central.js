@@ -36,14 +36,17 @@ function tema(equipe) {
   r.setProperty("--eq-no-claro", l > 0.62 ? `color-mix(in srgb,${c1} 58%,#000)` : c1); r.setProperty("--eq-no-escuro", l < 0.14 ? `color-mix(in srgb,${c1} 52%,#fff)` : c1);
   document.body.classList.add("cx-on"); aplicarTema();
 }
-function sair() { document.body.classList.remove("cx-on", "cx-escuro"); garagem?.parar(); garagem = null; document.getElementById("cxFundo")?.remove(); }
+// A entrada da carreira (entrada.js) usa o mesmo estúdio e o mesmo tema, com o carro à esquerda do formulário e sem os atalhos da Central.
+let entradaEq = null;
+function entrada(equipe) { entradaEq = equipe; document.body.classList.add("cx-entrada"); tema(equipe); ligarFundo(equipe); }
+function sair() { entradaEq = null; document.body.classList.remove("cx-on", "cx-escuro", "cx-entrada"); garagem?.parar(); garagem = null; document.getElementById("cxFundo")?.remove(); }
 
 // ---------- o fundo: o estúdio, o emblema em relevo e o carro ----------
-const vistaAgora = () => (aba === "desenvolvimento" ? (innerWidth < 1000 ? "devCelular" : "dev") : innerWidth < 1000 ? "centralCelular" : "central");
+const vistaAgora = () => (entradaEq ? (innerWidth < 1000 ? "entradaCelular" : "entrada") : aba === "desenvolvimento" ? (innerWidth < 1000 ? "devCelular" : "dev") : innerWidth < 1000 ? "centralCelular" : "central");
 function ligarFundo(equipe) {
   let host = document.getElementById("cxFundo");
   if (!host) { host = document.createElement("div"); host.id = "cxFundo"; host.setAttribute("aria-hidden", "true"); host.innerHTML = '<i class="cx-relevo"></i>'; document.body.prepend(host); }
-  host.dataset.aba = aba;
+  host.dataset.aba = entradaEq ? "central" : aba;
   const relevo = host.querySelector(".cx-relevo"), url = `url("/api/corrida/logo/${encodeURIComponent(equipe)}")`;
   if (relevo.dataset.eq !== equipe) { relevo.dataset.eq = equipe; relevo.style.setProperty("--logo", url); }
   if (garagem) { garagem.trocarEquipe(equipe); garagem.vista(vistaAgora()); return; }
@@ -59,7 +62,7 @@ function ligarFundo(equipe) {
         let ultimoRotulo = -Infinity;
         garagem = m.criarEstudio(host, { aoCarregar: () => { host.classList.add("cx-carro-pronto"); posicionarRotulos(); }, aoDesenhar: () => { const agora = performance.now(); if (agora - ultimoRotulo >= 1000 / 30) { ultimoRotulo = agora; posicionarRotulos(); } } });
         if (!garagem) return;
-        garagem.vista(vistaAgora(), true); garagem.trocarEquipe(ctxAtual?.s?.equipe || equipe);
+        garagem.vista(vistaAgora(), true); garagem.trocarEquipe(entradaEq || ctxAtual?.s?.equipe || equipe);
       }).catch((e) => { criando = false; console.warn("estúdio 3D indisponível", e); });
     };
     if (typeof requestIdleCallback === "function") requestIdleCallback(iniciar, { timeout: 2000 }); else setTimeout(iniciar, 0);
@@ -232,7 +235,7 @@ function html(c) {
     ${codigoHTML}<main class="cx-corpo" role="tabpanel">${corpo}</main>
     <footer class="cx-pe"><div class="cx-dicas"><span class="gp"><kbd class="r">A</kbd> Selecionar</span><span class="gp"><kbd class="r">B</kbd> Voltar</span><span class="gp"><kbd>LB</kbd><kbd>RB</kbd> Trocar aba</span><span class="kb"><kbd>Q</kbd><kbd>E</kbd> Trocar aba</span><span class="kb"><kbd>Esc</kbd> Voltar</span><button type="button" class="cx-msg" data-cx-msg><kbd class="r gp">Y</kbd><kbd class="kb">M</kbd> Mensagens · ${c.nMensagens}</button></div><div class="cx-salvo"><svg class="cx-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.600 4.600L19 7"/></svg>Salvo</div></footer></div>`;
 }
-function depois(c) { tema(c.s.equipe); ligarFundo(c.s.equipe); requestAnimationFrame(posicionarRotulos); root.Radio?.desenharBotoes?.(); root.CentralAnalise?.ligarGraficos(); }
+function depois(c) { entradaEq = null; document.body.classList.remove("cx-entrada"); tema(c.s.equipe); ligarFundo(c.s.equipe); requestAnimationFrame(posicionarRotulos); root.Radio?.desenharBotoes?.(); root.CentralAnalise?.ligarGraficos(); }
 // Põe o HTML novo na tela mexendo só no que mudou: quem está olhando não vê a tela piscar quando outro jogador age, e o que não mudou segue no lugar.
 function pintar(alvo, html) {
   if (alvo._cxHtml === html && alvo.querySelector(":scope > .cx")) return;
@@ -284,7 +287,7 @@ function moverFoco(dx, dy) {
 }
 const haDialogo = () => document.querySelector("dialog[open]");
 addEventListener("keydown", (e) => {
-  if (!document.body.classList.contains("cx-on")) return;
+  if (!document.body.classList.contains("cx-on") || entradaEq) return;
   const d = haDialogo(); if (d) return;
   const t = e.target, emCampo = t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName);
   if (emCampo) return;
@@ -295,7 +298,7 @@ addEventListener("keydown", (e) => {
 });
 const pad = { dir: null, espera: 0 };
 setInterval(() => {
-  if (!document.body.classList.contains("cx-on") || document.hidden || !navigator.getGamepads) return;
+  if (!document.body.classList.contains("cx-on") || entradaEq || document.hidden || !navigator.getGamepads) return;
   const p = [...navigator.getGamepads()].find(Boolean); document.body.classList.toggle("cx-pad", !!p); if (!p) return;
   const b = (i) => !!p.buttons[i]?.pressed, ax = p.axes[0] || 0, ay = p.axes[1] || 0, agora = performance.now(), d = haDialogo();
   const dir = b(12) || ay < -0.55 ? "c" : b(13) || ay > 0.55 ? "b" : b(14) || ax < -0.55 ? "e" : b(15) || ax > 0.55 ? "d" : null;
@@ -311,5 +314,5 @@ setInterval(() => {
 }, 90);
 
 root.CentralUI = { h, marca, seta, tituloCard, tricolor, bandeira, dois, nomeGP };
-root.Central = { html, depois, pintar, clique, sair, usarRender(fn) { renderAtual = fn; }, aba: () => aba, estatisticas };
+root.Central = { entrada, temaNaTela: aplicarTema, html, depois, pintar, clique, sair, usarRender(fn) { renderAtual = fn; }, aba: () => aba, estatisticas };
 })(window);
