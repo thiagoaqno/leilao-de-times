@@ -1,19 +1,9 @@
-# Rádio novo da corrida: estrategista, objetivo da corrida, observador e nomes
+# GPs do Bahrein e de Jeddah à noite
 
-- **Estrategista:** assim que há volta de referência, avisa em que volta a chuva vem ou para, por voz e na tela (`estrategistaDaChuva` em `hud.js`). É uma estimativa: a hora da chuva vem do roteiro do clima, e a volta sai do seu ritmo.
-- **Engenheiro:** na largada da carreira, diz o objetivo daquela corrida (a meta do GP, `im.meta.gp`). Fora da carreira não fala.
-- **Observador (spotter):** segunda voz que avisa carro à esquerda, à direita e pista livre (`observador` em `hud.js`). Os áudios saem de `ferramentas/radio-engenheiro.js`; defina `ELEVENLABS_VOICE_SPOTTER` para a voz dele (sem ela, usa a do engenheiro).
-- **Nomes:** `dolllyin`, `nikao` e `1kizzy` no rádio. `1kizzy` é falado "Kizzy" e `dolllyin`, "Dollyin".
-- **Faxina:** apagados os 99 mp3 soltos na raiz do repositório; nenhum código os usava.
+As salas de Bahrein e Jeddah nascem de noite (`horaPadrao`, o mesmo de Singapura e Las Vegas), inclusive na Temporada, que não escolhe horário. As duas pistas já tinham refletores de verdade (`kit/bahrein/luz.js` e `kit/holofotes.js`) e usam o mesmo céu noturno.
 
-## Para ouvir
-
-Os áudios novos não vão neste PR: sem os mp3, cada fala nova fica em silêncio e o aviso de chuva aparece só na tela. Depois do merge, rode `gerar-radio.bat` (com `--refazer` para regravar todos).
+Quem escolher "dia" na sala ainda corre de dia.
 
 ## Verificação
 
-Só sintaxe conferida (`node --check`): não houve corrida nem áudio de teste nesta mudança. O CI confere a suíte.
-
-## Fora deste PR
-
-A tela de câmera e retrovisores fixa no lobby, com visual novo.
+Conferido no código que as duas pistas têm `horaPadrao = "noite"`. Sem print da pista à noite: falta ver em jogo se a claridade ficou parecida com a de Singapura.

@@ -1102,6 +1102,7 @@ const MUROS_SINGAPURA = [
   [0.905, 0.955, -1, 0], // e por dentro, o gramado do Flyer, aberto: nada de muro
 ];
 PISTAS.singapura && (PISTAS.singapura.barreiras = { tecpro: [[0.05, 0.068, 1], [0.33, 0.348, 1], [0.575, 0.605, 1], [0.695, 0.715, -1], [0.848, 0.858, -1], [0.862, 0.872, 1]], pintura: [[0.9, 0.962, 1]] });
+for (const id of ["bahrein", "jeddah"]) if (PISTAS[id]) PISTAS[id].horaPadrao = "noite"; // os GPs do Bahrein e de Jeddah são à noite, como o de Singapura
 if (PISTAS.lasvegas) PISTAS.lasvegas.horaPadrao = "noite"; // o GP de Las Vegas é à noite (sábado, 22 h): a sala nasce de noite (corrida.js e menus.js)
 if (PISTAS.lasvegas) PISTAS.lasvegas.barreiras = { tecpro: [[0.014, 0.044, 1], [0.052, 0.09, -1], [0.226, 0.246, -1], [0.33, 0.35, 1], [0.488, 0.51, 1], [0.806, 0.834, 0], [0.9575, 0.972, 1]], escapes: [[0.008, 0.054, 1], [0.046, 0.094, -1], [0.223, 0.248, -1], [0.262, 0.292, 1], [0.484, 0.512, 1]] };
 if (PISTAS.singapura) { PISTAS.singapura.muros = MUROS_SINGAPURA; PISTAS.singapura.horaPadrao = "noite"; } // o GP de Singapura é à noite: a sala nasce de noite (corrida.js e menus.js)
