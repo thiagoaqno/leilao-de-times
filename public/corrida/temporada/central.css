@@ -1,12 +1,13 @@
 /* A Central da carreira (classes cx-*): limpa, com poucos números em faixas separadas por filetes. Tudo sai dos tokens abaixo, no tema claro (o padrão) ou
    escuro (body.cx-escuro, a engrenagem do topo), e da cor da equipe: --eq e --eq-txt nos botões, --eq-at nas linhas e barras (nunca some no fundo). */
-body.cx-on{--cx-f:Manrope,system-ui,sans-serif;--cx-t:cubic-bezier(.2,.8,.2,1);--cx-bg:#ece8e3;--cx-bg2:#f6f3ef;--cx-chao:#ddd8d1;--cx-tx:#17181b;--cx-tx2:#5a5d63;--cx-lin:#17181b26;--cx-sup:#ffffff8c;--cx-hover:#17181b0f;--cx-trilho:#17181b1f;--cx-verde:#0b7a3b;--cx-verm:#c01818;--cx-amb:#d99a00;--cx-roxo:#6d28b8;--cx-relevo:#17181b0d;--cx-sombra:0 18px 44px #17181b2e;--eq-at:var(--eq-no-claro,var(--eq));background:var(--cx-bg);color:var(--cx-tx);overflow-x:hidden}
-body.cx-on.cx-escuro{--cx-bg:#101113;--cx-bg2:#191a1d;--cx-chao:#17181b;--cx-tx:#eeeae4;--cx-tx2:#a6a8ae;--cx-lin:#ffffff24;--cx-sup:#ffffff0a;--cx-hover:#ffffff12;--cx-trilho:#ffffff24;--cx-verde:#46d982;--cx-verm:#ff7070;--cx-amb:#ffc23f;--cx-roxo:#c58cff;--cx-relevo:#ffffff09;--cx-sombra:0 18px 44px #000b;--eq-at:var(--eq-no-escuro,var(--eq))}
+body.cx-on{--cx-f:Manrope,system-ui,sans-serif;--cx-t:cubic-bezier(.2,.8,.2,1);--cx-bg:#ece8e3;--cx-bg2:#f6f3ef;--cx-chao:#ddd8d1;--cx-tx:#17181b;--cx-tx2:#5a5d63;--cx-lin:#17181b26;--cx-sup:#ffffff8c;--cx-hover:#17181b0f;--cx-trilho:#17181b1f;--cx-verde:#0b7a3b;--cx-verm:#c01818;--cx-amb:#d99a00;--cx-roxo:#6d28b8;--cx-sombra:0 18px 44px #17181b2e;--eq-at:var(--eq-no-claro,var(--eq));background:var(--cx-bg);color:var(--cx-tx);overflow-x:hidden}
+body.cx-on.cx-escuro{--cx-bg:#101113;--cx-bg2:#191a1d;--cx-chao:#17181b;--cx-tx:#eeeae4;--cx-tx2:#a6a8ae;--cx-lin:#ffffff24;--cx-sup:#ffffff0a;--cx-hover:#ffffff12;--cx-trilho:#ffffff24;--cx-verde:#46d982;--cx-verm:#ff7070;--cx-amb:#ffc23f;--cx-roxo:#c58cff;--cx-sombra:0 18px 44px #000b;--eq-at:var(--eq-no-escuro,var(--eq))}
 body.cx-on::before,body.cx-on::after{display:none}
 body.cx-on .bar{display:none}
 body.cx-on .sede{max-width:none;padding:0;margin:0;position:relative;z-index:1}
 #cxFundo{position:fixed;inset:0;z-index:0;overflow:hidden;background:linear-gradient(180deg,var(--cx-bg2) 0,var(--cx-bg) 56%,var(--cx-chao) 76%,var(--cx-bg) 100%)}
-.cx-relevo{position:absolute;right:5vw;top:6vh;width:min(46vw,620px);height:min(70vh,620px);background:var(--cx-relevo);-webkit-mask:var(--logo) center/contain no-repeat;mask:var(--logo) center/contain no-repeat;transition:opacity .3s}
+.cx-relevo{position:absolute;right:5vw;top:6vh;width:min(46vw,620px);height:min(70vh,620px);background:var(--logo) center/contain no-repeat;filter:grayscale(1);opacity:.08;transition:opacity .3s}
+body.cx-escuro .cx-relevo{filter:grayscale(1) invert(1);opacity:.09}
 #cxFundo[data-aba="central"] .cx-relevo{right:18vw}
 .cx-estudio{position:absolute;inset:0;width:100%!important;height:100%!important;display:block;opacity:0;transition:opacity .35s ease-out}
 #cxFundo.cx-carro-pronto[data-aba="central"] .cx-estudio,#cxFundo.cx-carro-pronto[data-aba="desenvolvimento"] .cx-estudio{opacity:1}
