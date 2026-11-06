@@ -55,7 +55,8 @@ function renderizar() {
   const G = window.F1Garagem, s = estado.dados, eq = equipe(s.equipe), t = estado.tabelas || Regras.tabelas(s), terminou = s.gp >= s.tamanho;
   const prox = s.calendario[s.gp], ativo = estado.ativo, previsao = terminou ? null : G.previsaoDoGP(s.semente, s.ano, s.gp);
   const ultimo = s.resultados.filter((r) => r.ano === s.ano).at(-1);
-  const im = Regras.imersao(s), rival = im.rival && piloto(im.rival.id), eu = ultimo?.linhas.find((r) => r.piloto === "voce");
+  const im = Regras.imersao(s); try { localStorage.setItem("corrida:objetivoGP", JSON.stringify({ gp: im.meta.gp, em: Date.now() })); } catch { /* sem armazenamento */ }
+  const rival = im.rival && piloto(im.rival.id), eu = ultimo?.linhas.find((r) => r.piloto === "voce");
   const resultadoTexto = eu ? (eu.dnf ? "abandonou" : eu.nc ? "não foi classificado" : `terminou em ${eu.pos}º`) : "";
   const cumpriu = eu && !eu.dnf && !eu.nc && eu.pos <= (ultimo.objetivoGP || im.meta.gp);
   const caixaMensagens = `<section class="bloco imersao"><header><h2>Caixa de mensagens</h2><small>Equipe e notícias</small></header><div class="im-metas"><div><small>Objetivo do GP</small><b>${terminou ? "Temporada encerrada" : `Terminar no top ${im.meta.gp}`}</b></div><div><small>Objetivo da temporada</small><b>Top ${im.meta.temporada} no campeonato</b><span>${s.gp ? `Atual: ${im.classificacao}º` : "Ainda sem corridas"}</span></div><div><small>Confiança da diretoria</small><b>${im.confianca}%</b><span>GP: +6 / −4 · temporada: +10 / −8</span></div></div><div class="im-mensagens">

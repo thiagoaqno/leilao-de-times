@@ -173,6 +173,7 @@ function telaCentral(terminou) {
   const pessoasMapa = Object.fromEntries(S.pessoas.map((p) => [p.id, p]));
   const tabelasDe = (res) => meuId(G.tabelas({ ...S, pessoas: pessoasMapa, ordem: S.pessoas.map((p) => p.id), resultados: res.map((r) => ({ ...r, linhas: r.linhas.map((l) => (l.piloto === "voce" ? { ...l, piloto: me } : l)) })) }));
   const tab = meuId(S.tabelas), gps = resultados.filter((r) => r.ano === S.ano), im = { ...Reg.imersao(s), classificacao: tab.pilotos.findIndex((p) => p.id === "voce") + 1 };
+  try { localStorage.setItem("corrida:objetivoGP", JSON.stringify({ gp: im.meta?.gp, em: Date.now() })); } catch { /* sem armazenamento */ }
   const seta = '<svg class="cx-seta" viewBox="0 0 24 14" aria-hidden="true"><path d="M1 7h21M15 1l7 6-7 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg>';
   const botao = terminou ? (eh ? `<button type="button" class="cx-bt" id="gproxima">Começar próxima temporada ${seta}</button>` : '<p class="cx-espera">O anfitrião abre a próxima temporada</p>')
     : S.acesso ? `<button type="button" class="cx-bt" id="gentrargp">${S.acesso.watch ? "Assistir ao GP" : "Entrar no GP"} ${seta}</button>`
