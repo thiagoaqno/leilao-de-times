@@ -183,7 +183,12 @@ function decodificar(buf) {
 }
 const Snap = { codificar, decodificar };
 
-const api = { PASSO_MS, CFG, wrap, extrapolar, entre, Outro, SALTO_U, S1, QUEDA, K_ACEL, horizonte, criarRelogio, Snap };
+// O volante que a tela mostra num carro de outro piloto, pela guinada dele (rad/s): só o desenho. A roda de verdade vira pouco em curva leve e, vista de trás,
+// parecia parada; a curva leve aparece mais e o batente continua sendo o da curva fechada.
+const GUINADA_BATENTE = 2.65, CURVA_VOLANTE = 0.6;
+const volanteVisto = (r) => Math.sign(r) * Math.min(1, Math.pow(Math.abs(r) / GUINADA_BATENTE, CURVA_VOLANTE));
+
+const api = { volanteVisto, PASSO_MS, CFG, wrap, extrapolar, entre, Outro, SALTO_U, S1, QUEDA, K_ACEL, horizonte, criarRelogio, Snap };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.Pose = api;
 })(typeof window !== "undefined" ? window : globalThis);

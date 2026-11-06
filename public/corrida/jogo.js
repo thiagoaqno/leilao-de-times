@@ -260,9 +260,10 @@ function draw(dt) {
       const gz = groundH(tr, gh.x, gh.y, gh.idx || 0), noAr = gh.z > gz + 3;
       return { gz, inc: inclinacao(tr, gh.x, gh.y, gh.a, gh.idx || 0, spec.L * KS, spec.W * KS, gh.vz, noAr, gh.v || 0) };
     });
-    // o volante dos outros: pela rapidez com que a direção muda (no carro, girar 2,4 rad/s é o volante todo)
+    // o volante dos outros: nas regras de F1, pela guinada que vem do servidor (Pose.volanteVisto); nas outras, pela rapidez com que a direção muda (girar 2,4 rad/s é o volante todo)
     let da = gh.a - (gh.aAnt ?? gh.a); da = Math.atan2(Math.sin(da), Math.cos(da)); gh.aAnt = gh.a;
-    gh.vira = (gh.vira || 0) + (Math.max(-1, Math.min(1, da / Math.max(dt, 1e-3) / 2.4)) - (gh.vira || 0)) * Math.min(1, dt * 8);
+    const alvoVira = gh.mod ? window.Pose.volanteVisto(gh.r || 0) : Math.max(-1, Math.min(1, da / Math.max(dt, 1e-3) / 2.4));
+    gh.vira = (gh.vira || 0) + (alvoVira - (gh.vira || 0)) * Math.min(1, dt * (gh.mod ? 12 : 8));
     poseKart(gh.kart, gh.x, gh.y, gh.z, gh.a, gh.v || 0, gh.vira, gz, dt, inc.roll, inc.pitch, fxDe(pl, now));
     fantasmaVisual(gh.kart, !!pl.fantasma);
     lodKart(gh.kart, distancia); // os carros de longe com menos peças (carros.js)
