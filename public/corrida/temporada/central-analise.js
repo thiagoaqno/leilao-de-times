@@ -96,7 +96,7 @@ function visao(c, r, a, rival) {
   const est = stints(eu, a.voltas), totalV = eu.v.length || a.voltas, parada = eu.b || [];
   const seguroC = a.safeties || 0;
   const UI = U();
-  const stat = (titulo, valor, sub2, ic, cls = "") => `<section class="cx-card cx-stat ${cls}">${UI.tituloCard(titulo)}<div class="cx-stat-corpo"><b>${valor}</b><small>${sub2}</small></div><span class="cx-stat-ic" aria-hidden="true">${ic}</span></section>`;
+  const stat = (titulo, valor, sub2, _ic, cls = "") => `<section class="cx-card cx-stat ${cls}">${UI.tituloCard(titulo)}<div class="cx-stat-corpo"><b>${valor}</b><small>${sub2}</small></div></section>`;
   return `<div class="cx-an-stats">
       ${stat("Resultado", `<span class="${pos === 1 ? "cx-verde" : ""}">${resultado}</span>`, eu.g ? `Largou em ${eu.g}º${ganho ? ` • ${ganho > 0 ? "+" : ""}${ganho} ${Math.abs(ganho) === 1 ? "posição" : "posições"}` : ""}` : `${l?.pontos || 0} pontos`, IC.louros)}
       ${stat("Tempo total", tempoLongo(eu.t), `${eu.v.length} ${eu.v.length === 1 ? "volta concluída" : "voltas concluídas"}${eu.a ? ` • +${eu.a} s de punição` : ""}`, IC.xadrez)}
@@ -161,12 +161,12 @@ const IC = {
 };
 function html(c) {
   const s = c.s, UI = U();
-  if (!c.gps.length) return `<div class="cx-cabeca compacta"><div class="cx-cab-tit"><i aria-hidden="true"></i><div class="cx-cab-linha"><h2>Análise da corrida</h2></div></div></div><section class="cx-card cx-an-vazio">${IC.medidor}<h3>Nenhum GP disputado nesta temporada</h3><p>Depois da primeira corrida, os tempos de cada volta, os setores, a estratégia e a sua evolução aparecem aqui.</p><button type="button" class="cx-contorno" data-cx-aba="calendario">Ver o calendário ${UI.seta}</button></section>`;
+  if (!c.gps.length) return `<div class="cx-cabeca"><div><h2>Análise da corrida</h2></div></div><section class="cx-card cx-an-vazio">${IC.medidor}<h3>Nenhum GP disputado nesta temporada</h3><p>Depois da primeira corrida, os tempos de cada volta, os setores, a estratégia e a sua evolução aparecem aqui.</p><button type="button" class="cx-contorno" data-cx-aba="calendario">Ver o calendário ${UI.seta}</button></section>`;
   const { r, a, rival } = escolhas(c), g = s.calendario[r.gp];
   const opcoes = c.gps.map((x) => `<option value="${x.gp}" ${x.gp === r.gp ? "selected" : ""}>${h(s.calendario[x.gp]?.nome || x.pista)}</option>`).join("");
-  const topo = `<div class="cx-cabeca compacta"><div class="cx-cab-tit"><i aria-hidden="true"></i><div class="cx-cab-linha"><h2>Análise da corrida</h2><small>${h(UI.nomeGP(r.pista, g?.nome))} • Etapa ${UI.dois(r.gp + 1)} / ${UI.dois(s.tamanho)}</small></div>${UI.tricolor()}</div><label class="cx-sel">${UI.bandeira(r.pista)}<span class="cx-oculto">Escolher o GP</span><select data-cx-gp>${opcoes}</select></label></div>`;
+  const topo = `<div class="cx-cabeca"><div><h2>Análise da corrida</h2><small class="cx-rot">${h(UI.nomeGP(r.pista, g?.nome))} · Etapa ${UI.dois(r.gp + 1)} / ${UI.dois(s.tamanho)}</small></div><label class="cx-sel">${UI.bandeira(r.pista)}<span class="cx-oculto">Escolher o GP</span><select data-cx-gp>${opcoes}</select></label></div>`;
   if (!a) return `${topo}<section class="cx-card cx-an-vazio">${IC.crono}<h3>Este GP foi corrido antes da análise</h3><p>Só há o resultado final dele. Os próximos GPs já trazem as voltas, os setores e a estratégia.</p></section>`;
-  const abas = `<div class="cx-dv-abas cx-an-abas">${SUBS.map(([id, nome]) => `<button type="button" class="${id === sub ? "on" : ""}" aria-pressed="${id === sub}" data-cx-an="${id}">${nome}</button>`).join("")}</div>`;
+  const abas = `<div class="cx-subabas cx-an-abas">${SUBS.map(([id, nome]) => `<button type="button" class="${id === sub ? "on" : ""}" aria-pressed="${id === sub}" data-cx-an="${id}">${nome}</button>`).join("")}</div>`;
   const corpo = sub === "voltas" ? voltas(c, r, a, rival) : sub === "estrategia" ? estrategia(c, r, a) : sub === "telemetria" ? telemetria(c, r, a, rival) : visao(c, r, a, rival);
   return `${topo}${abas}<div class="cx-an-corpo">${corpo}</div>`;
 }

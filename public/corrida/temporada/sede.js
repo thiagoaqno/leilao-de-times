@@ -75,7 +75,7 @@ function renderizar() {
   const C = window.Central;
   C.usarRender(renderizar);
   const ctx = { s, t, eq, im, prox, ativo, terminou, previsao, botao, gps, rival: im.rival, mercado, caixaMensagens, codigoHTML, nMensagens: 4, dinheiro, minhas: C.estatisticas(gps) };
-  app.innerHTML = C.html(ctx);
+  C.pintar(app, C.html(ctx));
   C.depois(ctx);
   if (window.Radio) { window.Radio.desenharBotoes(); window.Radio.uma("sede", () => { window.Radio.dizer("boasvindas"); if (!terminou) setTimeout(() => window.Radio.dizer("proximogp"), 7000); }); }
 }

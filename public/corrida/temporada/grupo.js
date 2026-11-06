@@ -183,7 +183,7 @@ function telaCentral(terminou) {
   const menuHTML = `<a href="/corrida/">Menu da Corrida</a><button id="gconvite">Copiar convite</button><a href="/corrida/temporada/">Temporada solo</a>${eh ? '<button id="gencerrar" class="discreto">Encerrar a temporada</button>' : ""}<button id="gsairtemp" class="discreto">Sair da temporada</button>`;
   const ctx = { grupo: S.codigo, s, t: tab, eq: equipe(eq), im, prox: S.calendario[S.gp], ativo: S.acesso || null, terminou, previsao: terminou ? null : GA.previsaoDoGP(S.semente, S.ano, S.gp), botao, gps, rival: im.rival, mercado: painelDaEquipe(terminou).equipe, caixaMensagens, codigoHTML: "", nMensagens: ultimo ? 1 : 0, dinheiro, minhas: C.estatisticas(gps), tabelasDe, idsGrid: tab.pilotos.slice(0, G.GRID).map((p) => p.id), idDesenvolver: "gdesenvolver", ladoGrupo, menuHTML };
   C.usarRender(desenhar);
-  app.innerHTML = C.html(ctx); C.depois(ctx);
+  C.pintar(app, C.html(ctx)); C.depois(ctx);
 }
 function telaDaTemporada() {
   const meuTime = S.minhaEquipe, eq = meuTime && equipe(meuTime), t = S.tabelas, tam = S.opcoes.tamanho, terminou = S.gp >= tam, eh = S.eu === S.host;
