@@ -233,13 +233,14 @@ function avisoDeChuva(m) {
   if (vistos.has(chave)) return; vistos.add(chave);
   radioF1(aviso[0], { forcar: true }); toast(aviso[1], 4200);
 }
-// O estrategista diz em que volta a chuva vem (ou para), assim que dá para estimar: pela volta de referência de quem joga. É uma estimativa pelo roteiro do clima.
+// O estrategista contratado na carreira (`S.estrategistas`, nível por equipe) diz em que volta a chuva vem, e o de elite também em que volta ela para. É uma estimativa pelo
+// roteiro do clima e pela volta de referência de quem joga: refeita a cada volta, ele só fala de novo se a volta mudar.
 function estrategistaDaChuva(m) {
-  const S = E.S, F = window.F1Regras, ref = m && (m.best || m.last);
-  if (!ref || m.finish != null || S.phase !== "race" || !S.clima || !S.clima.chove || !F.proximaMudanca || !(clima.t >= 0)) return;
-  const mud = F.proximaMudanca(S.clima, clima.t); if (!mud || (mud.tipo !== "comeca" && mud.tipo !== "para")) return;
-  const vistos = race.chuvaPrevista || (race.chuvaPrevista = new Set()), chave = S.startAt + ":" + mud.quando; if (vistos.has(chave)) return;
-  const volta = (m.laps || 0) + 1 + Math.floor(mud.em / ref); if (volta > (S.config.voltas || 0)) return; // só depois do fim da corrida: não interessa
+  const S = E.S, F = window.F1Regras, ref = m && (m.best || m.last), nivel = (m && S.estrategistas && S.estrategistas[m.equipe]) || 0;
+  if (!nivel || !ref || m.finish != null || S.phase !== "race" || !S.clima || !S.clima.chove || !F.proximaMudanca || !(clima.t >= 0)) return;
+  const mud = F.proximaMudanca(S.clima, clima.t); if (!mud || (mud.tipo !== "comeca" && !(mud.tipo === "para" && nivel >= 2))) return;
+  const vistos = race.chuvaPrevista || (race.chuvaPrevista = new Set()), volta = (m.laps || 0) + 1 + Math.floor(mud.em / ref), chave = S.startAt + ":" + mud.quando + ":" + volta; if (vistos.has(chave)) return;
+  if (volta > (S.config.voltas || 0)) return; // só depois do fim da corrida: não interessa
   vistos.add(chave);
   window.Radio?.frase?.([mud.tipo === "comeca" ? "chuvavolta" : "secavolta", `volta-${volta}`], "estrategista", { forcar: true });
   toast(mud.tipo === "comeca" ? `🌧️ Estrategista: chuva prevista na volta ${volta}` : `🌤️ Estrategista: a chuva deve parar na volta ${volta}`, 6000);

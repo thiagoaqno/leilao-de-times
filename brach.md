@@ -1,9 +1,14 @@
-# GPs do Bahrein e de Jeddah à noite
+# O aviso de chuva por volta passa a ser de quem contratou o estrategista
 
-As salas de Bahrein e Jeddah nascem de noite (`horaPadrao`, o mesmo de Singapura e Las Vegas), inclusive na Temporada, que não escolhe horário. As duas pistas já tinham refletores de verdade (`kit/bahrein/luz.js` e `kit/holofotes.js`) e usam o mesmo céu noturno.
+Até aqui, contratar o estrategista só reduzia o tempo de box, e o aviso "chuva prevista na volta N" valia para todo mundo.
 
-Quem escolher "dia" na sala ainda corre de dia.
+- **Sem estrategista (e fora da carreira):** sem esse aviso. Continuam a previsão do GP e o aviso do engenheiro uma volta antes da chuva, que já existiam.
+- **Estrategista experiente:** diz em que volta a chuva vem.
+- **Estrategista de elite:** também diz em que volta a chuva para.
+- A volta é refeita pelo seu ritmo: se a previsão mudar, ele avisa de novo. Continua sendo estimativa, e o aviso só começa depois da primeira volta completa.
+
+O nível vai do save para a sala (`room.estrategistas`, por equipe) e daí para a tela (`publicState`), na carreira solo e em grupo. A redução no tempo de box não mudou.
 
 ## Verificação
 
-Conferido no código que as duas pistas têm `horaPadrao = "noite"`. Sem print da pista à noite: falta ver em jogo se a claridade ficou parecida com a de Singapura.
+Só sintaxe conferida: não houve corrida de teste com chuva nem GP de carreira com cada nível. O CI confere a suíte.
