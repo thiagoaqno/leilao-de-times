@@ -1,14 +1,17 @@
-# O aviso de chuva por volta passa a ser de quem contratou o estrategista
+# O jogo deixa de limitar o FPS
 
-Até aqui, contratar o estrategista só reduzia o tempo de box, e o aviso "chuva prevista na volta N" valia para todo mundo.
+A Corrida e o Drag pulavam um quadro sempre que o anterior tinha menos de 11 ms: 120 Hz virava 60 FPS, 144 Hz virava 72, 240 Hz virava 80 e 360 Hz virava 90. Agora desenham um quadro por atualização da tela, até o limite do monitor. Nenhum limite novo foi posto, então 360 Hz funciona em monitor de 360 Hz.
 
-- **Sem estrategista (e fora da carreira):** sem esse aviso. Continuam a previsão do GP e o aviso do engenheiro uma volta antes da chuva, que já existiam.
-- **Estrategista experiente:** diz em que volta a chuva vem.
-- **Estrategista de elite:** também diz em que volta a chuva para.
-- A volta é refeita pelo seu ritmo: se a previsão mudar, ele avisa de novo. Continua sendo estimativa, e o aviso só começa depois da primeira volta completa.
+A física não muda: continua em passos fixos de 1/120 s. O esterçar visual das rodas era suavizado por quadro e passou a ser por tempo, com a mesma sensação da tela de 144 Hz.
 
-O nível vai do save para a sala (`room.estrategistas`, por equipe) e daí para a tela (`publicState`), na carreira solo e em grupo. A redução no tempo de box não mudou.
+## O que isso não resolve
+
+- O FPS ainda oscila onde o cenário muda de repente. Em Mônaco, os objetos desenhados vão de 93 a 368 entre os pontos 0,42 e 0,46 da volta. Sem o limite, essa oscilação pode ficar mais visível.
+- A placa de vídeo trabalha mais em telas rápidas, então o computador pode esquentar mais. O limite tinha sido posto por isso.
+- A diferença entre jogar local e no servidor não foi explicada aqui.
 
 ## Verificação
 
-Só sintaxe conferida: não houve corrida de teste com chuva nem GP de carreira com cada nível. O CI confere a suíte. O contrato das salas (`tests/salas-esperado.json`) ganhou o campo novo, `estrategistas`. Este branch já inclui o #569, que corrige o teste do rádio.
+Só `node --check` nos três arquivos. O FPS real não foi medido, porque o navegador de teste estava escondido e sem desenhar quadros. A suíte fica com o CI.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

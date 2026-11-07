@@ -198,15 +198,11 @@ function outrosParaSom() {
   return n;
 }
 
-let lastT = 0, ultimoQuadro = 0;
-// Telas de 120/144 Hz pediam um quadro a cada 7 ms e a placa de vídeo desenhava tudo 144 vezes por segundo. Um quadro
-// precisa de pelo menos 11 ms: em 144 Hz desenha um sim e outro não (72 por segundo), em 60 Hz todos.
-const QUADRO_MIN = 11;
+let lastT = 0;
+// Sem limite de quadros: desenha um por atualização da tela (o requestAnimationFrame acompanha os Hz do monitor, 144, 240, 360...).
 function loop(t) {
   raf = requestAnimationFrame(loop);
   if (!race) { raf && cancelAnimationFrame(raf); raf = 0; return; }
-  if (t - ultimoQuadro < QUADRO_MIN) return;
-  ultimoQuadro = t;
   const real = Math.min(0.25, (t - (lastT || t)) / 1000), dt = Math.min(1 / 30, real); lastT = t;
   pollPad();
   atualizarClima(); // a chuva e a água na pista deste quadro (clima.js: o visual e a física leem)
