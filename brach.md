@@ -1,31 +1,37 @@
-# A Spa com relevo e barreiras reais
+# O jogo deixa de limitar o FPS e para de desenhar o que não se vê
 
-O traçado e o tamanho da pista não mudaram. É o piloto: se ficar bom, a mesma ferramenta faz as outras.
+## FPS sem limite
 
-## Relevo
+A Corrida e o Drag pulavam um quadro sempre que o anterior tinha menos de 11 ms: 120 Hz virava 60 FPS, 144 Hz virava 72, 240 Hz virava 80 e 360 Hz virava 90. Agora desenham um quadro por atualização da tela, até o limite do monitor.
 
-Antes eram 25 pontos de altura com teto de altura por pista. Agora são 100 pontos da altitude real (EU-DEM de 25 m), na mesma escala do traçado:
+A física não muda: continua em passos fixos de 1/120 s. O esterçar visual das rodas era suavizado por quadro e passou a ser por tempo, com a sensação de antes em 144 Hz.
 
-- Desnível: de 183 para 270 unidades (cerca de 106 m reais).
-- Eau Rouge até o Raidillon: cerca de 41 m de subida, com pico perto de 17%.
-- Les Combes é o ponto mais alto e Stavelot o mais baixo, como na pista real.
+## O que não se vê não é desenhado
 
-O chão em volta desce mais devagar (`flat` 60 e `fall` 380), para não virar barranco.
+O three só descarta o que está fora do enquadramento. Em Mônaco, chegavam a ser 690 objetos desenhados para 17 que apareciam.
 
-## Barreiras
+`recorte.js` monta um mapa durante a abertura de cada pista (um desenho pequeno por quadro, 404 em Mônaco, cerca de 5 s no total): o que dá para ver de cada trecho, para os quatro lados. Vale para o cenário, as árvores e os carros, e carro escondido também não é animado nem repetido no desenho da vinheta.
 
-A Spa tem barreira em quase toda a volta: o OpenStreetMap mapeia uns 13 km de muro e guard-rail para 7 km de pista. O erro da regra automática era a distância, quase fixa. Agora são 73 trechos com a distância real, de colada em Kemmel até bem afastada nas áreas de escape. Onde não há barreira mapeada, não há muro, e o carro sai da pista.
+Para nada sumir: o que está perto fica sempre ligado, cada trecho soma os vizinhos, peça transparente nunca é cortada, e aérea, TV ou câmera longe da pista mostram tudo.
 
-## Ferramenta
+| Pista | Chamadas (média) | Pico | Triângulos (média) | Pixels diferentes (média / pior) |
+|---|---|---|---|---|
+| Mônaco | 397 → 232 | 905 → 732 | 688 mil → 450 mil | 0,005% / 0,14% |
+| Suzuka | 417 → 223 | 924 → 643 | 723 mil → 443 mil | 0,004% / 0,03% |
+| Spa | 343 → 165 | 875 → 689 | 638 mil → 384 mil | 0,001% / 0,02% |
 
-`ferramentas/pista-real.js` calcula `hills` e `muros` para qualquer pista já existente. Usa dados do OpenStreetMap (© colaboradores do OpenStreetMap, ODbL).
+## O que isso não resolve
+
+- A placa de vídeo trabalha mais em telas rápidas por causa do FPS sem limite. Esse era o motivo do limite antigo.
+- O pico continua alto com muitos carros à vista.
+- O jogo ainda baixa o código de todas as pistas. Isso pesa no carregamento, não no FPS.
+- A diferença entre jogar local e no servidor não foi explicada.
 
 ## Verificação
 
-- Prints de antes e depois na mesma câmera, em cinco pontos da volta, sem erro no console. As imagens não estão no PR.
-- Conta da física: nenhum trecho faz o carro sair do chão na velocidade ideal, e a inclinação máxima é de 19,5%.
-- Corrida no navegador com 21 robôs por 86 segundos: nenhum abandono, voltas de 56 a 85 s, dano médio baixo.
-- Não comparei o tempo de volta dos robôs com a pista antiga, e ninguém pilotou a volta inteira. A posição das barreiras depende do OSM e não foi conferida trecho a trecho em foto.
-- Só `node --check`; a suíte fica com o CI.
+- Corrida inteira no laço real do jogo, em Mônaco, Suzuka e Spa, sem erro no console.
+- Tabela: 60 a 80 posições de câmera, com 21 carros espalhados pela volta, comparando a imagem com e sem o corte. O retrovisor e os outros modos de câmera não foram comparados.
+- **O FPS real não foi medido:** o navegador de teste estava escondido, então os números são de chamadas e triângulos, não de quadros por segundo. Ninguém jogou a versão final.
+- Só `node --check` no código; a suíte fica com o CI.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

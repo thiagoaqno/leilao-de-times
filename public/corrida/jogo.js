@@ -14,6 +14,7 @@ import { CARS3, KS, makeKart, poseKart, fantasmaVisual, lodKart, ocultarPiloto, 
 import { camMode, pollPad, pad } from "./controles.js";
 import { quadroCamera, somDaCamera, camEstado } from "./cameras.js";
 import { quadroEspelhos } from "./espelhos.js";
+import { quadroRecorte, soltarRecorte, depurarRecorte, carroVisivel, mostrarCarro } from "./recorte.js";
 import { posicionarHudNoHalo } from "./hud-telemetria.js";
 import { physics, quadroDeFisica, quadroParado, criarRede, PASSO } from "./fisica.js";
 import { loadBest, recordLap, drawBest, myProg } from "./fantasma.js";
@@ -156,7 +157,7 @@ export function startRace(st) {
   aquecerPista(tr, ceu);
   if (!raf) raf = requestAnimationFrame(loop);
 }
-function clearRace() { if (!race) return; race.linhaFreio?.parar(); stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); dropKart(race.safetyKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
+function clearRace() { if (!race) return; soltarRecorte(race.tr); race.linhaFreio?.parar(); stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); dropKart(race.safetyKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
 export function stopRace() { clearRace(); race = null; Sound.engine(0, false); limparClima(); }
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
@@ -198,15 +199,11 @@ function outrosParaSom() {
   return n;
 }
 
-let lastT = 0, ultimoQuadro = 0;
-// Telas de 120/144 Hz pediam um quadro a cada 7 ms e a placa de vídeo desenhava tudo 144 vezes por segundo. Um quadro
-// precisa de pelo menos 11 ms: em 144 Hz desenha um sim e outro não (72 por segundo), em 60 Hz todos.
-const QUADRO_MIN = 11;
+let lastT = 0;
+// Sem limite de quadros: desenha um por atualização da tela (o requestAnimationFrame acompanha os Hz do monitor, 144, 240, 360...).
 function loop(t) {
   raf = requestAnimationFrame(loop);
   if (!race) { raf && cancelAnimationFrame(raf); raf = 0; return; }
-  if (t - ultimoQuadro < QUADRO_MIN) return;
-  ultimoQuadro = t;
   const real = Math.min(0.25, (t - (lastT || t)) / 1000), dt = Math.min(1 / 30, real); lastT = t;
   pollPad();
   atualizarClima(); // a chuva e a água na pista deste quadro (clima.js: o visual e a física leem)
@@ -254,6 +251,9 @@ function draw(dt) {
     const pl = P(id); if (!pl) continue;
     if (pl.dnf) { if (gh.kart) { dropKart(gh.kart); gh.kart = null; } continue; }
     const key = pl.color + pl.car + JSON.stringify(pl.mods || {}) + (pl.numero || ""); if (!gh.kart || gh.kartKey !== key) { dropKart(gh.kart); gh.kart = makeKart(pl.color, pl.car, false, pl.name, pl.mods, undefined, true, { numero: pl.numero, sigla: pl.bot ? pl.sigla : null }); gh.kartKey = key; }
+    // carro que não se vê daqui: nem desenha nem anima, só leva o nome junto (recorte.js)
+    const aparece = carroVisivel(tr, cam, gh.x, gh.y, gh.idx); mostrarCarro(gh.kart, aparece);
+    if (!aparece) { gh.kart.g.position.set(gh.x, gh.z, gh.y); gh.aAnt = gh.a; gh.zAnt = gh.z; continue; }
     const spec = CARS3[pl.car] || CARS3.equilibrado, distancia = Math.hypot(gh.x - cam.position.x, gh.y - cam.position.z);
     gh.vz = ((gh.z - (gh.zAnt ?? gh.z)) / Math.max(dt, 1e-3)) * 0.3 + (gh.vz || 0) * 0.7; gh.zAnt = gh.z;
     const { gz, inc } = detalheRemoto(gh, distancia, now, () => {
@@ -313,6 +313,7 @@ function draw(dt) {
   abrirTV(tr, dt, motionPreference.matches);
   if (tr.sky) tr.sky.position.set(cam.position.x, 0, cam.position.z);
   passoClima(dt, race, cam, modoClima, src, c); // o visual do clima: céu, luz, neblina, chuva, asfalto molhado, borrifo, som e HUD (clima-visual.js)
+  quadroRecorte(tr, cam, mode !== "cima" && mode !== "tv" && !(race.tvAte && now < race.tvAte), nearest); // o que não dá para ver daqui não vai para a placa de vídeo (recorte.js)
   quadroEspelhos(race.kart, mode); // os retrovisores do meu carro (só no cockpit e na T-cam, e não na qualidade Baixa), depois de tudo posto e antes de desenhar a cena
   // desfoque de velocidade, pela fração da velocidade final do carro (vale igual para os cinco): começa em 40% (uns 90 km/h
   // no equilibrado), fica inteiro a 90% e o turbo e o estilingue borram ainda mais
@@ -332,7 +333,7 @@ export function adiantarLargada(st) {
   return true;
 }
 addEventListener("keydown", (ev) => { if (ev.key === "Escape") pularTV(); });
-if (location.hash === "#debug") window.__corrida = { get race() { return race; }, get S() { return E.S; }, keys, physics, groundH, inclinacao, buildTrack, act, renderer, scene, cam, resultadoFalso };
+if (location.hash === "#debug") window.__corrida = { get race() { return race; }, get S() { return E.S; }, keys, physics, groundH, inclinacao, buildTrack, act, renderer, scene, cam, resultadoFalso, recorte: depurarRecorte };
 // #debug: abre a tela de resultado do GP com dados de exemplo, sem correr (ex.: __corrida.resultadoFalso({ euPos: 1, equipe: "ferrari" }))
 async function resultadoFalso(op) {
   await f1Pronto;

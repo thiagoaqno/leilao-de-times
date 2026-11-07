@@ -154,7 +154,7 @@ function montar(q) {
     foco.uniforms.tDepth.value = leitura.depthTexture;
     foco.uniforms.tCarDepth.value = mascara.depthTexture;
     // Renderiza só os carros numa camada separada; a profundidade preserva oclusões pelo cenário.
-    for (const raiz of scene.children) if (raiz.userData.carroVinheta) raiz.traverse((o) => { if (o.isMesh) o.layers.enable(1); });
+    for (const raiz of scene.children) if (raiz.userData.carroVinheta) raiz.traverse((o) => { if (o.isMesh && !o.userData.recortado) o.layers.enable(1); }); // (o carro que não se vê daqui fica de fora: recorte.js)
     const alvo = rd.getRenderTarget(), fundo = scene.background, anterior = scene.overrideMaterial, camadas = cam.layers.mask;
     const cor = rd.getClearColor(corLimpeza), alfa = rd.getClearAlpha(), sombra = rd.shadowMap.autoUpdate;
     try {

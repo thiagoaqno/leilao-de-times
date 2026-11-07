@@ -133,7 +133,7 @@ export function poseKart(k, x, y, z, a, v, steer, ground, dt, lean = 0, pitch = 
   else if (k.giro > 0) { const fim = Math.ceil(k.giro / (Math.PI * 2) - 1e-6) * Math.PI * 2; k.giro += dt * 9; if (k.giro >= fim) k.giro = 0; } // termina a volta inteira
   k.g.position.set(x, z, y); k.g.rotation.set(0, -a - Math.PI / 2, 0);
   k.body.rotation.set(k.pitch, k.giro, k.roll, "YXZ");
-  k.steerV += (steer - k.steerV) * 0.3;
+  k.steerV += (steer - k.steerV) * (1 - Math.pow(0.7, dt * 72)); // (por tempo, não por quadro: o volante vira igual em qualquer tela)
   animarF1(k.kt, (v * dt) / (k.sc * KS), k.steerV);
   animarDrs(k.kt, !!fx.drs, dt); // a asa traseira: o flap abre com o DRS DESTE carro
   trocarComposto(k.kt, fx.pneu); // a faixa colorida do pneu (macio vermelho, médio amarelo, duro branco, chuva azul): só muda quando o composto muda
