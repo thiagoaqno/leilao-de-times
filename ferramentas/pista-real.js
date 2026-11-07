@@ -101,7 +101,7 @@ function encaixar(G, pts) {
     return { erro: erro / 200, s, aplicar, desl };
   };
   let melhor = null;
-  for (const espelho of [false, true]) for (let k = -40; k <= 40; k++) { const e = tentar(k / N, espelho); if (!melhor || e.erro < melhor.erro) melhor = e; }
+  for (const espelho of [false, true]) for (let k = 0; k < N; k += 2) { const e = tentar(k / N, espelho); if (!melhor || e.erro < melhor.erro) melhor = e; }
   return melhor;
 }
 
