@@ -1,31 +1,26 @@
-# Austin ganhou cenário próprio: a torre vermelha, Big Red e a paisagem seca do Texas
+# A festa do pódio: os três primeiros em pé nos degraus, comemorando
 
-O GP dos Estados Unidos (Circuit of the Americas) usava só o cenário genérico do kit. Agora tem peças só dele, no nível de Mônaco e Spa, tudo feito em código (sem modelo baixado e sem marca registrada: os painéis são nomes de lugar e de comida do Texas).
+No fim do GP (avulso e na carreira), os três primeiros aparecem no pódio 3D com o macacão e o capacete da equipe e comemoram. O primeiro faz a vitória e a torcida, o segundo a vitória e as palmas, e o terceiro a torcida e as palmas. O carro aparece primeiro, como antes, e dá lugar ao piloto assim que ele carrega.
 
-## O que mudou na pista
+- **Uniformes das 11 equipes** (`f1-uniformes.js`): cores e marcas são as que o carro do jogo já usa. Nenhum patrocinador novo. Ferrari, McLaren e Racing Bulls seguem os macacões reais de 2026 (vermelho com branco no pescoço e nos lados; papaia na frente e antracito atrás; azul e branco). As outras seguem a pintura do carro. Cada macacão leva o logo da equipe no peito e o número nas costas.
+- **Capacete:** cada robô usa o desenho do piloto (`f1-capacetes.js`) e os humanos usam o genérico nas cores da equipe. Não aparece rosto: a cabeça do modelo foi tirada e a viseira é escura.
+- **Peso:** nada da festa baixa antes da tela de resultado. O módulo e os arquivos (`f1/podio/`, ~800 KB no total) só são pedidos quando o pódio aparece. Os pilotos são montados um por quadro e tudo é solto ao sair da tela.
+- **"Reduzir movimento":** cada piloto fica numa pose parada.
 
-- **A subida até a curva 1 ("Big Red"):** a pista agora tem o relevo real. Sobe 10,6% da linha de chegada até o topo da curva 1 (a real é de 11%), desce pelos S rápidos e sobe de novo até a curva 9. No topo do morro, a arquibancada vermelha, a colina de torcida, a bandeira dos Estados Unidos gigante e o nome "BIG RED" pintado no asfalto de escape.
-- **A Torre de Observação vermelha**, com o véu de 18 tubos de aço, a escada em dupla hélice e o mirante de vidro. Aos pés dela, o anfiteatro (palco coberto, bancos vermelhos e brancos, gramado em rampa). Perto, a Grande Praça, com o espelho d'água e a aleia de treliça, e as duas passarelas, sobre as curvas 3 e 16.
-- **A reta dos boxes:** prédio das garagens com a torre de controle e a tribuna principal coberta de membrana branca, de frente uma para a outra, com as tendas do paddock atrás.
-- **O resto da volta:** arquibancadas nas curvas 4, 12, 15 e 19, o palco do miolo na reta de trás, as tendas do Fan Zone, placas com o número de algumas curvas, galera de chapéu de vaqueiro e bandeiras dos Estados Unidos e do Texas.
-- **A paisagem do Texas:** chão de capim dourado e terra clara, carvalhos-vivos, cedros, mesquites, nopais, pedras de calcário, manchas de bluebonnet e os morros baixos do Hill Country no horizonte.
-- **O escape** agora é de asfalto liso, com brita só na curva 11. O traçado e o tamanho da pista não mudaram.
+## Licenças (`public/corrida/f1/podio/LICENCA.txt`)
 
-## Relevo e barreiras
+| Arquivo | Origem | Licença |
+| --- | --- | --- |
+| Corpo, luvas e HANS | "Race Car Driver - Low Poly", de tomkart (Sketchfab) | CC BY 4.0 |
+| Capacete | "F1 Helmet Austrian GP 2018", de VTX_car (Sketchfab) | **CC BY-NC-SA 4.0**: não comercial, e a versão adaptada tem a mesma licença. Se o site passar a ganhar dinheiro, este capacete tem de sair. |
+| Comemorações | Mixamo (Adobe): Clapping, Rallying, Victory ×2 | Termos do Mixamo: uso livre em jogo, mas não é licença aberta. Os FBX não vão para o repositório. |
 
-Rodei `node ferramentas/pista-real.js us-2012 austin --dem srtm30m --raio 4`. Com `--raio 4` a inclinação máxima ficou em 10,6%, plausível (o SRTM contando árvore como ladeira não apareceu). Apliquei `hills`, `hillsSuave: true`, `flat: 60` e `fall: 380`. A curvatura da altura é suave (sem lombada que faça o carro decolar). A ferramenta achou barreira mapeada nos dois lados quase a volta toda (lado 1 sem barreira em 0% e lado -1 em 3%, bem abaixo de 30%), então usei os `muros` dela, sem mexer.
+Os logos que vinham nos modelos (Alpinestars no macacão, Red Bull, Mobil 1 e o nome do piloto no capacete) foram tirados. A ferramenta `ferramentas/podio-pilotos.mjs` refaz os arquivos a partir dos originais.
 
-## O que ficou de fora de propósito
+## Verificação
 
-- **O asfalto de escape pintado de vermelho e azul não entrou.** Procurei e não achei fonte que confirme as cores nem os lugares. A única pintura que confirmei foi o nome "Big Red" no escape da curva 1; a cor das letras não está nas fontes, então escolhi branco com contorno vermelho.
-- **Suzuka:** só confirmei a referência a Silverstone (curvas 3 a 6); não confirmei a de Suzuka, então ela só aparece no comentário do cabeçalho como "S rápidos".
-- O que não achei fonte (a fachada do prédio dos boxes, por exemplo) usa as peças genéricas do kit.
+Tirei prints de antes e depois da tela de resultado com os dados de exemplo do `#debug`, no desktop e no celular, sem erro no console. Os arquivos do pódio só são pedidos depois do resultado. Os prints estão em `C:/Users/thiag/Downloads/lts/festa-podio-prints/` (`antes-desktop.png`, `depois-desktop.png`, `antes-celular.png`, `depois-celular.png`).
 
-## Como foi conferido
-
-- `node --check` em todos os arquivos que mudaram.
-- A cena monta no Node sem erro. Medido com `node tests/ajuda-cena/medir.mjs austin`: 381 malhas, ~210 chamadas de desenho e ~515 mil triângulos na vista do jogo (Spa: 194 chamadas e 426 mil). A conferência de invasão (`tests/ajuda-cena/invasao.mjs`, rodada só para o Austin) acusa 0.
-- No navegador (`/corrida/#debug`, placa de vídeo de verdade), prints da largada, da subida da curva 1, do nome pintado, da torre, dos S, do anfiteatro, da praça, do palco, do estádio e de uma vista geral, sem erro no console.
-- **Não rodei a suíte de testes:** o CI faz isso. **Não conferi** uma volta jogada de ponta a ponta nem os robôs com os `muros` novos.
+**Não conferido:** tentei rodar um GP real de 1 volta, avulso e da carreira, até o resultado, mas o teste automático travou antes da largada. A carreira usa a mesma tela de resultado (`htmlResultado`/`aposResultado` com `S.temporada`), então deve funcionar igual, mas isso não foi visto rodando. No arquivo só passou o `node --check`; a suíte fica para o CI.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

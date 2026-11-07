@@ -85,9 +85,9 @@ const noPodio = (S) => S.resultado.slice(0, 3).filter((r) => !r.dnf && !r.nc && 
 function degrauHTML(r, vencedor, ctx) {
   const { S, m } = ctx, p = S.players.find((x) => x.id === r.id), eq = infoEquipe(p), v = r === vencedor, eu = !!(m && r.id === m.id);
   const tempo = v ? fmt(r.tempo) : "+" + (r.tempo - vencedor.tempo).toFixed(3);
-  // de cima para baixo: o carro (3D; sem WebGL, o logo grande), o degrau com o número e, embaixo, quem é
+  // de cima para baixo: o piloto comemorando (3D; enquanto ele baixa, o carro; sem WebGL, o logo grande), o degrau com o número e, embaixo, quem é
   return `<div class="rg-deg d${r.pos} ${eu ? "eu" : ""}" data-id="${h(r.id)}" style="${estiloEq(eq.cor)}">
-    <div class="rg-deg-car"><div class="rg-logo-grande">${marca(eq)}</div>${eu ? `<span class="rg-seu">Seu carro</span>` : ""}</div>
+    <div class="rg-deg-car"><div class="rg-logo-grande">${marca(eq)}</div>${eu ? `<span class="rg-seu">Você</span>` : ""}</div>
     <div class="rg-bloco"><span>${r.pos}</span></div>
     <div class="rg-deg-info">${v ? `<span class="rg-copa">${ICONE.copa}</span>` : ""}${marca(eq)}<b class="rg-deg-nome">${h(nomeDe(p))}</b><small class="rg-deg-eq"><span class="rg-sigla">${h(siglaDe(p))}</span>${eq.nome ? ` · ${h(eq.nome)}` : ""}</small><span class="rg-deg-tempo">${tempo}</span>${r.pontos ? `<span class="rg-deg-pts">+${r.pontos} pts</span>` : ""}</div></div>`;
 }
@@ -118,7 +118,7 @@ function carrosNoPodio(el, S, m) {
     const eq = infoEquipe(p), pint = eq.pintura && MODS3.pintura[eq.pintura] ? eq.pintura : null;
     const mods = pint ? { ...(p.mods || MODS_PADRAO), pintura: pint } : p.mods;
     const comp = (r.compostos && r.compostos[r.compostos.length - 1]) || p.pneuAtual || p.pneu || null;
-    itens.push({ id: r.id, pos: r.pos, slot: deg.querySelector(".rg-deg-car"), bloco: deg.querySelector(".rg-bloco"), cor: p.color, modelo: p.car, mods, corEquipe: eq.cor, numero: p.numero, sigla: p.bot ? p.sigla : null, composto: comp, eu: !!(m && r.id === m.id) });
+    itens.push({ id: r.id, pos: r.pos, slot: deg.querySelector(".rg-deg-car"), bloco: deg.querySelector(".rg-bloco"), cor: p.color, modelo: p.car, mods, corEquipe: eq.cor, equipe: eq.id, temLogo: eq.logo, numero: p.numero, sigla: p.bot ? p.sigla : null, composto: comp, eu: !!(m && r.id === m.id) });
   }
   try { podio3d.montar(podio, itens); } catch (e) { console.warn("Corrida: pódio 3D", e); podio3d.soltar(); } // sem WebGL (ou erro): ficam os logos grandes
 }

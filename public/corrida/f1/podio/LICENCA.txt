@@ -1,0 +1,22 @@
+Os arquivos desta pasta são os pilotos da festa do pódio (public/corrida/podio-pilotos.js), gerados por ferramentas/podio-pilotos.mjs.
+
+1) O corpo (piloto.glb: traje, luvas, hans; e as folhas traje-*.webp e luvas-*.webp)
+   "Race Car Driver - Low Poly", de tomkart, licença Creative Commons Attribution 4.0 (CC BY 4.0)
+   https://sketchfab.com/3d-models/race-car-driver-low-poly-0fedfae53537473ba2ee3d9b722e0c66
+   https://creativecommons.org/licenses/by/4.0/
+   Mudanças: a cabeça com rosto e o capacete do modelo foram tirados; o corpo foi escalado para 1,8 m e ligado a um esqueleto
+   do Mixamo; das texturas sobraram só a sombra das dobras e a máscara das faixas, sem os logos (o jogo pinta cada equipe por cima).
+
+2) O capacete (piloto.glb: casco, vedacao, metal, viseira)
+   "F1 Helmet Austrian GP 2018", de VTX (VTX_car), licença Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)
+   https://sketchfab.com/3d-models/none-4c655f55a60a4600a21a90f47edae638
+   https://creativecommons.org/licenses/by-nc-sa/4.0/
+   Mudanças: os decalques de patrocinadores e o nome do piloto foram tirados; as peças de cor do casco viraram uma malha só,
+   reduzida de ~265 mil para ~13 mil triângulos, escalada e posta na cabeça do boneco; a pintura é desenhada pelo jogo
+   (public/corrida/f1-capacetes.js). A forma adaptada do capacete segue a mesma licença, CC BY-NC-SA 4.0.
+   Não comercial: se o site passar a ganhar dinheiro (anúncio, venda, assinatura), este capacete tem de sair.
+
+3) As comemorações (clipes.json)
+   Animações "Clapping", "Rallying" e "Victory" (duas versões) do Mixamo (Adobe), usadas dentro do jogo como permitem os termos
+   do Mixamo (uso livre de royalties em jogos; não é licença aberta: os arquivos FBX originais não são distribuídos aqui).
+   Só ficaram a rotação dos ossos e a altura do quadril, sem os dedos.
