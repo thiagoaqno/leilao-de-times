@@ -12,12 +12,14 @@ O rádio passa de 112 para 367 falas: cada situação da corrida fica com pelo m
 
 O aviso da bandeira preta dizia "sexta batida causada", mas a regra atual é a décima segunda batida proposital. O texto foi corrigido e o `punicao-4.mp3` antigo sai, para ser gerado de novo.
 
-As vozes novas só tocam depois de gerar os áudios. Enquanto isso, o rádio pode sortear uma fala nova que ainda não tem mp3, e nada toca naquela vez.
+Os 343 áudios novos já vêm neste PR, gerados pelo `.bat` na ElevenLabs (mp3 entram com `git add -f`, porque a pasta é ignorada).
+
+O teste do rádio já falhava na `main` desde o #566, porque não conhecia as situações do observador. Ele agora as inclui.
 
 ## Verificação
 
 - Erro reproduzido na cópia baixada pelo ZIP. Depois da conversão, `gerar-radio.bat` respondeu certo às perguntas da opção 2, mostrou a estimativa (9.115 caracteres para as que faltam) e cancelou sem pedir a chave.
 - A geração real não foi testada, porque gasta créditos.
-- `falas.js` e o teste passaram por `node --check`. A suíte fica com o CI, e as falas não foram ouvidas em corrida.
+- `falas.js` e o teste passaram por `node --check`, e o gerador diz que não falta nenhum áudio. A suíte fica com o CI, e as falas não foram ouvidas em corrida.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

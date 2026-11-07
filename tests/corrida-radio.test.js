@@ -5,13 +5,15 @@ const Falas = require("../public/corrida/radio/falas.js");
 const Radio = require("../public/corrida/radio.js");
 
 const SITUACOES = ["largada", "voltarapida", "ganhou", "perdeu", "pneu", "box", "safety", "amarela", "dano", "ultima", "vitoria", "podio", "pontos", "foradospontos", "abandono", "chuvachegando", "chuvaparando", "boasvindas", "classboa", "classruim", "drs", "punicao"];
+const OBSERVADOR = ["spotesq", "spotdir", "spotlivre"];
 const PEDIDOS = ["diagnosticobom", "diagnosticomedio", "diagnosticograve", "pneusbons", "pneusgastos", "corridachuva", "corridaseca"];
 
 test("toda situação da corrida tem pelo menos 8 falas, e as de pedido pelo menos 2", () => {
   for (const s of SITUACOES) { const n = Falas.porSituacao(s).length; assert.ok(n >= 8, `${s}: ${n} falas`); }
+  for (const s of OBSERVADOR) assert.ok(Falas.porSituacao(s).length >= 8, s);
   for (const s of PEDIDOS) assert.ok(Falas.porSituacao(s).length >= 2, s);
-  assert.deepEqual(Object.keys(Falas.SITUACOES).sort(), [...SITUACOES, ...PEDIDOS].sort());
-  assert.equal(Falas.FALAS.length, [...SITUACOES, ...PEDIDOS].reduce((n, s) => n + Falas.porSituacao(s).length, 0));
+  assert.deepEqual(Object.keys(Falas.SITUACOES).sort(), [...SITUACOES, ...OBSERVADOR, ...PEDIDOS].sort());
+  assert.equal(Falas.FALAS.length, [...SITUACOES, ...OBSERVADOR, ...PEDIDOS].reduce((n, s) => n + Falas.porSituacao(s).length, 0));
 });
 
 test("ids únicos, seguros para nome de arquivo e textos curtos", () => {
