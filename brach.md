@@ -1,9 +1,9 @@
-# GPs do Bahrein e de Jeddah à noite
+# Os .bat funcionam no Windows baixando pelo ZIP
 
-As salas de Bahrein e Jeddah nascem de noite (`horaPadrao`, o mesmo de Singapura e Las Vegas), inclusive na Temporada, que não escolhe horário. As duas pistas já tinham refletores de verdade (`kit/bahrein/luz.js` e `kit/holofotes.js`) e usam o mesmo céu noturno.
+Os `.bat` estavam com fim de linha LF, e o `cmd` do Windows comia letras dos comandos: `where node` falhava e aparecia "Node nao encontrado", mesmo com o Node instalado. Agora todos ficam em CRLF no repositório (`*.bat -text` no `.gitattributes`, para o git não converter de volta), inclusive no ZIP do GitHub.
 
-Quem escolher "dia" na sala ainda corre de dia.
+`GERAR-VOZES-CORRIDA.bat` também pergunta a voz do observador (`ELEVENLABS_VOICE_SPOTTER`); com Enter, ele usa a voz do engenheiro.
 
 ## Verificação
 
-Conferido no código que as duas pistas têm `horaPadrao = "noite"`. Sem print da pista à noite: falta ver em jogo se a claridade ficou parecida com a de Singapura.
+Erro reproduzido na cópia baixada pelo ZIP e, depois da conversão, o `.bat` rodou até a estimativa, sem chegar a pedir a chave. A geração real não foi testada, porque gasta créditos.
