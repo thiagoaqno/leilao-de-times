@@ -1,39 +1,9 @@
-# A sala da Corrida no estilo da carreira, e os setores na tela do GP
+# O velocímetro clássico some na primeira pessoa
 
-## A sala
-
-A tela de criar sala ainda tinha o visual de outubro, de antes da Central nova. Agora segue a entrada da carreira:
-
-- Sem caixas: título grande e leve, carro solto no fundo com uma sombra suave, coluna fina à direita e os escudos em linha.
-- Abas sublinhadas e um só botão cheio, na cor da equipe à vista.
-- Modo claro e escuro, o mesmo da Central, com um botão na barra de cima.
-- Cada pista mostra a foto dela desfocada e escurecida, com o traçado em branco por cima. O hover clareia a foto. Pistas sem foto ficam com fundo escuro.
-- As dicas de teclado só aparecem para quem usa controle.
-
-As etapas, o teclado, o controle e as regras não mudaram.
-
-## Ao selecionar a pista
-
-A etapa GP já mostra, sem abrir nada: o mapa com os três setores e o DRS, as curvas de cada setor, o perfil de altura, **o mais rápido de cada setor** e **o recorde da pista**, com o nome de quem fez.
-
-O servidor agora guarda o melhor tempo de cada setor (`corrida_setores`, migração 027), medido por ele, com a regra do quadro de recordes: corrida com as regras de F1, robôs na pista e volta limpa. O histórico não existia, então os setores começam em "sem tempo ainda". O recorde da pista já tem histórico. `/api/recordes-corrida` passa a trazer os setores.
-
-## Sobre o GP
-
-A tela de detalhe ganhou o estilo novo e passa a mostrar:
-
-- os três setores no mapa, com as curvas de cada um (os mesmos terços da volta do cronômetro do jogo);
-- as zonas de DRS;
-- o perfil de altura da volta, quando a pista tem desnível.
-
-Ela também aparece na carreira, porque usa o mesmo código, mas lá os estilos novos de `sala-visual.css` não valem.
+Com o HUD clássico, o painel central de velocidade, marcha e bateria não aparece mais na câmera de primeira pessoa, em que o volante já mostra a marcha e a velocidade. Na T-cam e nas outras câmeras, ele continua, e o HUD de telemetria não muda.
 
 ## Verificação
 
-- Prints das etapas Equipe, Carro e pneu, Câmera, GP e Grid, e da tela Sobre o GP. Modo claro e escuro conferidos em parte das telas, sem erro no console.
-- Não vi a tela no celular: a simulação foi desfeita sozinha quando o painel mudou de largura, então o CSS de celular não foi conferido.
-- A tela Sobre o GP não foi aberta na carreira, nem a gaveta de peças no visual novo.
-- A gravação dos setores foi conferida direto no banco, mas ninguém deu uma volta real para ver o setor aparecer na tela.
-- Só `node --check`; a suíte fica com o CI.
+Só `node --check`: a troca de câmera não foi testada em corrida. O CI confere a suíte.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

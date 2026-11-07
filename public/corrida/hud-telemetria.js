@@ -32,6 +32,7 @@ export function atualizarHudTelemetria(raiz, v) {
 // portanto a mesma conta serve à prévia e à corrida, inclusive com ajustes de câmera.
 const centro = new THREE.Vector3(), esquerda = new THREE.Vector3(), direita = new THREE.Vector3();
 export function posicionarHudNoHalo(el, kart, camera, modo, area) {
+  if (el) el.style.visibility = estilo === "classico" && modo === "cockpit" ? "hidden" : ""; // na primeira pessoa, o volante já mostra marcha e velocidade: o velocímetro clássico some (na T-cam, "onboard", fica)
   const ref = kart?.kt?.modelo?.dados?.haloReferencia, carro = kart?.kt?.carro;
   if (!el || !area || !ref || !carro || estilo !== "telemetria" || (modo !== "cockpit" && modo !== "onboard")) { el?.classList.remove("ancorado"); return; }
   const w = area.clientWidth, h = area.clientHeight; if (!w || !h) { el.classList.remove("ancorado"); return; }
