@@ -1,0 +1,246 @@
+/* A sala da Corrida no estilo da entrada da carreira: nada de caixas. Um título grande e leve, o carro solto no fundo, os escudos em linha, uma coluna fina à
+   direita, abas sublinhadas e um único botão cheio na cor da equipe. O tema claro ou escuro é o mesmo `corrida:tema` da Central. Vem depois de sala-nova.css e só
+   vale com body.sv-on (show() em menus.js). --sv-eq vem da equipe à vista (temaDaSala, em menus.js); --sv-at é a versão dela que aparece bem no fundo do tema. */
+body.sv-on{--sv-f:Manrope,system-ui,sans-serif;--sv-t:cubic-bezier(.2,.8,.2,1);--sv-bg:#ece8e3;--sv-bg2:#f6f3ef;--sv-tx:#17181b;--sv-tx2:#5a5d63;--sv-lin:#17181b26;--sv-hover:#17181b0f;--sv-trilho:#17181b1f;--sv-verde:#0b7a3b;--sv-at:var(--sv-eq-claro,var(--sv-eq,#e10600));--sv-eq-t:var(--sv-eq-txt,#fff);--display:var(--sv-f);--f1-vm:var(--sv-at);color:var(--sv-tx);background:linear-gradient(180deg,var(--sv-bg2) 0,var(--sv-bg) 62%,#ddd8d1 100%) fixed}
+body.sv-on.sv-escuro{--sv-bg:#101113;--sv-bg2:#191a1d;--sv-tx:#eeeae4;--sv-tx2:#a6a8ae;--sv-lin:#ffffff24;--sv-hover:#ffffff12;--sv-trilho:#ffffff24;--sv-verde:#46d982;--sv-at:var(--sv-eq-escuro,var(--sv-eq,#e10600));background:linear-gradient(180deg,var(--sv-bg2) 0,var(--sv-bg) 62%,#17181b 100%) fixed}
+html:has(body.sv-on){background:var(--sv-bg,#ece8e3)}
+body.sv-on::before,body.sv-on::after{display:none}
+body.sv-on{min-height:100dvh}
+
+/* ---------- a barra de cima: só texto ---------- */
+body.sv-on .wrap{max-width:none;padding:0 clamp(18px,3vw,48px) 24px}
+body.sv-on .bar{background:none;border:0;box-shadow:none}
+body.sv-on .bar-in{max-width:none;height:34px;padding-inline:clamp(18px,3vw,48px)}
+body.sv-on .tovila{color:var(--sv-tx2);font:600 12.5px var(--sv-f);text-transform:none;letter-spacing:0;transition:color .2s}
+body.sv-on .tovila:hover{color:var(--sv-tx)}body.sv-on .tovila::first-letter{color:inherit}
+body.sv-on .utilbar{display:flex;flex-wrap:wrap;align-items:center;gap:0 2px;margin:0;color:var(--sv-tx2)}
+body.sv-on .utilbar button,body.sv-on .utilbar a.small{min-height:28px;padding:0 9px;background:none;border:0;border-radius:0;box-shadow:none;color:var(--sv-tx2);font:500 12px var(--sv-f);text-transform:none;letter-spacing:0;transition:color .2s,background-color .2s}
+body.sv-on .utilbar button:hover,body.sv-on .utilbar a.small:hover{background:var(--sv-hover);color:var(--sv-tx)}
+body.sv-on .utilbar input[type=range]{accent-color:var(--sv-at)}
+body.sv-on #btnTemaSala{display:inline-flex;align-items:center}body.sv-on #btnTemaSala.hidden{display:none}
+
+/* ---------- a base: sem fundo, sem borda, sem corte ---------- */
+body.sv-on .sn{--vm:var(--sv-at);--linha:var(--sv-lin);gap:0;color:var(--sv-tx);font:500 14px/1.4 var(--sv-f)}
+body.sv-on .sn *,body.sv-on .sn-gaveta *{font-style:normal!important}
+body.sv-on .sn :focus-visible,body.sv-on .sn-gaveta :focus-visible,body.sv-on.sn-nav .sn :focus,body.sv-on.sn-nav .sn-gaveta :focus{outline:2px solid var(--sv-at);outline-offset:3px;animation:none}
+body.sv-on .sn button{box-shadow:none;border-radius:0}
+body.sv-on .sn-cartao,body.sv-on .sn-ficha,body.sv-on .sn-mais,body.sv-on .sn-faixa,body.sv-on .sn-vitrine{background:none;border:0;border-radius:0;clip-path:none;color:inherit}
+body.sv-on .sn-corpo{padding-top:clamp(14px,2.4vh,26px)}
+body.sv-on .sn-tit,body.sv-on .sn-mais summary{padding:0 0 9px;background:none;border-bottom:1px solid var(--sv-lin);color:var(--sv-tx2);font:600 11px/1.3 var(--sv-f);letter-spacing:.2em;text-transform:uppercase}
+body.sv-on .sn-tit em,body.sv-on .sn-mais summary small{color:var(--sv-tx2);font:500 12px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-mais summary{border-bottom:1px solid var(--sv-lin);transition:color .2s}body.sv-on .sn-mais summary:hover{color:var(--sv-tx)}
+body.sv-on .sn-mais summary::after{color:var(--sv-tx2);font:400 20px/1 var(--sv-f)}
+body.sv-on .sn-obs{padding:10px 0 0;color:var(--sv-tx2);font-size:12px}body.sv-on .sn-obs b{color:var(--sv-tx);letter-spacing:0}
+body.sv-on .sn-chip{padding:0;background:none;border:0;color:var(--sv-tx2);font:500 13px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-chip+.sn-chip::before{content:"·";margin-right:7px}
+body.sv-on .sn-chip.ouro{color:var(--sv-at)}
+body.sv-on .sn-rot{padding:0;border:0;color:var(--sv-tx2);font:600 11px var(--sv-f);letter-spacing:.2em;text-transform:uppercase}
+body.sv-on .sn-grupo>small,body.sv-on .sn-so-org{color:var(--sv-tx2);font-size:12px}
+
+/* ---------- o topo da sala: código, abas sublinhadas e o botão ---------- */
+body.sv-on .sn-topo{position:relative;grid-template-columns:auto minmax(0,1fr) auto;align-items:end;gap:clamp(16px,3vw,48px);background:none;border:0;border-bottom:1px solid var(--sv-lin)}
+body.sv-on .sn-sala{flex-direction:row;align-items:baseline;gap:12px;min-width:0;padding:0 0 11px;background:none;border:0}
+body.sv-on .sn-sala small{display:none}
+body.sv-on .sn-sala b{color:var(--sv-tx);font:500 clamp(14px,1.3vw,19px)/1.2 var(--sv-f);letter-spacing:.3em}
+body.sv-on .sn-sala span{color:var(--sv-tx2);font-size:12px;white-space:nowrap}
+body.sv-on .sn-etapas{justify-content:flex-start;gap:clamp(14px,2vw,30px);padding:0;overflow-x:auto}
+body.sv-on .sn-et{padding:0 0 11px;background:none;color:var(--sv-tx2);font:500 13.5px/1.3 var(--sv-f);letter-spacing:0;text-transform:none;white-space:nowrap;transition:color .2s}
+body.sv-on .sn-et+.sn-et::before,body.sv-on .sn-et .n{display:none}
+body.sv-on .sn-et.feita{color:var(--sv-tx2)}
+body.sv-on .sn-et.on{background:none;color:var(--sv-tx);font-weight:700}
+body.sv-on .sn-et.on::after{height:3px;background:var(--sv-at)}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-et:hover:not(.on){background:none;color:var(--sv-tx)}}
+body.sv-on .sn-continuar,body.sv-on .sn-largar{align-items:center;justify-content:center;gap:14px;background:var(--sv-at);color:var(--sv-eq-t);clip-path:none;animation:none!important;transition:filter .2s}
+body.sv-on .sn-continuar{min-width:0;height:40px;margin-bottom:8px;padding:0 20px}
+body.sv-on .sn-cont-t{flex-direction:row;align-items:baseline}
+body.sv-on .sn-continuar small,body.sv-on .sn-largar small{display:none}
+body.sv-on .sn-continuar b,body.sv-on .sn-largar b{color:inherit;font:700 14px/1 var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-continuar .setas,body.sv-on .sn-largar .setas{width:20px;height:12px;align-self:center;transition:transform .2s var(--sv-t)}
+body.sv-on .sn-continuar:hover:not(:disabled) .setas,body.sv-on .sn-largar:hover:not(:disabled) .setas{transform:translateX(4px)}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-continuar:hover:not(:disabled),body.sv-on .sn-largar:hover:not(:disabled){filter:brightness(1.08)}}
+body.sv-on .sn-continuar:disabled,body.sv-on .sn-largar:disabled{filter:none;opacity:.4}
+
+/* ---------- o carro e o título grande ---------- */
+body.sv-on .sn-vitrine{min-height:0;overflow:visible}
+body.sv-on .sn-vitrine::before{display:none}
+body.sv-on .sn-vitrine-nome,body.sv-on .sn-vitrine-info{top:0;left:0;right:0;bottom:auto;text-shadow:none}
+body.sv-on .sn-vitrine-nome small,body.sv-on .sn-vitrine-info small{color:var(--sv-tx2);font:600 11px/1.4 var(--sv-f);letter-spacing:.2em}
+body.sv-on .sn-vitrine-nome b,body.sv-on .sn-vitrine-info b{margin-top:4px;color:var(--sv-tx);font:500 clamp(36px,4.6vw,76px)/1.04 var(--sv-f);letter-spacing:-.035em;text-transform:none}
+body.sv-on .sn-piloto{margin-top:8px;color:var(--sv-tx2);font-weight:500}
+
+/* ---------- Equipe: o carro à esquerda, a ficha numa coluna fina, os escudos embaixo ---------- */
+body.sv-on .sn-etapa{gap:0}
+body.sv-on .sn-equipe,body.sv-on .sn-carro{grid-template-columns:minmax(0,1fr) clamp(300px,27vw,420px);gap:clamp(20px,3vw,48px)}
+body.sv-on .sn-equipe .sn-vitrine,body.sv-on .sn-carro .sn-vitrine{order:-1;height:clamp(340px,calc(100dvh - 300px),900px)}
+body.sv-on .sn-carro .sn-vitrine{height:clamp(340px,calc(100dvh - 190px),900px)}
+body.sv-on .sn-ficha{gap:clamp(12px,2vh,20px);padding:0 0 0 clamp(18px,2vw,30px);border-left:1px solid var(--sv-lin)}
+body.sv-on .sn-ficha-logo{gap:12px;padding:0;border:0}
+body.sv-on .sn-ficha-logo .equipe-marca{width:40px;height:40px}
+body.sv-on .sn-ficha-logo .equipe-marca img{filter:drop-shadow(0 0 1px #0009)}
+body.sv-on .sn-ficha-logo small,body.sv-on .sn-quem small{color:var(--sv-tx2);font:600 11px var(--sv-f);letter-spacing:.2em}
+body.sv-on .sn-ficha-logo b{color:var(--sv-tx);font:500 17px/1.2 var(--sv-f);letter-spacing:-.01em;text-transform:none}
+body.sv-on .sn-nota{padding:0}
+body.sv-on .sn-nota strong{color:var(--sv-tx);font:500 clamp(40px,3.6vw,56px)/1 var(--sv-f);letter-spacing:-.035em;text-shadow:none}
+body.sv-on .sn-nota span{color:var(--sv-tx2);font:500 12.5px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-barras{gap:clamp(7px,1.2vh,12px)}
+body.sv-on .sn-barras li{grid-template-columns:96px minmax(0,1fr) 20px;color:var(--sv-tx2);font:500 12.5px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-barras b{color:var(--sv-tx);font-weight:600}
+body.sv-on .sn-barra{height:3px;background:var(--sv-trilho);transform:none}
+body.sv-on .sn-barra u{background:var(--sv-at);box-shadow:none}
+body.sv-on .sn-orc{gap:6px;padding:clamp(10px,1.6vh,16px) 0 0;background:none;border:0;border-top:1px solid var(--sv-lin)}
+body.sv-on .sn-orc .topo{color:var(--sv-tx);font:500 12.5px var(--sv-f);letter-spacing:0;text-transform:none}body.sv-on .sn-orc small{color:var(--sv-tx2)}
+body.sv-on .sn-orc .sn-barra u{background:var(--sv-verde);box-shadow:none}
+body.sv-on .sn-quem{padding-top:clamp(10px,1.6vh,16px);border-top:1px solid var(--sv-lin)}
+body.sv-on .sn-quem li{font-weight:500}body.sv-on .sn-quem li small{color:var(--sv-at);font:600 12px var(--sv-f);letter-spacing:0}body.sv-on .sn-quem li.vazio,body.sv-on .sn-quem p{color:var(--sv-tx2);font-size:12px}
+body.sv-on .sn-faixa{gap:clamp(2px,.5vw,8px);margin-top:8px;padding:10px 0 0;border-top:1px solid var(--sv-lin);scrollbar-width:none}
+body.sv-on .sn-eq{flex:1 0 56px;max-width:110px;min-height:0;height:clamp(48px,7vh,64px);padding:7px;background:none;border:0;opacity:.62;transform:none;transition:opacity .15s,background-color .15s,transform .18s var(--sv-t)}
+body.sv-on .sn-eq::after{content:"";position:absolute;inset:auto 8% 0;height:3px;background:var(--equipe);transform:scaleX(0);transition:transform .22s var(--sv-t)}
+body.sv-on .sn-eq .equipe-marca{width:100%;height:100%}
+body.sv-on .sn-eq .equipe-marca img{filter:drop-shadow(0 0 1px #0009) saturate(.85)}
+body.sv-on .sn-eq-nome,body.sv-on .sn-eq-ok{display:none}
+body.sv-on .sn-eq-gente{top:0;left:0;min-width:16px;height:16px;padding:0 4px;background:var(--sv-tx);border:0;border-radius:8px;color:var(--sv-bg);font:600 10px var(--sv-f)}
+body.sv-on .sn-eq.on{background:none;box-shadow:none;opacity:1;transform:none}
+body.sv-on .sn-eq.on .equipe-marca{transform:none}body.sv-on .sn-eq.on .equipe-marca img{filter:drop-shadow(0 0 1px #0009)}body.sv-on .sn-eq.on::after{transform:scaleX(1)}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-eq:hover:not(:disabled):not(.on){background:var(--sv-hover);opacity:1;transform:translateY(-2px)}body.sv-on .sn-eq:hover:not(:disabled):not(.on)::after{transform:scaleX(.5)}}
+
+/* ---------- Carro e pneu: os pneus viram linhas finas ---------- */
+body.sv-on .sn-coluna{gap:clamp(14px,2.4vh,24px);padding-left:clamp(18px,2vw,30px);border-left:1px solid var(--sv-lin)}
+body.sv-on .sn-pneus{display:block;padding:0}
+body.sv-on .sn-pneu{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;column-gap:12px;width:100%;padding:9px 6px 9px 0;text-align:left;background:none;border:0;border-bottom:1px solid var(--sv-lin);transform:none;transition:background-color .15s,padding .18s var(--sv-t)}
+body.sv-on .sn-roda{grid-row:1/3;width:34px;border-width:4px;box-shadow:none;animation:none!important}
+body.sv-on .sn-roda i{inset:30%}
+body.sv-on .sn-pneu b{grid-column:2;color:var(--sv-tx);font:600 13.5px/1.25 var(--sv-f);text-transform:none}
+body.sv-on .sn-pneu small{grid-column:2;min-height:0;color:var(--sv-tx2);font-size:11.5px;line-height:1.35}
+body.sv-on .sn-pneu em{position:static;grid-column:3;grid-row:1/3;padding:0;background:none;color:var(--sv-tx2);font:500 11px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-pneu.on{background:none;box-shadow:inset 3px 0 var(--c);padding-left:12px;transform:none}body.sv-on .sn-pneu.on small{color:var(--sv-tx2)}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-pneu:hover:not(.on):not(:disabled){background:var(--sv-hover);transform:none}}
+body.sv-on .sn-previsao .prev{grid-template-columns:30px minmax(0,1fr) auto;gap:12px;padding:0;background:none;border:0;clip-path:none;color:var(--sv-tx)}
+body.sv-on .sn-previsao .prev *{text-shadow:none}
+body.sv-on .sn-previsao .prev-ico{width:30px;height:30px}
+body.sv-on .sn-previsao .prev-txt small{color:var(--sv-tx2);font:500 11.5px/1.35 var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-previsao .prev-txt small.prev-rot{color:var(--sv-tx2);font:600 10.5px var(--sv-f);letter-spacing:.2em;text-transform:uppercase}
+body.sv-on .sn-previsao .prev-txt b{color:var(--sv-tx);font:600 13.5px/1.25 var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-previsao .prev>:last-child,body.sv-on .sn-previsao .prev>:last-child *{font-family:var(--sv-f);font-weight:500;font-size:20px;letter-spacing:-.02em}
+body.sv-on .sn-car,body.sv-on .sn-pint{background:none;border:0;border-bottom:1px solid var(--sv-lin);transition:background-color .15s}
+body.sv-on .sn-car b,body.sv-on .sn-pint-t b{color:var(--sv-tx);font:600 13px/1.25 var(--sv-f);text-transform:none}body.sv-on .sn-car small{color:var(--sv-tx2)}
+body.sv-on .sn-car.on,body.sv-on .sn-pint.on{background:none;border-color:var(--sv-at);box-shadow:inset 0 -3px var(--sv-at)}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-car:hover,body.sv-on .sn-pint:hover{background:var(--sv-hover)}}
+body.sv-on .sn-car canvas,body.sv-on .sn-pint canvas{background:none}
+body.sv-on .sn-atalho{padding:10px 0;background:none;border:0;border-top:1px solid var(--sv-lin);border-bottom:1px solid var(--sv-lin);color:var(--sv-tx);transition:padding .18s var(--sv-t)}
+body.sv-on .sn-atalho b{color:var(--sv-tx);font:600 13.5px/1.25 var(--sv-f);letter-spacing:0;text-transform:none}body.sv-on .sn-atalho small{color:var(--sv-tx2)}body.sv-on .sn-atalho i{color:var(--sv-tx2);font:400 20px/1 var(--sv-f)}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-atalho:hover{padding-left:6px;border-color:var(--sv-lin);background:none}body.sv-on .sn-atalho:hover i{color:var(--sv-at)}}
+
+/* ---------- Câmera ---------- */
+body.sv-on .al-layout{gap:clamp(20px,3vw,48px)}
+body.sv-on .al-preview{border-radius:0}
+body.sv-on .al-visual p{margin:8px 0 0;color:var(--sv-tx2);font-size:12px}
+body.sv-on .al-controles{max-height:calc(100dvh - 170px);padding:0 8px 0 clamp(18px,2vw,30px);border-left:1px solid var(--sv-lin);color:var(--sv-tx);font:500 13px var(--sv-f);scrollbar-width:thin;scrollbar-color:var(--sv-trilho) transparent}
+body.sv-on .al-controles h2{margin:0 0 14px;color:var(--sv-tx);font:500 clamp(22px,2vw,30px)/1.1 var(--sv-f);letter-spacing:-.03em;text-transform:none}
+body.sv-on .al-controles label,body.sv-on .al-controles label span,body.sv-on .al-controles label small{color:var(--sv-tx2);font:500 12.5px/1.35 var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .al-controles select{min-height:38px;background:none;border:0;border-bottom:1px solid var(--sv-lin);border-radius:0;color:var(--sv-tx);font:600 13px var(--sv-f)}
+body.sv-on .al-controles select option{background:var(--sv-bg2);color:var(--sv-tx)}
+body.sv-on .al-controles input[type=range]{height:3px;accent-color:var(--sv-at)}
+body.sv-on .al-controles button{background:none;border:0;border-bottom:1px solid var(--sv-lin);color:var(--sv-tx);font:600 12.5px var(--sv-f);text-transform:none;letter-spacing:0}
+body.sv-on .al-controles button:hover{background:var(--sv-hover)}
+
+/* ---------- GP: o título, o desenho da pista em preto e branco e as opções na coluna fina ---------- */
+body.sv-on .sn-gp{grid-template-columns:minmax(0,1fr) clamp(300px,27vw,420px);gap:clamp(20px,3vw,48px)}
+body.sv-on .sn-gp-esq{gap:clamp(14px,2.4vh,24px)}
+body.sv-on .sn-gp-dir{gap:clamp(14px,2.4vh,24px);padding-left:clamp(18px,2vw,30px);border-left:1px solid var(--sv-lin)}
+/* a foto da pista à direita, escurecida e desfocada, sumindo em direção ao título */
+body.sv-on .sn-mapa{position:relative;background:none;isolation:isolate}
+body.sv-on .sn-mapa::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--foto,none) center/cover no-repeat;filter:blur(2px) brightness(.5);-webkit-mask-image:linear-gradient(90deg,transparent 42%,#000 72%);mask-image:linear-gradient(90deg,transparent 42%,#000 72%);transition:background-image .3s}
+body.sv-on .sn-mapa-corpo{grid-template-columns:minmax(0,1fr) clamp(130px,15vw,230px);gap:24px;padding:0;align-items:start}
+body.sv-on .sn-mapa canvas{order:2;padding:10px;border:0;background:none}
+body.sv-on .sn-mapa-txt{gap:8px}
+body.sv-on .sn-mapa-txt b{order:-1;color:var(--sv-tx);font:500 clamp(36px,4.6vw,76px)/1.04 var(--sv-f);letter-spacing:-.035em;text-transform:none}
+body.sv-on .sn-mapa-txt small{max-width:62ch;color:var(--sv-tx2);font:500 13px/1.45 var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-mapa-txt .sn-sobre-btn{justify-self:start;width:fit-content;padding:0 0 4px;background:none;border:0;border-bottom:1px solid var(--sv-lin);color:var(--sv-tx);transition:border-color .2s}
+body.sv-on .sn-sobre-btn span{color:var(--sv-tx);font:600 13px/1.3 var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-mapa-txt .sn-sobre-btn small{display:none}
+body.sv-on .sn-sobre-btn i{color:var(--sv-at);font:400 18px/1 var(--sv-f)}
+body.sv-on .sn-mapa-txt .sn-sobre-btn:hover{background:none;border-color:var(--sv-at)}
+body.sv-on .sn-pistas{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:2px;max-height:none;padding:8px 0 0;overflow:visible}
+body.sv-on .sn-pista{background:none;border:0;transition:box-shadow .2s}
+/* a foto de cada pista por trás do traçado, desfocada e escurecida; sem foto, um fundo escuro */
+body.sv-on .sn-pista-foto{position:absolute;inset:0 0 auto;aspect-ratio:1;overflow:hidden;background:#26282c}
+body.sv-on .sn-pista-foto::before{content:"";position:absolute;inset:-6px;background:var(--foto) center/cover no-repeat;filter:blur(2px) brightness(.5);transition:filter .2s,transform .25s var(--sv-t)}
+body.sv-on .sn-pista.on .sn-pista-foto::before{filter:blur(1px) brightness(.68)}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-pista:hover:not(:disabled) .sn-pista-foto::before{filter:blur(0) brightness(.72);transform:scale(1.05)}}
+body.sv-on .sn-pista canvas{position:relative;padding:12px;opacity:1;background:none}
+body.sv-on .sn-pista span{position:relative;padding:6px 2px 9px}
+body.sv-on .sn-pista b{color:var(--sv-tx);font:600 12px/1.25 var(--sv-f);text-transform:none}body.sv-on .sn-pista small{display:none}
+body.sv-on .sn-pista em{top:2px;left:2px;padding:0 4px;background:var(--sv-bg2);border:0;color:var(--sv-tx2);font:600 10px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-pista.on{background:none;box-shadow:inset 0 -3px var(--sv-at)}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-pista:hover:not(:disabled):not(.on){background:none}}
+body.sv-on .sn-opcoes{gap:clamp(11px,1.8vh,16px);padding:12px 0 0}
+body.sv-on .sn-seg{gap:clamp(10px,1.2vw,18px)}
+body.sv-on .sn-opt{min-height:0;padding:3px 0 4px;background:none;border:0;border-bottom:2px solid transparent;color:var(--sv-tx2);font:500 13px var(--sv-f);letter-spacing:0;text-transform:none;transition:color .15s,border-color .15s}
+body.sv-on .sn-opt.on{background:none;border-color:var(--sv-at);color:var(--sv-tx);font-weight:700}
+@media (hover:hover) and (pointer:fine){body.sv-on .sn-opt:hover:not(.on):not(:disabled){background:none;border-color:var(--sv-trilho);color:var(--sv-tx)}}
+
+/* ---------- Grid ---------- */
+body.sv-on .sn-grid{grid-template-columns:minmax(0,1fr) clamp(300px,27vw,420px);gap:clamp(20px,3vw,48px)}
+body.sv-on .sn-grid-lado{gap:clamp(14px,2.4vh,24px);padding-left:clamp(18px,2vw,30px);border-left:1px solid var(--sv-lin)}
+body.sv-on .sn-linha{min-height:46px;padding:0 6px 0 8px;background:none;border-left:3px solid var(--c);border-bottom:1px solid var(--sv-lin);transition:background-color .15s}
+body.sv-on .sn-linha:nth-child(even),body.sv-on .sn-linha:nth-child(odd){background:none}
+body.sv-on .sn-linha:hover{background:var(--sv-hover)}
+body.sv-on .sn-linha.eu{background:none;box-shadow:none}
+body.sv-on .sn-linha .n{color:var(--sv-tx2);font:500 12.5px var(--sv-f)}
+body.sv-on .sn-linha .nome b{color:var(--sv-tx);font:600 13.5px/1.25 var(--sv-f);letter-spacing:0;text-transform:none}body.sv-on .sn-linha .nome small{color:var(--sv-tx2);font-weight:500}
+body.sv-on .sn-linha .eq{color:var(--sv-tx2)}body.sv-on .sn-linha .eq img{filter:drop-shadow(0 0 1px #0009)}
+body.sv-on .pn{color:var(--sv-tx2);font:500 12px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-linha .est em{padding:0;border:0;font:500 12px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-linha .est .ok{color:var(--sv-verde)}body.sv-on .sn-linha .est .off,body.sv-on .sn-linha .est .org{color:var(--sv-tx2)}
+body.sv-on .sn-resumo{padding:0}
+body.sv-on .sn-resumo>div{padding:8px 0}
+body.sv-on .sn-resumo dt{color:var(--sv-tx2);font:500 12.5px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-resumo dd{color:var(--sv-tx);font:600 13px var(--sv-f);text-transform:none}
+body.sv-on .sn-largar{min-height:0;height:52px;padding:0 20px}
+body.sv-on .sn-largar b{font-size:15px}body.sv-on .sn-largar .setas{width:20px}
+
+/* ---------- as dicas de teclado só aparecem para quem usa controle; a gaveta das peças ---------- */
+body.sv-on:not(.sn-pad) .sn-dicas{display:none}
+body.sv-on .sn-dicas{background:var(--sv-bg2);border:0;border-top:1px solid var(--sv-lin);color:var(--sv-tx2);font:500 12px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-dicas kbd{background:none;border:1px solid var(--sv-lin);color:var(--sv-tx);font:600 11px var(--sv-f)}
+body.sv-on .sn-gaveta{--vm:var(--sv-at);--linha:var(--sv-lin)}
+body.sv-on .sn-gaveta-fundo{background:#0005}
+body.sv-on .sn-gaveta-painel{background:var(--sv-bg2);border-left:1px solid var(--sv-lin);color:var(--sv-tx);box-shadow:-18px 0 44px #17181b2e}
+body.sv-on .sn-gaveta-painel h2{color:var(--sv-tx);font:500 clamp(24px,2.4vw,34px)/1.1 var(--sv-f);letter-spacing:-.03em;text-transform:none}
+body.sv-on .sn-g-sec h3{padding:0;border:0;color:var(--sv-tx2);font:600 11px/1.3 var(--sv-f);letter-spacing:.2em;text-transform:uppercase}
+body.sv-on #gavetaFechar{background:none;border:0;color:var(--sv-tx2);box-shadow:none}body.sv-on #gavetaFechar:hover{background:var(--sv-hover);color:var(--sv-tx)}
+body.sv-on .sn-x,body.sv-on .sn-ghost{background:none;border:0;color:var(--sv-tx2);font:600 12px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-x:hover,body.sv-on .sn-ghost:hover{background:var(--sv-hover);color:var(--sv-tx)}
+
+@media (max-width:1100px){
+  body.sv-on .sn-gp,body.sv-on .sn-grid,body.sv-on .sn-carro{grid-template-columns:1fr}
+  body.sv-on .sn-gp-dir,body.sv-on .sn-grid-lado,body.sv-on .sn-coluna{padding-left:0;border-left:0}
+}
+@media (max-width:820px){
+  body.sv-on .sn-topo{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;grid-template-areas:"sala cont" "etapas etapas"}
+  body.sv-on .sn-sala{padding:0}body.sv-on .sn-continuar{margin:0;padding:0 16px}
+  body.sv-on .sn-etapas{justify-content:space-between;border:0}body.sv-on .sn-et{flex:none;padding-bottom:9px;font-size:13px}body.sv-on .sn-et .t{display:inline}
+  body.sv-on .sn-equipe{grid-template-columns:1fr}
+  body.sv-on .sn-equipe .sn-vitrine,body.sv-on .sn-carro .sn-vitrine{height:clamp(260px,44vh,380px)}
+  body.sv-on .sn-ficha{padding-left:0;border-left:0}
+  body.sv-on .sn-mapa-corpo{grid-template-columns:minmax(0,1fr) 96px;gap:12px}
+  body.sv-on .sn-eq{flex:0 0 58px}
+  body.sv-on .sn-largar{height:56px}
+}
+
+/* ---------- "Sobre o GP": a foto continua cobrindo tudo, sempre escura; o texto segue o estilo novo ---------- */
+body.sv-on .sn-sobre,body.sv-on .sn-sobre *{font-style:normal!important}
+body.sv-on .sn-sobre{--vm:var(--sv-eq,#e10600);font-family:var(--sv-f)}
+body.sv-on .sn-sobre-lugar{color:#e8eaed;font:600 12px var(--sv-f);letter-spacing:.2em;text-shadow:0 1px 6px #000}
+body.sv-on .sn-sobre h2{font:500 clamp(36px,5vw,76px)/1.04 var(--sv-f);letter-spacing:-.035em;text-transform:none;text-shadow:0 2px 24px #000a}
+body.sv-on .sn-sobre-circ{color:#e8eaed;font:500 15px var(--sv-f)}
+body.sv-on .sn-sobre .sn-chip{color:#e8eaed;text-shadow:0 1px 6px #000}body.sv-on .sn-sobre .sn-chip.ouro{color:#fff;font-weight:700}
+body.sv-on .sn-curva{min-height:34px;padding:3px 10px 3px 3px;background:#0b0c1099;border:0;border-bottom:1px solid #ffffff2e;font:500 13px var(--sv-f);letter-spacing:0;transition:background-color .15s}
+body.sv-on .sn-curva b{width:26px;height:26px;background:none;color:#fff;font:600 12px var(--sv-f)}
+body.sv-on .sn-curva:hover,body.sv-on .sn-curva.hi{background:#ffffff26;border-color:#fff}body.sv-on .sn-curva.hi b{background:#fff;color:#111}
+body.sv-on .sn-marca circle{fill:#0b0c10;stroke:#fff;stroke-width:.5}body.sv-on .sn-marca text{font:600 3.2px var(--sv-f);fill:#fff}
+body.sv-on .sn-marca.hi circle{fill:#fff;stroke:#fff}body.sv-on .sn-marca.hi text{fill:#111}
+body.sv-on .sn-sobre-nav{background:#0b0c1099;border:0;border-bottom:1px solid #ffffff2e;transition:background-color .15s}
+body.sv-on .sn-sobre-nav:hover:not(:disabled){background:#ffffff26;border-color:#fff}
+body.sv-on .sn-sobre-nav i{color:#fff;font:400 22px/1 var(--sv-f)}body.sv-on .sn-sobre-nav small{font:500 11.5px var(--sv-f);letter-spacing:0;text-transform:none}body.sv-on .sn-sobre-nav b{font:600 13px var(--sv-f);letter-spacing:0;text-transform:none}
+body.sv-on .sn-sobre-x{background:#0b0c1099;border:0}body.sv-on .sn-sobre-x:hover{background:#ffffff26}

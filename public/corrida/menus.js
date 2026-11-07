@@ -28,6 +28,7 @@ export function show(id) {
   $("race").classList.toggle("hidden", id !== "race");
   $("bar").classList.toggle("hidden", id === "race" || id === "home"); // (a tela inicial tem o topo dela)
   document.body.classList.toggle("sala-escura", id === "home" || id === "lobby"); // as telas da sala usam o fundo escuro de sala de controle
+  document.body.classList.toggle("sv-on", id === "lobby"); aplicarTemaSala(); // a sala no visual da Central (sala-visual.css)
   document.body.classList.toggle("em-home", id === "home");
   menuNaTela(id === "home");
   if (id !== "home") window.preparoPronto?.();
@@ -51,6 +52,20 @@ const NIVEL = { facil: "fácil", medio: "médio", dificil: "difícil" };
 const DESC_PNEU = { macio: "Mais aderência. Dura cerca de 2,8 voltas.", medio: "Equilíbrio entre aderência e vida útil. Dura cerca de 3,8 voltas.", duro: "Menos aderência, maior vida útil. Dura cerca de 4,8 voltas.", chuva: "Melhor na chuva forte. Dura até 7 voltas na pista encharcada e 2 a 3 no seco.", intermediario: "Melhor na garoa. Dura 4 voltas no molhado e 2 no seco." };
 const el = (k) => document.querySelector(`.sn-etapa[data-etapa="${k}"]`);
 const plural = (n, s) => `${n} ${s}${n > 1 ? "s" : ""}`;
+// o tema da sala: o mesmo claro ou escuro da Central (`corrida:tema`) e a cor da equipe à vista, numa versão que aparece bem em cada fundo
+const CHAVE_TEMA = "corrida:tema";
+const temaEscuro = () => { try { return localStorage.getItem(CHAVE_TEMA) === "escuro"; } catch { return false; } };
+function aplicarTemaSala() {
+  const escuro = temaEscuro(), b = $("btnTemaSala"); document.body.classList.toggle("sv-escuro", escuro);
+  if (b) { b.classList.toggle("hidden", !document.body.classList.contains("sv-on")); b.setAttribute("aria-pressed", String(escuro)); b.textContent = escuro ? "Modo claro" : "Modo escuro"; }
+}
+function temaDaSala(cor) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(cor || ""); if (!m) return;
+  const n = parseInt(m[1], 16), l = (0.2126 * (n >> 16 & 255) + 0.7152 * (n >> 8 & 255) + 0.0722 * (n & 255)) / 255, r = document.body.style;
+  r.setProperty("--sv-eq", cor); r.setProperty("--sv-eq-txt", l > 0.58 ? "#08090c" : "#fff");
+  r.setProperty("--sv-eq-claro", l > 0.62 ? `color-mix(in srgb,${cor} 58%,#000)` : cor); r.setProperty("--sv-eq-escuro", l < 0.14 ? `color-mix(in srgb,${cor} 52%,#fff)` : cor);
+}
+$("btnTemaSala")?.addEventListener("click", () => { const escuro = !temaEscuro(); try { localStorage.setItem(CHAVE_TEMA, escuro ? "escuro" : "claro"); } catch {} aplicarTemaSala(); });
 const chip = (txt, cls = "") => `<span class="sn-chip ${cls}">${txt}</span>`;
 let etapa = "equipe", gavetaAberta = false, focoAntes = null, pendente = null, tEquipe = 0;
 
@@ -136,6 +151,7 @@ function renderEquipe(m) {
   const spec = specDaEquipe(vista), ficha = F.ficha(spec), mont = (E.S.montagens && E.S.montagens[vista]) || F.montagemPadrao(vista), usado = F.custoDaMontagem(mont), orc = q.orcamento, sobra = orc - usado;
   const gente = humanos(vista), pilotos = (FP.PILOTOS || []).filter((p) => p.equipe === vista);
   const quem = gente.length ? gente.map((p) => `<li><span class="av">${p.pawn}</span><b>${h(p.name)}</b>${p.id === m.id ? "<small>você</small>" : ""}</li>`).join("") : `<li class="vazio">Ninguém ainda: a vaga é sua.</li>`;
+  temaDaSala(e.cor);
   trocar($("eqFicha"), `<div class="sn-ficha-logo" style="--equipe:${e.cor}">${marcaEquipe(vista)}<div><small>Equipe</small><b>${h(e.nome)}</b></div></div>
     <div class="sn-nota"><strong class="num">${GA.notaGeral(ficha)}</strong><span>Nota do carro</span></div>
     <ul class="sn-barras">${ficha.map((f) => `<li><span>${h(f.rotulo)}</span><i class="sn-barra" role="img" aria-label="${f.nota} de 10"><u style="width:${f.nota * 10}%"></u></i><b class="num">${f.nota}</b></li>`).join("")}</ul>
@@ -169,7 +185,7 @@ function renderGP(m, isHost, f1, c, t) {
   const dados = chip(plural(c.voltas, "volta")) + chip(c.hora === "noite" ? "Noite" : "Dia") + (f1 && !temporada && c.clima && c.clima !== "aleatorio" ? chip({ seco: "Seco", chuva: "Chuva", variavel: "Variável" }[c.clima] || "") : "") + (recorde ? chip(`Recorde ${fmt(recorde.t)}`, "ouro") : "");
   if (trocar($("gpMapa"), `<div class="sn-mapa-corpo"><canvas id="pistaGrande" width="640" height="640" role="img" aria-label="Mapa de ${h(t.name)}"></canvas><div class="sn-mapa-txt"><small>${h(t.sub)}</small><b>${h(t.name)}</b><div class="sn-chips">${dados}</div><button class="sn-sobre-btn" data-sobre><span>Sobre o GP</span><small>${sobreResumo(c.pista)}</small><i aria-hidden="true">›</i></button>${isHost ? "" : `<p class="sn-so-org">Só o organizador escolhe o GP.</p>`}</div></div>`)) drawPreview($("pistaGrande"), c.pista);
   const fundoGp = window.GpInfo && window.GpInfo.fundoDe(c.pista); $("gpMapa").style.setProperty("--foto", fundoGp ? `url("${fundoGp}")` : "none"); // a foto do GP por trás do mapa
-  const pistas = Object.entries(PISTAS).map(([id, p]) => `<button class="sn-pista ${c.pista === id ? "on" : ""}" data-pista="${id}" ${dis} aria-pressed="${c.pista === id}"><canvas data-prev="${id}" width="160" height="160" aria-hidden="true"></canvas><span><b>${h(p.name)}</b><small>${h(p.sub)}</small></span>${loadBest(id) ? `<em>Recorde ${fmt(loadBest(id).t)}</em>` : ""}</button>`).join("");
+  const pistas = Object.entries(PISTAS).map(([id, p]) => `<button class="sn-pista ${c.pista === id ? "on" : ""}" data-pista="${id}" ${dis} aria-pressed="${c.pista === id}"><i class="sn-pista-foto" aria-hidden="true" style="--foto:${window.GpInfo?.fundoDe(id) ? `url(&quot;${window.GpInfo.fundoDe(id)}&quot;)` : "none"}"></i><canvas data-prev="${id}" width="160" height="160" aria-hidden="true"></canvas><span><b>${h(p.name)}</b><small>${h(p.sub)}</small></span>${loadBest(id) ? `<em>Recorde ${fmt(loadBest(id).t)}</em>` : ""}</button>`).join("");
   if (trocar($("gpPistas"), `<h3 class="sn-tit"><span>Pistas</span><em>${Object.keys(PISTAS).length} circuitos</em></h3><div class="sn-pistas">${pistas}</div>`)) $("gpPistas").querySelectorAll("[data-prev]").forEach((cv) => drawPreview(cv, cv.dataset.prev));
   const seg = (itens, atual, attr, rot, dsb = dis) => `<div class="sn-seg" role="group" aria-label="${rot}">${itens.map(([v, l]) => { const on = String(atual) === String(v); return `<button class="sn-opt ${on ? "on" : ""}" data-${attr}="${v}" aria-pressed="${on}" ${dsb}>${l}</button>`; }).join("")}</div>`;
   const campo = (rot, corpo, nota) => `<div class="sn-grupo"><span class="sn-rot">${rot}</span>${corpo}${nota ? `<small>${nota}</small>` : ""}</div>`;
@@ -440,9 +456,14 @@ export function renderLobby() {
 // traçado em miniatura (cartões da sala e minimapa)
 export function drawPreview(cv, id) {
   const t = PISTAS[id], c = cv.getContext("2d"), s = cv.width / t.world, th = THEMES[id];
-  c.fillStyle = th.preview; c.fillRect(0, 0, cv.width, cv.height);
   const pts = window.Pistas.pontos(t, 12); // começa na largada (o quadradinho xadrez)
   c.lineJoin = c.lineCap = "round";
+  if (document.body.classList.contains("sv-on")) { // a sala nova: só o traçado, em branco, sobre a foto escurecida da pista (sala-visual.css)
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(p.x * s, p.y * s) : c.moveTo(p.x * s, p.y * s))); c.closePath(); c.lineWidth = Math.max(2, cv.width / 90); c.strokeStyle = "#fff"; c.stroke();
+    return;
+  }
+  c.fillStyle = th.preview; c.fillRect(0, 0, cv.width, cv.height);
   for (const [w, col] of [[t.width * 1.3, "#0006"], [t.width, "#d9dbe0"], [t.width * 0.6, "#3a3d46"]]) {
     c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(p.x * s, p.y * s) : c.moveTo(p.x * s, p.y * s))); c.closePath(); c.lineWidth = Math.max(2, w * s); c.strokeStyle = col; c.stroke();
   }
