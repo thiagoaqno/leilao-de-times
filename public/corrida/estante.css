@@ -1,0 +1,19 @@
+/* A estante da F1 com os amigos (estante.js): herda a cor do texto de onde estiver (menu escuro, Central clara ou escura, diálogo da Vila). */
+.ef-taca{width:1em;height:1em;flex:none}
+.ef-selo{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 7px 1px 5px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;opacity:.8}
+.ef-selo.campeao{border-color:#d4a017;background:#d4a0171f;color:#b7860b;opacity:1}
+body.cx-escuro .ef-selo.campeao,.mn .ef-selo.campeao{color:#f1c232}
+.ef-ranking,.ef-ultimas{margin:0;padding:0;list-style:none}
+.ef-ranking li{display:flex;align-items:center;gap:10px;padding:8px 6px 8px 10px;border-left:3px solid var(--c);transition:background .15s,transform .18s}
+.ef-ranking li+li{margin-top:2px}
+.ef-ranking li:hover{background:color-mix(in srgb,currentColor 10%,transparent);transform:translateX(3px)}
+.ef-pos{width:20px;font-weight:800;opacity:.7;text-align:right}
+.ef-ranking li:first-child .ef-pos{color:#d4a017;opacity:1}
+.ef-quem{flex:1;min-width:0;display:flex;flex-direction:column}.ef-quem b{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.ef-quem small{opacity:.7;font-size:12px}
+.ef-n{display:inline-flex;align-items:center;justify-content:flex-end;gap:3px;min-width:38px;font-weight:700;font-variant-numeric:tabular-nums}
+.ef-n em{font-style:normal;font-size:10px;opacity:.6}
+.ef-sub{margin:14px 0 6px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.7}
+.ef-ultimas li{display:flex;align-items:baseline;gap:8px;padding:4px 0;font-size:13px;line-height:1.35}
+.ef-ultimas i{flex:none;width:10px;height:3px;align-self:center;background:var(--c)}
+.ef-ultimas span{flex:1;min-width:0}.ef-ultimas small{flex:none;opacity:.6;font-size:11px}
+.ef-vazio{margin:0;opacity:.75;font-size:14px;line-height:1.5}

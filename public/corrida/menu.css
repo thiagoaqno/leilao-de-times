@@ -183,3 +183,8 @@ body.em-home button:hover:not(:disabled).mn-cartao{background:linear-gradient(12
 @media (max-width:860px) and (orientation:landscape){.mn-frase{margin-bottom:36px}}
 @media (pointer:coarse){.mn-dicas{display:none}.mn-online{margin-left:auto}}
 @media (prefers-reduced-motion:reduce){.mn *,.mn *::before,.mn *::after{transition-duration:.01ms!important;animation-duration:.01ms!important}.mn-cartao{transform:none!important}}
+/* a estante da galera (estante.js) dentro do painel */
+.mn[data-painel="estante"] .mn-nome{display:none!important}
+.mn-estante{color:#fff}.mn-estante .ef-ranking li{background:#ffffff0d}.mn-estante .ef-ranking li:hover{background:#ffffff1f}
+.mn-estante .ef-quem b{font:800 18px/1.1 var(--display);letter-spacing:.03em;text-transform:uppercase}
+.mn-estante .mn-estante-ir{margin-top:14px;text-decoration:none}

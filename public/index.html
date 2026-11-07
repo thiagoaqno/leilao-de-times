@@ -58,6 +58,13 @@ button{font:inherit;cursor:pointer}
 .telao-top li:nth-child(1)::before{color:#b8860b}.telao-top li:nth-child(2)::before{color:#7a8496}.telao-top li:nth-child(3)::before{color:#a0522d}
 .telao-top i{margin-left:auto;font-style:normal;font-size:14px;white-space:nowrap}
 .torre-pista{margin:10px 0 0;font-size:15px}
+.torre-abas{display:flex;gap:6px;margin:4px 0 8px}
+.torre-abas button{flex:1;padding:6px 8px;border:3px solid var(--ink);border-radius:8px;background:transparent;color:var(--ink);font:700 15px "Pixelify Sans",monospace;cursor:pointer}
+.torre-abas button[aria-selected=false]{background:transparent!important;color:var(--ink)!important;box-shadow:none!important}
+.torre-abas button[aria-selected=true]{background:var(--ink);color:var(--paper)}
+.torre-abas button:hover{transform:translateY(-1px)}
+.torre-eq{font-size:13px;font-weight:700}
+.torre-ultimas{margin:4px 0 0;padding-left:18px;font-size:15px}
 .dlg .go{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
 .dlg .go span{font-size:15px;color:#4a5690}
 .dlg .go span::after{content:" ▼";display:inline-block;animation:blink 1s steps(2) infinite}
@@ -1895,8 +1902,31 @@ function buscarEstante() {
 const RECORDES = { pistas: null, erro: false };
 // o tempo de volta: 1:04.30 (no diálogo, centésimos: num recorde, cada um conta) ou 1:04.3 (na torre, que é estreita)
 const tempoVolta = (t, casas = 2) => { const m = Math.floor(t / 60), s = t - m * 60; return m ? `${m}:${s.toFixed(casas).padStart(casas + 3, "0")}` : s.toFixed(casas); };
-const TORRE_LUGAR = { tipo: "torre", icon: "⏱️", name: "Recordes do Autódromo", verbo: "entrar no Autódromo", botao: "Correr",
-  html: () => {
+// a estante da F1 com os amigos (GET /api/corrida/estante, bd.estanteCorrida): a outra aba da torre, com os campeões das temporadas em grupo
+const CAMPEOES_F1 = { d: null, erro: false };
+let torreAba = "campeoes";
+const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+function campeoesF1Html() {
+  const d = CAMPEOES_F1.d;
+  if (!d) return `<p>${CAMPEOES_F1.erro ? "A estante não abriu agora. Tente de novo daqui a pouco." : "Abrindo a estante…"}</p>`;
+  if (!d.ranking.length) return `<p>Ninguém ganhou nada ainda. A primeira vitória num GP de uma temporada com os amigos abre a estante.</p>`;
+  const conta = (t) => [t.titulos && plural(t.titulos, "título", "títulos"), t.vitorias && plural(t.vitorias, "vitória", "vitórias"), plural(t.podios, "pódio", "pódios")].filter(Boolean).join(" · ");
+  const feito = (c) => c.tipo === "pilotos" ? `campeão da temporada${c.equipeNome ? ` de ${esc(c.equipeNome)}` : ""}` : c.tipo === "construtores" ? `campeão de construtores (${esc(c.equipeNome || c.equipe)})` : `venceu o ${esc(c.gpNome || c.pista)}`;
+  return `<p class="meta">Títulos, vitórias e pódios de quem joga as temporadas de F1 com os amigos, para sempre.</p><ol class="telao-top">${d.ranking.slice(0, 8).map((t) => `<li><b>${esc(t.piloto)}</b><span class="torre-eq" style="color:${esc(t.cor || "#4a5690")}">${esc(t.equipeNome || "")}</span><i>${conta(t)}</i></li>`).join("")}</ol>`
+    + (d.ultimas.length ? `<h3 class="torre-pista">Últimas conquistas</h3><ul class="torre-ultimas">${d.ultimas.slice(0, 4).map((c) => `<li><b>${esc(c.piloto)}</b> ${feito(c)}</li>`).join("")}</ul>` : "");
+}
+function buscarCampeoesF1() {
+  fetch("/api/corrida/estante").then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status)))).then((d) => { CAMPEOES_F1.d = d; CAMPEOES_F1.erro = false; })
+    .catch(() => { CAMPEOES_F1.erro = true; }).finally(() => { if (here === TORRE_LUGAR) { here = null; setHere(TORRE_LUGAR); } });
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest?.("[data-torre-aba]"); if (!b || here !== TORRE_LUGAR) return;
+  torreAba = b.dataset.torreAba; here = null; setHere(TORRE_LUGAR);
+});
+const TORRE_LUGAR = { tipo: "torre", icon: "⏱️", name: "Torre do Autódromo", verbo: "entrar no Autódromo", botao: "Correr",
+  html: () => `<div class="torre-abas" role="tablist">${[["campeoes", "Campeões da F1"], ["recordes", "Recordes de volta"]].map(([id, nome]) => `<button type="button" role="tab" data-torre-aba="${id}" aria-selected="${torreAba === id}">${nome}</button>`).join("")}</div>${torreAba === "campeoes" ? campeoesF1Html() : recordesHtml()}` };
+function recordesHtml() {
+  {
     const ps = RECORDES.pistas;
     if (!ps) return `<p>${RECORDES.erro ? "A torre não abriu agora. Tente de novo daqui a pouco." : "Ligando a torre…"}</p>`;
     const com = ps.filter((p) => p.top.length);
@@ -1904,7 +1934,8 @@ const TORRE_LUGAR = { tipo: "torre", icon: "⏱️", name: "Recordes do Autódro
     return `<p class="meta">As 5 voltas mais rápidas de cada pista, para sempre. Cada piloto aparece uma vez, com o melhor tempo dele.</p>`
       + com.map((p) => `<h3 class="torre-pista">${esc(p.nome)}</h3><ol class="telao-top">${p.top.map((r) => `<li><b>${esc(r.piloto)}</b><i>${tempoVolta(r.tempo)}</i></li>`).join("")}</ol>`).join("")
       + (com.length < ps.length ? `<p class="meta">Ainda sem volta: ${ps.filter((p) => !p.top.length).map((p) => esc(p.nome)).join(", ")}.</p>` : "");
-  } };
+  }
+}
 function buscarRecordes() {
   fetch("/api/recordes-corrida").then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status)))).then((d) => {
     RECORDES.pistas = d.pistas || []; RECORDES.erro = false;
@@ -2215,6 +2246,7 @@ setHere(lugarEm(player.x, player.y));
 requestAnimationFrame(frame);
 buscarEstante(); setInterval(buscarEstante, 60e3);
 buscarRecordes(); setInterval(buscarRecordes, 60e3);
+buscarCampeoesF1(); setInterval(buscarCampeoesF1, 60e3);
 if (location.hash === "#debug") window.__vila = {
   GAMES, player, others, ground, solid, walkable, bfs, TELAO, ESTANTE, TERRENOS, TORRE, RECORDES,
   get here() { return here; }, get myId() { return myId; },

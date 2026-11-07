@@ -104,6 +104,17 @@ app.get("/api/corrida/menu", (req, res) => {
   try { res.json(require("./corrida-menu.js").resumo(io, require("./bd.js"))); } catch (e) { res.status(500).json({ erro: "O menu não abriu." }); }
 });
 app.get("/api/estante", (req, res) => { try { res.json(require("./bd.js").estante()); } catch (e) { res.status(500).json({ erro: "A estante não abriu." }); } });
+// a estante da F1 com os amigos: o ranking dos pilotos de verdade (títulos, vitórias e pódios das temporadas em grupo) e as últimas conquistas
+// (com o nome e a cor das equipes e o nome do GP, para a Vila, que não carrega os arquivos da Corrida)
+app.get("/api/corrida/estante", (req, res) => {
+  try {
+    const d = require("./bd.js").estanteCorrida(), Eq = require("./public/corrida/f1-pilotos-2026.js").EQUIPES, Gp = require("./public/corrida/gp-info.js");
+    const eq = (x) => { const e = Eq[x.equipe]; if (e) { x.equipeNome = e.nome; x.cor = e.cor; } return x; };
+    d.ranking.forEach(eq);
+    d.ultimas.forEach((x) => { eq(x); if (x.pista) x.gpNome = (Gp.get(x.pista)?.gp || x.pista).replace(/^Grande Prêmio/, "GP"); });
+    res.set("Cache-Control", "no-store"); res.json(d);
+  } catch (e) { res.status(500).json({ erro: "A estante não abriu agora." }); }
+});
 // Escudos da Carreira guardados no Git. O mesmo endereço serve a tela e o canvas das notícias, sem chamar a API em jogo.
 const escudosApi = (() => { try { return require("./public/carreira/escudos-api.json"); } catch { return {}; } })();
 app.get("/api/escudo/:id", (req, res) => {

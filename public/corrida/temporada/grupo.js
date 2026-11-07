@@ -93,7 +93,7 @@ function telaDoConvite(erro) {
 // ---------- a sala antes da temporada ----------
 function listaDePessoas() {
   const eh = S.eu === S.host;
-  return `<ul class="pessoas">${S.pessoas.map((p) => `<li class="${p.online ? "on" : ""}"><i class="bolinha" title="${p.online ? "na sala" : "ausente"}"></i><b>${h(p.nome)}${p.id === S.eu ? " (você)" : ""}</b>${p.host ? `<em>anfitrião</em>` : ""}<span>${p.equipe ? `<i class="faixa" style="--c:${h(equipe(p.equipe).cor)}"></i>${h(equipe(p.equipe).nome)}${p.carro != null ? ` · carro ${p.carro + 1}` : ""}` : "sem equipe: só acompanha"}</span>${eh && p.id !== S.eu ? `<button class="small ghost" data-cargo="${h(p.id)}">Tornar anfitrião</button>` : ""}</li>`).join("")}</ul>`;
+  return `<ul class="pessoas">${S.pessoas.map((p) => `<li class="${p.online ? "on" : ""}"><i class="bolinha" title="${p.online ? "na sala" : "ausente"}"></i><b>${h(p.nome)}${p.id === S.eu ? " (você)" : ""}</b>${window.EstanteF1?.selo(p.nome) || ""}${p.host ? `<em>anfitrião</em>` : ""}<span>${p.equipe ? `<i class="faixa" style="--c:${h(equipe(p.equipe).cor)}"></i>${h(equipe(p.equipe).nome)}${p.carro != null ? ` · carro ${p.carro + 1}` : ""}` : "sem equipe: só acompanha"}</span>${eh && p.id !== S.eu ? `<button class="small ghost" data-cargo="${h(p.id)}">Tornar anfitrião</button>` : ""}</li>`).join("")}</ul>`;
 }
 function telaDaSala() {
   const todas = window.F1Temporada.PISTAS_TRABALHADAS.length;
@@ -199,7 +199,11 @@ function telaDaTemporada() {
     <div class="recuperacao"><span>Sala guardada no servidor · código ${h(S.codigo)}</span><button id="gconvite">Copiar convite</button><a href="/corrida/temporada/">Temporada solo</a>${eh ? `<button id="gencerrar" class="discreto">Encerrar a temporada</button>` : ""}<button id="gsairtemp" class="discreto">Sair da temporada</button></div>`);
   GA.encaixar(meuTime);
 }
+// a estante (estante.js): os troféus de cada um ao lado do nome; relida quando um GP termina
+let gpDaEstante = null;
+window.addEventListener("estante-f1", () => { if (S) desenhar(); });
 function desenhar(erro) {
+  if (S && window.EstanteF1) { const marca = `${S.ano}:${S.gp}`; window.EstanteF1.carregar(gpDaEstante !== null && gpDaEstante !== marca); gpDaEstante = marca; }
   if (!S) { window.F1Garagem.fundoDoGP(null); return telaDoConvite(erro); }
   document.title = `Temporada F1 · sala ${S.codigo}`;
   // a foto do circuito do próximo GP no fundo, só enquanto há GP a jogar

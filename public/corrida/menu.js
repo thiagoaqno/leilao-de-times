@@ -26,7 +26,7 @@ export function menuNaTela(sim) {
   ligarUmaVez();
   $("mnNomeTopo").textContent = nomePiloto() || "Piloto";
   $("hName").value = nomePiloto();
-  ligarGaragem(); carregarCarreira(); carregarGrupos(); pedirResumo(); desenharCartoes();
+  ligarGaragem(); carregarCarreira(); carregarGrupos(); pedirResumo(); desenharCartoes(); resumoDaEstante();
   timerResumo = setInterval(pedirResumo, 15000); timerPad = setInterval(lerControle, 90);
   if (!painel) requestAnimationFrame(() => { if (!document.activeElement || document.activeElement === document.body) itensDoMenu()[0]?.focus({ preventScroll: true }); });
 }
@@ -119,7 +119,7 @@ const LOUROS = '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strok
 const CRONO = '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><circle cx="32" cy="36" r="21"/><path d="M26 6h12M32 6v9M50 17l4 4M32 24v12l8 6"/></svg>';
 
 // ---------- os painéis ----------
-const TITULO = { rapida: "Corrida rápida", contra: "Contrarrelógio", multi: "Multiplayer", garagem: "Garagem" };
+const TITULO = { estante: "Estante da galera", rapida: "Corrida rápida", contra: "Contrarrelógio", multi: "Multiplayer", garagem: "Garagem" };
 function abrirPainel(nome, focar) {
   if (painel === nome) return fecharPainel();
   if (!painel) focoAntes = document.activeElement;
@@ -166,6 +166,20 @@ function desenharSecao(nome) {
       + `<button type="button" class="mn-acao" id="mnContraLargar"><span><b>Para a pista</b><small>${h(equipeNome())}</small></span>${seta}</button>`;
   } else if (nome === "multi") desenharSalas();
   else if (nome === "garagem") desenharGaragem();
+  else if (nome === "estante") desenharEstante();
+}
+// a estante da F1 com os amigos (estante.js): o ranking e as últimas conquistas das temporadas em grupo
+function desenharEstante() {
+  const E = window.EstanteF1; if (!E) return;
+  const pintar = (d) => { $("mnEstante").innerHTML = `${E.painel(d, { limite: 8, recentes: 4 })}<a class="mn-acao mn-estante-ir" href="${h($("mnAmigos")?.getAttribute("href") || "/corrida/temporada/?amigos=1")}"><span><b>Entrar para a estante</b><small>Temporada com os amigos</small></span>${seta}</a>`; };
+  pintar(E.dados()); E.carregar().then((d) => { if (painel === "estante") pintar(d); });
+}
+function resumoDaEstante() {
+  window.EstanteF1?.carregar().then((d) => {
+    const s = $("mnEstanteS"); if (!s || !d) return;
+    const lider = d.ranking?.[0];
+    s.textContent = lider ? `${lider.piloto} lidera: ${lider.titulos} ${lider.titulos === 1 ? "título" : "títulos"}, ${lider.vitorias} ${lider.vitorias === 1 ? "vitória" : "vitórias"}` : "Os títulos e as vitórias da galera";
+  });
 }
 const equipeNome = () => FP()?.EQUIPES[equipeDoCarro()]?.nome || "Sua equipe";
 async function carregarRecordes() {

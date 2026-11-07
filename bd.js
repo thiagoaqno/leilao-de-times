@@ -367,6 +367,39 @@ function estante({ limite = 50, recentes = 24 } = {}) {
   return { ranking, ultimas, total: linhas.filter((l) => l.colocacao === 1).length };
 }
 
+// ---------- a estante da F1 com os amigos (corrida_estante, migracoes/028) ----------
+// guarda pódios e títulos; a mesma conquista não entra duas vezes (o servidor pode reiniciar no meio)
+function guardarEstanteCorrida(lista) {
+  const ins = bd().prepare(`INSERT OR IGNORE INTO corrida_estante (sala, piloto, chave, equipe, tipo, pista, colocacao, ano, gp, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  let novas = 0;
+  for (const c of lista || []) {
+    const chave = chaveTecnico(c.piloto); if (!chave || !["gp", "pilotos", "construtores"].includes(c.tipo)) continue;
+    novas += ins.run(String(c.sala), String(c.piloto).slice(0, 24), chave, String(c.equipe), c.tipo, c.pista ? String(c.pista) : null,
+      Math.min(3, Math.max(1, c.colocacao | 0)), c.ano | 0, c.tipo === "gp" ? c.gp | 0 : -1, c.criadoEm || Date.now()).changes;
+  }
+  return novas;
+}
+// o ranking dos amigos (títulos de pilotos, de construtores, vices, vitórias e pódios em GP, a equipe com mais conquistas) e as últimas
+// vitórias e títulos. A ordem: títulos de pilotos, vitórias, títulos de construtores e pódios.
+function estanteCorrida({ limite = 100, recentes = 20 } = {}) {
+  const linhas = bd().prepare("SELECT * FROM corrida_estante ORDER BY criado_em ASC, id ASC").all();
+  const por = new Map();
+  for (const l of linhas) {
+    const t = por.get(l.chave) || { piloto: l.piloto, chave: l.chave, titulos: 0, construtores: 0, vices: 0, vitorias: 0, podios: 0, equipes: {}, salas: new Set(), ultimo: 0 };
+    t.piloto = l.piloto; t.salas.add(l.sala); t.ultimo = Math.max(t.ultimo, l.criado_em);
+    if (l.tipo === "gp") { t.podios++; if (l.colocacao === 1) t.vitorias++; }
+    else if (l.colocacao === 1) { if (l.tipo === "pilotos") t.titulos++; else t.construtores++; }
+    else if (l.tipo === "pilotos") t.vices++;
+    t.equipes[l.equipe] = (t.equipes[l.equipe] || 0) + 1;
+    por.set(l.chave, t);
+  }
+  const ranking = [...por.values()].map(({ salas, equipes, ...t }) => ({ ...t, salas: salas.size, equipe: Object.entries(equipes).sort((a, b) => b[1] - a[1])[0]?.[0] || null }))
+    .sort((a, b) => b.titulos - a.titulos || b.vitorias - a.vitorias || b.construtores - a.construtores || b.podios - a.podios || a.ultimo - b.ultimo).slice(0, limite);
+  const ultimas = linhas.filter((l) => l.colocacao === 1).slice(-recentes).reverse()
+    .map((l) => ({ piloto: l.piloto, chave: l.chave, equipe: l.equipe, tipo: l.tipo, pista: l.pista, ano: l.ano, em: l.criado_em }));
+  return { ranking, ultimas, titulos: linhas.filter((l) => l.tipo === "pilotos" && l.colocacao === 1).length, vitorias: linhas.filter((l) => l.tipo === "gp" && l.colocacao === 1).length };
+}
+
 // Os Pokémon da grama alta da Vila (vila-mato.js): cada linha de "capturas" é um indivíduo com nível e experiência.
 // O treinador chega aqui já como hash. A Pokédex ("pokedex") guarda toda espécie que o treinador já teve.
 function registrarNaPokedex(treinador, bicho) {
@@ -471,5 +504,5 @@ function nivelDeTodosAdmin(treinador, nivel, ator) {
 const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, tipo, captura, antes, depois, criado_em FROM moderacao_pokemon WHERE treinador = ? ORDER BY id DESC LIMIT ?").all(treinador, limite)
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
-module.exports = { registrarSetorCorrida, setoresCorrida, perfisPilotoCorrida, salvarPerfilPilotoCorrida, reporPerfilPilotoCorrida, melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { registrarSetorCorrida, setoresCorrida, perfisPilotoCorrida, salvarPerfilPilotoCorrida, reporPerfilPilotoCorrida, melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante, guardarEstanteCorrida, estanteCorrida };
 Object.assign(module.exports, { excluirTemporadaCorrida, criarTemporadaCorrida, temporadaCorridaPorToken, temporadaCorridaPorId, recuperarTemporadaCorrida, salvarTemporadaCorrida, novoCodigoTemporadaCorrida, salvarSalaTemporadaCorrida, salasTemporadaCorrida, apagarSalaTemporadaCorrida });

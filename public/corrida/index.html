@@ -141,6 +141,7 @@
 <link rel="stylesheet" href="/corrida/sala-nova.css">
 <link rel="stylesheet" href="/corrida/sala-visual.css">
 <link rel="stylesheet" href="/corrida/menu.css">
+<link rel="stylesheet" href="/corrida/estante.css">
 </head>
 <body>
 <div id="preparoCorrida" class="preparo-corrida" role="status" aria-live="polite">
@@ -186,6 +187,7 @@ window.timerPreparoCorrida = setTimeout(function () { document.getElementById("p
       <nav class="mn-menu" id="mnMenu" aria-label="Menu principal">
         <a class="mn-item mn-principal" id="mnCarreira" href="/corrida/temporada/"><span><b id="mnCarreiraT">Carreira solo</b><small id="mnCarreiraS">Escolha a equipe e dispute a temporada</small></span><i class="mn-seta" aria-hidden="true"></i></a>
         <a class="mn-item mn-principal mn-amigos" id="mnAmigos" href="/corrida/temporada/?amigos=1"><span><b id="mnAmigosT">Com os amigos</b><small id="mnAmigosS">Temporada inteira, cada um na sua equipe</small></span><em class="mn-selo" id="mnAmigosSelo">Até 8</em><i class="mn-seta" aria-hidden="true"></i></a>
+        <button type="button" class="mn-item" id="mnEstanteItem" data-painel="estante"><span><b>Estante</b><small id="mnEstanteS">Os títulos e as vitórias da galera</small></span><i class="mn-seta" aria-hidden="true"></i></button>
         <button type="button" class="mn-item" data-painel="rapida"><span><b>Corrida rápida</b></span><i class="mn-seta" aria-hidden="true"></i></button>
         <button type="button" class="mn-item" id="mnMulti" data-painel="multi"><span><b>Multiplayer</b></span><i class="mn-seta" aria-hidden="true"></i></button>
         <button type="button" class="mn-item" data-painel="contra"><span><b>Contrarrelógio</b></span><i class="mn-seta" aria-hidden="true"></i></button>
@@ -208,6 +210,7 @@ window.timerPreparoCorrida = setTimeout(function () { document.getElementById("p
             <button type="button" id="btnCreate" class="mn-acao"><span><b>Abrir sala nova</b><small>Você é o organizador</small></span><i class="mn-seta" aria-hidden="true"></i></button>
             
           </section>
+          <section class="mn-sec mn-estante" data-sec="estante" id="mnEstante"></section>
           <section class="mn-sec" data-sec="garagem">
             <span class="mn-rot">Sua equipe</span>
             <div class="mn-equipes" id="mnEquipes" role="group" aria-label="Equipes de 2026"></div>
@@ -384,6 +387,7 @@ window.timerPreparoCorrida = setTimeout(function () { document.getElementById("p
 <script src="/corrida/f1-equipes.js"></script>
 <script src="/corrida/f1-pecas.js"></script>
 <script src="/corrida/temporada/garagem.js"></script>
+<script src="/corrida/estante.js"></script>
 <script src="/carreira/musica.js"></script>
 <script defer src="/corrida/gpu-aviso.js"></script>
 <script type="module" src="/corrida/jogo.js" onerror="falhaPreparoCorrida()"></script>
