@@ -44,6 +44,9 @@ if not "%O%"=="2" (
 if not "%O%"=="1" (
   set /p "VE=Voice ID do ENGENHEIRO (Enter = padrao %VOZ_ENGENHEIRO_PADRAO%): "
   if "!VE!"=="" set "VE=%VOZ_ENGENHEIRO_PADRAO%"
+  set "VS="
+  set /p "VS=Voice ID do OBSERVADOR, o spotter (Enter = a mesma do engenheiro): "
+  if not "!VS!"=="" set "ELEVENLABS_VOICE_SPOTTER=!VS!"
 )
 
 echo.
