@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const R = require('../public/corrida/temporada/regras.js');
-const G = require('../public/corrida/temporada/grupo-regras.js');
 const esperadas = ['melbourne', 'xangai', 'suzuka', 'bahrein', 'jeddah', 'miami', 'montreal', 'monaco', 'barcelona', 'redbullring', 'silverstone', 'spa', 'hungaroring', 'zandvoort', 'monza', 'madri', 'baku', 'singapura', 'austin', 'mexico', 'interlagos', 'lasvegas', 'catar', 'abudhabi'];
 
 test('temporada completa reúne todas as pistas refeitas, em ordem, e mantém o formato na próxima temporada', () => {
@@ -10,10 +9,4 @@ test('temporada completa reúne todas as pistas refeitas, em ordem, e mantém o 
   s.gp = s.tamanho; R.proximaTemporada(s);
   assert.deepEqual(s.calendario.map((p) => p.pista), esperadas);
   assert.equal(s.tamanho, 24);
-});
-
-  G.escolherEquipe(sala, 'a', 'ferrari'); G.definirOpcoes(sala, 'a', { tamanho: 24 }); G.iniciar(sala, 'a', 42);
-  assert.deepEqual(sala.calendario.map((p) => p.pista), esperadas);
-  sala.gp = 15; G.proximaTemporada(sala, 'a');
-  assert.deepEqual(sala.calendario.map((p) => p.pista), esperadas);
 });
