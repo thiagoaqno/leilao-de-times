@@ -7,8 +7,8 @@ const Radio = require("../public/corrida/radio.js");
 const SITUACOES = ["largada", "voltarapida", "ganhou", "perdeu", "pneu", "box", "safety", "amarela", "dano", "ultima", "vitoria", "podio", "pontos", "foradospontos", "abandono", "chuvachegando", "chuvaparando", "boasvindas", "classboa", "classruim", "drs", "punicao"];
 const PEDIDOS = ["diagnosticobom", "diagnosticomedio", "diagnosticograve", "pneusbons", "pneusgastos", "corridachuva", "corridaseca"];
 
-test("toda situação (só as da corrida) tem de 4 a 5 falas", () => {
-  for (const s of SITUACOES) { const n = Falas.porSituacao(s).length; assert.ok(n >= 4 && n <= 5, `${s}: ${n} falas`); }
+test("toda situação da corrida tem pelo menos 8 falas, e as de pedido pelo menos 2", () => {
+  for (const s of SITUACOES) { const n = Falas.porSituacao(s).length; assert.ok(n >= 8, `${s}: ${n} falas`); }
   for (const s of PEDIDOS) assert.ok(Falas.porSituacao(s).length >= 2, s);
   assert.deepEqual(Object.keys(Falas.SITUACOES).sort(), [...SITUACOES, ...PEDIDOS].sort());
   assert.equal(Falas.FALAS.length, [...SITUACOES, ...PEDIDOS].reduce((n, s) => n + Falas.porSituacao(s).length, 0));
