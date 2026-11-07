@@ -1,37 +1,35 @@
-# O jogo deixa de limitar o FPS e para de desenhar o que não se vê
+# Relevo real em mais seis pistas, e as 24 pistas na carreira
 
-## FPS sem limite
+## Pistas
 
-A Corrida e o Drag pulavam um quadro sempre que o anterior tinha menos de 11 ms: 120 Hz virava 60 FPS, 144 Hz virava 72, 240 Hz virava 80 e 360 Hz virava 90. Agora desenham um quadro por atualização da tela, até o limite do monitor.
+`ferramentas/pista-real.js` passou por mais seis pistas. O traçado e o tamanho não mudaram.
 
-A física não muda: continua em passos fixos de 1/120 s. O esterçar visual das rodas era suavizado por quadro e passou a ser por tempo, com a sensação de antes em 144 Hz.
+| Pista | Relevo real | Inclinação máxima | Barreiras |
+|---|---|---|---|
+| Baku | 86 unidades (antes 75) | 11,8% (antes 8%) | as que já tinha |
+| Zandvoort | 19 unidades | 2,7% | novas, por trecho |
+| Silverstone | 35 unidades | 3% | novas, por trecho |
+| Monza | 49 unidades | 5,8% | regra automática |
+| Xangai | 20 unidades | 5,1% | regra automática |
+| Melbourne | 21 unidades | 2,3% | regra automática |
 
-## O que não se vê não é desenhado
+Monza, Xangai e Melbourne seguem com a regra automática porque o OpenStreetMap mapeia poucas barreiras nelas (faltam em 49% a 90% da volta, conforme a pista e o lado). Com esses dados, a pista ficaria sem muro em quase toda a volta.
 
-O three só descarta o que está fora do enquadramento. Em Mônaco, chegavam a ser 690 objetos desenhados para 17 que apareciam.
+Baku já usava altitude real. Mudou a suavização, e o exagero saiu porque a escala agora é a do traçado. O terreno em volta se ajusta sozinho à altura da pista. Em Melbourne, o relevo foi mais suavizado, porque o SRTM conta as árvores do parque como ladeira.
 
-`recorte.js` monta um mapa durante a abertura de cada pista (um desenho pequeno por quadro, 404 em Mônaco, cerca de 5 s no total): o que dá para ver de cada trecho, para os quatro lados. Vale para o cenário, as árvores e os carros, e carro escondido também não é animado nem repetido no desenho da vinheta.
+A ferramenta agora procura o início da volta na volta inteira, o que corrigiu o encaixe de Silverstone.
 
-Para nada sumir: o que está perto fica sempre ligado, cada trecho soma os vizinhos, peça transparente nunca é cortada, e aérea, TV ou câmera longe da pista mostram tudo.
+## Carreira
 
-| Pista | Chamadas (média) | Pico | Triângulos (média) | Pixels diferentes (média / pior) |
-|---|---|---|---|---|
-| Mônaco | 397 → 232 | 905 → 732 | 688 mil → 450 mil | 0,005% / 0,14% |
-| Suzuka | 417 → 223 | 924 → 643 | 723 mil → 443 mil | 0,004% / 0,03% |
-| Spa | 343 → 165 | 875 → 689 | 638 mil → 384 mil | 0,001% / 0,02% |
+As 24 pistas recriadas estão no calendário, na ordem do calendário real de 2026, e todas entram no sorteio de 4 e 8 GPs. A temporada completa passa de 15 para 24 GPs. Entram Xangai, Miami, Red Bull Ring, Hungaroring, Madri, Cidade do México, Catar, Abu Dhabi e Austin no sorteio.
 
-## O que isso não resolve
-
-- A placa de vídeo trabalha mais em telas rápidas por causa do FPS sem limite. Esse era o motivo do limite antigo.
-- O pico continua alto com muitos carros à vista.
-- O jogo ainda baixa o código de todas as pistas. Isso pesa no carregamento, não no FPS.
-- A diferença entre jogar local e no servidor não foi explicada.
+Temporadas já salvas continuam com o tamanho delas. O desafio semanal também usa essa lista, então as pistas dele mudam.
 
 ## Verificação
 
-- Corrida inteira no laço real do jogo, em Mônaco, Suzuka e Spa, sem erro no console.
-- Tabela: 60 a 80 posições de câmera, com 21 carros espalhados pela volta, comparando a imagem com e sem o corte. O retrovisor e os outros modos de câmera não foram comparados.
-- **O FPS real não foi medido:** o navegador de teste estava escondido, então os números são de chamadas e triângulos, não de quadros por segundo. Ninguém jogou a versão final.
-- Só `node --check` no código; a suíte fica com o CI.
+- Conta da física nas seis pistas: nenhum trecho faz o carro sair do chão.
+- No jogo, com 21 robôs e sem erro no console: Baku, Zandvoort e Silverstone, por cerca de 40 s cada, com prints nos pontos da volta. Nenhuma volta completa dos robôs foi registrada nesse tempo. Monza, Xangai e Melbourne não foram abertas no jogo.
+- O calendário de 24 GPs foi criado pelas regras, mas nenhuma temporada foi jogada, nem as telas da carreira foram abertas com ele.
+- Só `node --check`; a suíte fica com o CI.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
