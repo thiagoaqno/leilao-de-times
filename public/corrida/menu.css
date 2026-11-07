@@ -53,6 +53,11 @@ body.em-home button:hover:not(:disabled).mn-perfil,body.em-home button:hover:not
 .mn-seta::after{content:"";position:absolute;right:0;top:1.5px;width:10px;height:10px;border-top:2.5px solid #fff;border-right:2.5px solid #fff;transform:rotate(45deg)}
 .mn-item.foco .mn-seta,.mn-item.aberto .mn-seta{opacity:1;transform:none}
 .mn-item:active{filter:brightness(1.2)}
+/* a temporada com os amigos: o selo ao lado do nome e um filete fixo na cor do menu, para ela não sumir na lista */
+.mn-amigos{box-shadow:inset 3px 0 0 var(--mn-acc)}
+.mn-amigos>span{flex:1}
+.mn-selo{flex:none;padding:3px 9px;border:1px solid #ffffff59;border-radius:999px;color:#fff;font:700 11px/1.2 var(--body);font-style:normal;letter-spacing:.08em;text-transform:uppercase;background:#0006;transition:background .18s,border-color .18s}
+.mn-amigos.foco .mn-selo,.mn-amigos.aberto .mn-selo{background:#fff;border-color:#fff;color:#b40600}
 .mn :focus-visible{outline:none}
 body.em-home button:hover:not(:disabled).mn-item{background:none}
 

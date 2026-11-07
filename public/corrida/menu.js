@@ -60,6 +60,14 @@ function carregarCarreira() {
 function carregarGrupos() {
   grupos = [];
   try { for (let i = 0; i < localStorage.length; i++) { const m = /^corrida:temporada:grupo:([A-Z0-9]+)$/.exec(localStorage.key(i) || ""); if (m) grupos.push(m[1]); } } catch {}
+  // a temporada com os amigos é a segunda porta do menu: quem já tem sala volta direto para ela
+  const ultima = grupos.at(-1), item = $("mnAmigos");
+  if (item) {
+    item.href = ultima ? `/corrida/temporada/?sala=${encodeURIComponent(ultima)}` : "/corrida/temporada/?amigos=1";
+    $("mnAmigosT").textContent = ultima ? `Sala ${ultima}` : "Com os amigos";
+    $("mnAmigosS").textContent = ultima ? "Voltar à temporada com os amigos" : "Temporada inteira, cada um na sua equipe";
+    $("mnAmigosSelo").textContent = ultima ? "Sua sala" : "Até 8";
+  }
   $("mnGrupos").innerHTML = grupos.length ? `<div class="mn-campo"><span class="mn-rot">Suas temporadas em grupo</span>${grupos.map((c) => `<a class="mn-sala" href="/corrida/temporada/?sala=${h(c)}"><b>${h(c)}</b><span>Voltar à temporada</span>${seta}</a>`).join("")}</div>` : "";
 }
 async function pedirResumo() {
@@ -79,7 +87,7 @@ function desenharSalas() {
 const posTxt = (n) => `${n}º`;
 function desenharCarreira() {
   const s = carreira?.dados, t = carreira?.tabelas;
-  $("mnCarreiraT").textContent = s ? "Continuar carreira" : "Nova carreira";
+  $("mnCarreiraT").textContent = s ? "Continuar carreira" : "Carreira solo";
   if (!s) $("mnCarreiraS").textContent = "Escolha a equipe e dispute a temporada";
   else if (s.gp >= s.tamanho) $("mnCarreiraS").textContent = `Temporada ${s.ano} encerrada`;
   else $("mnCarreiraS").textContent = `${carreira.ativo ? "GP em andamento" : "Próxima etapa"}: ${gpCurto(s.calendario[s.gp])}`;

@@ -29,7 +29,7 @@ function telaInicial() {
   window.F1Garagem?.fundoDoGP(null);
   const primeira = Object.keys(Pilotos.EQUIPES)[0], E = window.EntradaCarreira;
   document.title = "Carreira F1 · Corrida da Galera";
-  app.innerHTML = E.inicial({ equipes: Pilotos.EQUIPES, primeira, todas: Regras.PISTAS_TRABALHADAS.length, grupo: window.SedeGrupo.formulario() });
+  app.innerHTML = E.inicial({ equipes: Pilotos.EQUIPES, primeira, todas: Regras.PISTAS_TRABALHADAS.length, grupo: window.SedeGrupo.formulario(), amigos: soAmigos });
   E.ligarInicial(primeira, Pilotos.EQUIPES);
 }
 function tabela(rows, tipo, meu, rival = null) {
