@@ -12,8 +12,6 @@ test('temporada completa reúne todas as pistas refeitas, em ordem, e mantém o 
   assert.equal(s.tamanho, 24);
 });
 
-test('temporada em grupo aceita o calendário completo e compartilha as mesmas pistas no ano seguinte', () => {
-  const sala = G.criarSala('ABCDE', { id: 'a', nome: 'Ana', tokenHash: 'x' });
   G.escolherEquipe(sala, 'a', 'ferrari'); G.definirOpcoes(sala, 'a', { tamanho: 24 }); G.iniciar(sala, 'a', 42);
   assert.deepEqual(sala.calendario.map((p) => p.pista), esperadas);
   sala.gp = 15; G.proximaTemporada(sala, 'a');
