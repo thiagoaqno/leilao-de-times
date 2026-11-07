@@ -12,7 +12,18 @@ const criarMotorF1 = motorEscolhido === "v10" ? criarMotorV10 : criarMotorV6;
 export const Sound = (() => {
   let ac = null, on = store.get("corrida:sound") !== false, eng = null, skidG = null, master = null, volume = Math.max(0, Math.min(1, store.get("corrida:volume") ?? 0.7));
   // todo som passa pelo volume geral (o deslizante do cabeçalho e da corrida)
-  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = volume; master.connect(ac.destination); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; }
+  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = volume; master.connect(ac.destination); carregarAmostras(ac); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; }
+  // os sons gravados da pista (public/corrida/sons/<id>.mp3, gerados por GERAR-SONS-PISTA.bat com a ElevenLabs): quando existem, a zebra
+  // e a torcida tocam eles; sem o arquivo, continua o som sintetizado de cada uma
+  const amostras = {};
+  function carregarAmostras(c) {
+    for (const id of ["zebra", "torcida", "torcida-uau", "buzina"]) {
+      fetch(`/corrida/sons/${id}.mp3`).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => b && c.decodeAudioData(b)).then((buf) => { if (buf) amostras[id] = buf; }).catch(() => {});
+    }
+  }
+  // um som gravado em laço, com volume e velocidade próprios
+  function laco(c, buf) { const src = c.createBufferSource(), g = c.createGain(); src.buffer = buf; src.loop = true; g.gain.value = 0; src.connect(g).connect(master); src.start(); return { src, g }; }
+  function umaVez(id, vol, rate = 1) { const c = ac, buf = amostras[id]; if (!c || !buf || !on) return false; const src = c.createBufferSource(), g = c.createGain(); src.buffer = buf; src.playbackRate.value = rate; g.gain.value = vol; src.connect(g).connect(master); src.start(); return true; }
   function tone(f, dur, { type = "square", vol = 0.12, at = 0 } = {}) {
     const c = ctx(); if (!c || !on) return; const t = c.currentTime + at;
     const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f;
@@ -81,9 +92,17 @@ export const Sound = (() => {
   // no grave (o pneu), os dois batendo a cada listra (uma a cada ~14 unidades: "tum-tum-tum" devagar, "brrrrm" rápido).
   // `v`: a velocidade do carro na zebra (0 fora dela).
   let zebraN = null;
+  let zebraA = null;
   function zebra(v) {
-    if (!zebraN && !(v > 1)) return;
+    if (!zebraN && !zebraA && !(v > 1)) return;
     const c = ctx(); if (!c) return;
+    if (amostras.zebra) { // o som gravado: mais rápido e um pouco mais agudo com a velocidade
+      if (!zebraA) { zebraA = laco(c, amostras.zebra); if (zebraN) zebraN.saida.gain.value = 0; }
+      const t = c.currentTime, a = Math.abs(v || 0), ligado = on && a > 8;
+      zebraA.src.playbackRate.setTargetAtTime(Math.min(1.5, 0.75 + a / 500), t, 0.05);
+      zebraA.g.gain.setTargetAtTime(ligado ? Math.min(0.9, 0.45 + a * 0.0012) : 0, t, ligado ? 0.015 : 0.06);
+      return;
+    }
     if (!zebraN) {
       const tom = c.createOscillator(), lfo = c.createOscillator(), prof = c.createGain(), pulso = c.createGain(), passa = c.createBiquadFilter(), saida = c.createGain();
       tom.type = "triangle"; tom.frequency.value = 60; lfo.type = "square"; lfo.frequency.value = 20; prof.gain.value = 0; pulso.gain.value = 0;
@@ -105,9 +124,21 @@ export const Sound = (() => {
   // crescem com a proximidade e com a velocidade, e ao chegar rápido perto de uma arquibancada a galera solta um "uuuh", com
   // palmas e buzinas soltas.
   let torcidaN = null, torcidaAntes = 0, uauAte = 0;
+  let torcidaA = null;
   function torcida(nivel, v) {
-    if (!torcidaN && !(nivel > 0.01)) return;
+    if (!torcidaN && !torcidaA && !(nivel > 0.01)) return;
     const c = ctx(); if (!c) return;
+    if (amostras.torcida) { // o som gravado: o rumor em laço, o "uuuh" e a buzina quando o carro chega rápido
+      if (!torcidaA) { torcidaA = laco(c, amostras.torcida); if (torcidaN) { torcidaN.gr.gain.value = 0; torcidaN.gv.gain.value = 0; } }
+      const t = c.currentTime, n = on ? Math.max(0, Math.min(1, nivel)) : 0, rapido = Math.min(1, Math.abs(v || 0) / 300);
+      torcidaA.g.gain.setTargetAtTime(n * (0.35 + 0.35 * rapido), t, 0.25);
+      if (n > 0.55 && torcidaAntes <= 0.55 && rapido > 0.35 && t > uauAte + 2) {
+        uauAte = t + 2;
+        umaVez("torcida-uau", 0.7 * n, 0.95 + Math.random() * 0.1);
+        if (Math.random() < 0.6) setTimeout(() => umaVez("buzina", 0.35 * n, 0.9 + Math.random() * 0.2), 250 + Math.random() * 500);
+      }
+      torcidaAntes = n; return;
+    }
     if (!torcidaN) {
       const len = c.sampleRate * 2, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (0.6 + 0.4 * Math.sin(i / c.sampleRate * 6.3 * (3 + Math.sin(i / c.sampleRate * 1.7))));
