@@ -58,11 +58,6 @@ button{font:inherit;cursor:pointer}
 .telao-top li:nth-child(1)::before{color:#b8860b}.telao-top li:nth-child(2)::before{color:#7a8496}.telao-top li:nth-child(3)::before{color:#a0522d}
 .telao-top i{margin-left:auto;font-style:normal;font-size:14px;white-space:nowrap}
 .torre-pista{margin:10px 0 0;font-size:15px}
-.torre-abas{display:flex;gap:6px;margin:4px 0 8px}
-.torre-abas button{flex:1;padding:6px 8px;border:3px solid var(--ink);border-radius:8px;background:transparent;color:var(--ink);font:700 15px "Pixelify Sans",monospace;cursor:pointer}
-.torre-abas button[aria-selected=false]{background:transparent!important;color:var(--ink)!important;box-shadow:none!important}
-.torre-abas button[aria-selected=true]{background:var(--ink);color:var(--paper)}
-.torre-abas button:hover{transform:translateY(-1px)}
 .torre-eq{font-size:13px;font-weight:700}
 .torre-ultimas{margin:4px 0 0;padding-left:18px;font-size:15px}
 .dlg .go{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
@@ -442,7 +437,7 @@ const GAMES = [
 const POSICOES = {
   banco: [3, 3, 8, 5], uno: [13, 3, 7, 5], truco: [25, 3, 8, 5], sinuca: [35, 3, 7, 5], domino: [49, 3, 7, 5], rumi: [58, 3, 7, 5], proibida: [71, 3, 7, 5], bloqueio: [80, 3, 6, 5],
   digita: [3, 11, 6, 4], tenis: [12, 11, 7, 4], carreira: [49, 11, 6, 4], ginasio: [57, 11, 7, 4], futevolei: [71, 11, 6, 4], haxball: [79, 11, 7, 4],
-  corrida: [3, 29, 10, 5], tiro: [15, 30, 5, 4], leilao: [27, 29, 13, 5], drag: [41, 30, 5, 4], rocket: [49, 30, 8, 4], batalha: [59, 30, 7, 4], pelada: [71, 30, 7, 4],
+  corrida: [3, 29, 10, 5], tiro: [80, 30, 6, 4], leilao: [27, 29, 13, 5], drag: [41, 30, 5, 4], rocket: [49, 30, 8, 4], batalha: [59, 30, 7, 4], pelada: [71, 30, 7, 4],
   ludo: [25, 38, 5, 3], naruto: [40, 38, 5, 3], botao: [58, 38, 5, 3], cozinha: [5, 37, 11, 4],
 };
 const portas = (x, w) => (w >= 8 ? [x + (w >> 1) - 1, x + (w >> 1)] : [x + (w >> 1)]);
@@ -467,7 +462,7 @@ Lideres.TREINADORES.forEach((l, i) => {
 const FOUNTAIN = { x: 33, y: 38, w: 4, h: 3 };
 // o telão da estante da galera: na praça ao lado do MASP (a tela sobe por cima da alameda)
 const TELAO = { x: 50, y: 38, w: 6 };
-const TERRENOS = [{ x: 80, y: 30, w: 6, h: 4 }]; // o lote onde ficava o Road to Champions
+const TERRENOS = []; // (o lote do Road to Champions virou a Arena de Tiro, que saiu do lado do Autódromo para dar lugar ao pódio)
 // food trucks da feirinha (sólidos), do lado leste da praça (no lado oeste agora fica a Cozinha da Galera)
 const FOODTRUCKS = [[72, 38, "#e8445a", "HOT DOG"], [78, 38, "#43a047", "TAPIOCA"], [84, 38, "#8e5ad8", "CALDO"]];
 const ANTENA = { x: 66, y: 13 }; // a antena da Gazeta, ao lado do Ginásio
@@ -531,8 +526,12 @@ for (let x = TELAO.x; x < TELAO.x + TELAO.w; x++) solid[TELAO.y][x] = true;
 // a torre de cronometragem do Autódromo (os recordes de volta da Corrida): no gramado à direita do prédio, na fileira da
 // porta. Sai da posição do prédio, então acompanha se o Autódromo mudar de lugar (e não aparece se não couber).
 const AUTODROMO = GAMES.find((g) => g.id === "corrida");
-const TORRE = AUTODROMO && { x: AUTODROMO.x + AUTODROMO.w, y: AUTODROMO.y + AUTODROMO.h - 1, w: 2 };
+const TORRE = AUTODROMO && { x: AUTODROMO.x + AUTODROMO.w + 2, y: AUTODROMO.y + AUTODROMO.h - 1, w: 2 };
 if (TORRE && [0, 1].some((d) => solid[TORRE.y][TORRE.x + d] || solid[TORRE.y + 1][TORRE.x + d])) TORRE.w = 0;
+// o pódio da F1 com os amigos (GET /api/corrida/estante): ao lado da torre, onde ficava a Arena de Tiro, com os três primeiros da estante
+const PODIO = AUTODROMO && { x: AUTODROMO.x + AUTODROMO.w + 6, y: AUTODROMO.y + 2, w: 8, h: AUTODROMO.h - 2 };
+if (PODIO && Array.from({ length: PODIO.w }, (_, d) => d).some((d) => solid[PODIO.y + PODIO.h - 1][PODIO.x + d] || solid[PODIO.y + PODIO.h][PODIO.x + d])) PODIO.w = 0;
+if (PODIO) for (let y = PODIO.y; y < PODIO.y + PODIO.h; y++) for (let x = PODIO.x; x < PODIO.x + PODIO.w; x++) solid[y][x] = true;
 if (TORRE) for (let x = TORRE.x; x < TORRE.x + TORRE.w; x++) solid[TORRE.y][x] = true;
 for (let x = PAINEL.x; x < PAINEL.x + PAINEL.w; x++) solid[PAINEL.y][x] = true;
 solid[ANTENA.y][ANTENA.x] = true;
@@ -1253,10 +1252,11 @@ function setHere(g) {
 // Uma porta, o telão ou um terreno podem abrir o diálogo da Vila.
 const naFrenteDoTelao = (x, y) => y === TELAO.y + 1 && x >= TELAO.x && x < TELAO.x + TELAO.w;
 const naFrenteDaTorre = (x, y) => !!TORRE && TORRE.w > 0 && y === TORRE.y + 1 && x >= TORRE.x && x < TORRE.x + TORRE.w;
+const naFrenteDoPodio = (x, y) => !!PODIO && PODIO.w > 0 && y === PODIO.y + PODIO.h && x >= PODIO.x && x < PODIO.x + PODIO.w;
 const TERRENO_LUGAR = { tipo: "terreno", icon: "🚧", name: "Terreno", desc: "Reservado para um jogo novo da galera. Em breve tem construção aqui.", verbo: "seguir", botao: "Beleza" };
 const terrenoEm = (x, y) => TERRENOS.find((t) => t.placa[0] === x && t.placa[1] === y);
 function lugarEm(x, y) {
-  return matAt(x, y) || (naFrenteDoTelao(x, y) ? TELAO_LUGAR : null) || (naFrenteDaTorre(x, y) ? TORRE_LUGAR : null) || (terrenoEm(x, y) ? TERRENO_LUGAR : null);
+  return matAt(x, y) || (naFrenteDoTelao(x, y) ? TELAO_LUGAR : null) || (naFrenteDaTorre(x, y) ? TORRE_LUGAR : null) || (naFrenteDoPodio(x, y) ? PODIO_LUGAR : null) || (terrenoEm(x, y) ? TERRENO_LUGAR : null);
 }
 // O minimapa cabe inteiro em 64 x 64 casas; o ponto amarelo é você.
 let miniOn = false;
@@ -1278,6 +1278,11 @@ function enter(g) {
   if (player.entering) return;
   if (g.tipo === "terreno") return setHere(null);
   if (g.tipo === "torre") return enter(AUTODROMO); // a torre leva para dentro do Autódromo
+  if (g.tipo === "podio") { // o pódio leva para a Estante da galera, na Corrida
+    setHere(null); store.set("vila_spawn", "corrida");
+    setTimeout(() => $("fade").classList.add("on"), 60);
+    return setTimeout(() => (location.href = "/corrida/temporada/?estante=1"), 420);
+  }
   if (g.tipo === "telao") { // vai para a Sede da Carreira (a estante de cada carreira fica lá)
     setHere(null); store.set("vila_spawn", "sede");
     setTimeout(() => $("fade").classList.add("on"), 60);
@@ -1904,7 +1909,6 @@ const RECORDES = { pistas: null, erro: false };
 const tempoVolta = (t, casas = 2) => { const m = Math.floor(t / 60), s = t - m * 60; return m ? `${m}:${s.toFixed(casas).padStart(casas + 3, "0")}` : s.toFixed(casas); };
 // a estante da F1 com os amigos (GET /api/corrida/estante, bd.estanteCorrida): a outra aba da torre, com os campeões das temporadas em grupo
 const CAMPEOES_F1 = { d: null, erro: false };
-let torreAba = "campeoes";
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 function campeoesF1Html() {
   const d = CAMPEOES_F1.d;
@@ -1917,14 +1921,10 @@ function campeoesF1Html() {
 }
 function buscarCampeoesF1() {
   fetch("/api/corrida/estante").then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status)))).then((d) => { CAMPEOES_F1.d = d; CAMPEOES_F1.erro = false; })
-    .catch(() => { CAMPEOES_F1.erro = true; }).finally(() => { if (here === TORRE_LUGAR) { here = null; setHere(TORRE_LUGAR); } });
+    .catch(() => { CAMPEOES_F1.erro = true; }).finally(() => { if (here === PODIO_LUGAR) { here = null; setHere(PODIO_LUGAR); } });
 }
-document.addEventListener("click", (e) => {
-  const b = e.target.closest?.("[data-torre-aba]"); if (!b || here !== TORRE_LUGAR) return;
-  torreAba = b.dataset.torreAba; here = null; setHere(TORRE_LUGAR);
-});
-const TORRE_LUGAR = { tipo: "torre", icon: "⏱️", name: "Torre do Autódromo", verbo: "entrar no Autódromo", botao: "Correr",
-  html: () => `<div class="torre-abas" role="tablist">${[["campeoes", "Campeões da F1"], ["recordes", "Recordes de volta"]].map(([id, nome]) => `<button type="button" role="tab" data-torre-aba="${id}" aria-selected="${torreAba === id}">${nome}</button>`).join("")}</div>${torreAba === "campeoes" ? campeoesF1Html() : recordesHtml()}` };
+const PODIO_LUGAR = { tipo: "podio", icon: "🏆", name: "Pódio da F1", verbo: "ver a estante", botao: "Ver a estante", html: campeoesF1Html };
+const TORRE_LUGAR = { tipo: "torre", icon: "⏱️", name: "Recordes do Autódromo", verbo: "entrar no Autódromo", botao: "Correr", html: () => recordesHtml() };
 function recordesHtml() {
   {
     const ps = RECORDES.pistas;
@@ -1942,32 +1942,74 @@ function buscarRecordes() {
   }).catch(() => { RECORDES.erro = true; }).finally(() => { if (here === TORRE_LUGAR) { here = null; setHere(TORRE_LUGAR); } });
 }
 // a torre, como as de cronometragem da F1: preta, com a faixa quadriculada, o nome da pista e P1 a P5
+const FONTE_PLACA = (peso, tam) => `${peso} ${tam}px Figtree, "Segoe UI", sans-serif`; // letra lisa nas telas do Autódromo: a de pixel não dava para ler pequena
 function drawTorre(c, t) {
   if (!TORRE || !TORRE.w) return;
-  const W = 58, H = 58, X = Math.round(TORRE.x * TS + TORRE.w * TS / 2 - W / 2), base = TORRE.y * TS + TS - 2, Y = base - H - 14;
+  const W = 86, H = 72, X = Math.round(TORRE.x * TS + TORRE.w * TS / 2 - W / 2), base = TORRE.y * TS + TS - 2, Y = base - H - 14;
   px(c, "#1b1f2455", X + 3, base + 1, W - 6, 3); // a sombra no chão
   px(c, "#3a3f46", X + W / 2 - 3, Y + H, 6, base - Y - H); // o poste
-  px(c, "#5a616b", X + W / 2 - 7, base - 3, 14, 3);
+  px(c, "#5a616b", X + W / 2 - 8, base - 3, 16, 3);
   px(c, "#0d0f12", X - 1, Y - 1, W + 2, H + 2);
   px(c, "#16191e", X, Y, W, H);
   for (let i = 0; i < W / 3; i++) px(c, i % 2 ? "#f4f4f4" : "#16191e", X + i * 3, Y, 3, 2), px(c, i % 2 ? "#16191e" : "#f4f4f4", X + i * 3, Y + 2, 3, 2);
-  c.textBaseline = "middle"; c.font = '700 6px "Pixelify Sans", monospace';
+  c.textBaseline = "middle";
   const ps = (RECORDES.pistas || []).filter((p) => p.top.length);
   if (!ps.length) {
-    c.textAlign = "center"; c.fillStyle = "#e7ecf2";
-    c.fillText(RECORDES.erro ? "SEM SINAL" : "RECORDES", X + W / 2, Y + 14);
-    c.fillStyle = "#9aa6b6"; c.fillText("DÊ UMA", X + W / 2, Y + 30); c.fillText("VOLTA E", X + W / 2, Y + 38); c.fillText("APAREÇA", X + W / 2, Y + 46);
+    c.textAlign = "center"; c.fillStyle = "#ffffff"; c.font = FONTE_PLACA(800, 9);
+    c.fillText(RECORDES.erro ? "SEM SINAL" : "RECORDES", X + W / 2, Y + 18);
+    c.fillStyle = "#c3ccd8"; c.font = FONTE_PLACA(700, 8);
+    c.fillText("Dê uma volta", X + W / 2, Y + 38); c.fillText("e apareça aqui", X + W / 2, Y + 50);
     c.textAlign = "left"; return;
   }
   const p = ps[Math.floor(t / 5000) % ps.length]; // uma pista a cada 5 s
-  px(c, "#e10600", X, Y + 5, W, 8);
-  c.textAlign = "center"; c.fillStyle = "#ffffff"; c.fillText(String(p.nome).toUpperCase().slice(0, 11), X + W / 2, Y + 9.5);
+  px(c, "#e10600", X, Y + 5, W, 11);
+  c.textAlign = "center"; c.fillStyle = "#ffffff"; c.font = FONTE_PLACA(800, 8); c.fillText(String(p.nome).toUpperCase().slice(0, 16), X + W / 2, Y + 11);
   p.top.forEach((r, i) => {
-    const yy = Y + 19 + i * 8;
-    if (i % 2) px(c, "#1f242b", X + 1, yy - 4, W - 2, 8);
-    c.textAlign = "left"; c.fillStyle = CORES_PODIO[i] || "#8fa3c8"; c.fillText(String(i + 1), X + 3, yy);
-    c.fillStyle = i ? "#d9dee6" : "#ffffff"; c.fillText(String(r.piloto).toUpperCase().slice(0, 6), X + 10, yy);
-    c.textAlign = "right"; c.fillStyle = i ? "#b8c2cf" : "#ffe066"; c.fillText(tempoVolta(r.tempo, 1), X + W - 2, yy);
+    const yy = Y + 23 + i * 10.5;
+    if (i % 2) px(c, "#20252d", X + 1, yy - 5, W - 2, 10);
+    c.font = FONTE_PLACA(800, 8);
+    c.textAlign = "left"; c.fillStyle = CORES_PODIO[i] || "#8fa3c8"; c.fillText(String(i + 1), X + 4, yy);
+    c.font = FONTE_PLACA(700, 8); c.fillStyle = i ? "#e3e8ef" : "#ffffff"; c.fillText(String(r.piloto).slice(0, 9), X + 13, yy);
+    c.textAlign = "right"; c.fillStyle = i ? "#c3ccd8" : "#ffe066"; c.fillText(tempoVolta(r.tempo, 1), X + W - 3, yy);
+  });
+  c.textAlign = "left";
+}
+// o pódio da F1 com os amigos: o painel com os três primeiros da estante (CAMPEOES_F1), os degraus 2-1-3 na cor da equipe de cada
+// um e um bonequinho de macacão em cada degrau; o primeiro levanta a taça, que brilha.
+function drawPodio(c, t) {
+  if (!PODIO || !PODIO.w) return;
+  const X = PODIO.x * TS, W = PODIO.w * TS, base = (PODIO.y + PODIO.h) * TS - 2, r = CAMPEOES_F1.d?.ranking || [];
+  px(c, "#1b1f2444", X + 2, base + 1, W - 4, 4); // a sombra
+  // o painel de fundo, preso em dois postes
+  const PX = X + 6, PW = W - 12, PY = base - 86, PH = 40;
+  px(c, "#3a3f46", PX + 4, PY + PH, 4, base - PY - PH); px(c, "#3a3f46", PX + PW - 8, PY + PH, 4, base - PY - PH);
+  px(c, "#0d0f12", PX - 1, PY - 1, PW + 2, PH + 2); px(c, "#16191e", PX, PY, PW, PH);
+  px(c, "#e10600", PX, PY, PW, 12);
+  c.textBaseline = "middle"; c.textAlign = "center";
+  c.fillStyle = "#ffffff"; c.font = FONTE_PLACA(800, 8); c.fillText("CAMPEÕES DA F1", PX + PW / 2, PY + 6.5);
+  // as colunas dos degraus: 2º à esquerda, 1º no meio, 3º à direita
+  const larg = 36, xs = [X + W / 2 - larg / 2 - larg, X + W / 2 - larg / 2, X + W / 2 + larg / 2], alt = [15, 22, 10], ordem = [1, 0, 2];
+  ordem.forEach((k, col) => {
+    const quem = r[k], cor = quem?.cor || "#8a93a3", x = xs[col], topo = base - alt[col];
+    c.font = FONTE_PLACA(800, 8); c.fillStyle = CORES_PODIO[k];
+    c.fillText(quem ? String(quem.piloto).slice(0, 8) : "—", x + larg / 2, PY + 21);
+    c.font = FONTE_PLACA(600, 6); c.fillStyle = "#b8c2cf";
+    const feito = quem ? (quem.titulos ? `${quem.titulos} ${quem.titulos === 1 ? "título" : "títulos"}` : quem.vitorias ? `${quem.vitorias} ${quem.vitorias === 1 ? "vitória" : "vitórias"}` : `${quem.podios} ${quem.podios === 1 ? "pódio" : "pódios"}`) : "seu nome";
+    c.fillText(feito, x + larg / 2, PY + 32);
+    // o degrau
+    px(c, "#f4f1ea", x, topo, larg, alt[col]); px(c, cor, x, topo + 4, larg, alt[col] - 4); px(c, "#00000026", x + larg - 3, topo + 4, 3, alt[col] - 4);
+    c.font = FONTE_PLACA(800, 9); c.fillStyle = "#ffffff"; c.fillText(String(k + 1), x + larg / 2, topo + 4 + (alt[col] - 4) / 2 + 0.5);
+    if (!quem) return;
+    // o piloto: capacete, macacão na cor da equipe e, no primeiro, a taça para cima
+    const cx = x + larg / 2, pe = topo, sobe = k === 0 ? Math.round(Math.abs(Math.sin(t / 380)) * 2) : 0;
+    px(c, "#1b1f24", cx - 3, pe - 6, 2, 6); px(c, "#1b1f24", cx + 1, pe - 6, 2, 6); // as pernas
+    px(c, cor, cx - 4, pe - 14 - sobe, 8, 9); px(c, "#ffffff55", cx - 4, pe - 11 - sobe, 8, 1); // o macacão
+    px(c, "#f4f1ea", cx - 3, pe - 20 - sobe, 6, 6); px(c, cor, cx - 3, pe - 20 - sobe, 6, 2); px(c, "#1b1f24", cx - 2, pe - 17 - sobe, 4, 2); // o capacete
+    if (k === 0) {
+      px(c, cor, cx - 6, pe - 22 - sobe, 2, 9); px(c, cor, cx + 4, pe - 22 - sobe, 2, 9); // os braços para cima
+      px(c, "#ffd34d", cx - 3, pe - 30 - sobe, 6, 5); px(c, "#e0a800", cx - 1, pe - 25 - sobe, 2, 3); px(c, "#ffd34d", cx - 2, pe - 22 - sobe, 4, 1); // a taça
+      if (Math.floor(t / 300) % 3 === 0) px(c, "#ffffff", cx + 4, pe - 32 - sobe, 2, 2);
+    } else { px(c, cor, cx - 6, pe - 13, 2, 6); px(c, cor, cx + 4, pe - 13, 2, 6); }
   });
   c.textAlign = "left";
 }
@@ -2215,6 +2257,7 @@ function frame(now) {
   drawFountainWater(ctx, now);
   drawTelao(ctx, now);
   drawTorre(ctx, now);
+  drawPodio(ctx, now);
   GAMES.forEach((g) => { if (g.casino) drawCasinoBulbs(ctx, g, now); });
   if (player.entering) { // a porta abre
     const g = player.entering;

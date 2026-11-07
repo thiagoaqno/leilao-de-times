@@ -100,6 +100,30 @@ body.cx-entrada .bar a:hover,body.cx-entrada .bar button:hover{color:var(--cx-tx
   .cxs .cxs-seg button{min-width:36px;padding:0 8px}
   .cxs-equipes{display:flex;overflow-x:auto;scrollbar-width:none}.cxs .cxs-eq{flex:0 0 96px}
 }
+/* A Estante da galera (EntradaCarreira.estante): o pódio dos três primeiros embaixo e o ranking à direita. */
+.cxt .cxe-painel{align-self:start;max-height:calc(100dvh - clamp(60px,9vh,84px));overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;padding-top:clamp(18px,4vh,40px)}
+.cxt .cxe-corpo{padding-top:0}.cxt .cxe-capa p{max-width:520px}
+.cxt h4{margin:0;color:var(--cx-tx2);font:600 11px/1.3 var(--cx-f);letter-spacing:.18em;text-transform:uppercase}
+.cxt-painel>section{padding:0 0 clamp(12px,2vh,18px);margin-bottom:clamp(12px,2vh,18px);border-bottom:1px solid var(--cx-lin)}
+.cxt-painel header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}.cxt-painel header small{color:var(--cx-tx2);font-size:12px}
+.cxt-lista,.cxt-ultimas{margin:0;padding:0;list-style:none}
+.cxt-lista li{display:flex;align-items:center;gap:10px;min-height:46px;padding:4px 8px 4px 10px;margin:0 -8px;border-left:3px solid var(--c);transition:background .15s,transform .18s var(--cx-t)}
+.cxt-lista li:hover{background:var(--cx-hover);transform:translateX(4px)}
+.cxt-pos{width:18px;color:var(--cx-tx2);font-weight:700;text-align:right}.cxt-lista li:first-child .cxt-pos{color:#c99a06}
+.cxt-quem{flex:1;min-width:0;display:flex;flex-direction:column}.cxt-quem b{font-size:16px;font-weight:700}.cxt-quem small{overflow:hidden;color:var(--cx-tx2);font-size:12px;white-space:nowrap;text-overflow:ellipsis}
+.cxt-n{min-width:34px;font-size:17px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}.cxt-n small{margin-left:2px;color:var(--cx-tx2);font-size:10px;font-weight:600}
+.cxt-ultimas li{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-size:14px;line-height:1.35;color:var(--cx-tx)}
+.cxt-ultimas i{flex:none;align-self:center;width:12px;height:3px;background:var(--c)}.cxt-ultimas span{flex:1;min-width:0}.cxt-ultimas small{flex:none;color:var(--cx-tx2);font-size:12px}
+.cxt .cx-bt{text-decoration:none;margin-top:4px}
+.cxt-podio{grid-column:1;grid-row:5;display:flex;align-items:flex-end;justify-content:center;gap:clamp(6px,1vw,14px);margin-top:clamp(10px,1.8vh,16px);padding-top:clamp(8px,1.4vh,12px);border-top:1px solid var(--cx-lin)}
+.cxt-degrau{position:relative;flex:0 1 220px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 10px 0;text-align:center;transition:transform .2s var(--cx-t)}
+.cxt-degrau:hover{transform:translateY(-4px)}
+.cxt-degrau b{font-size:clamp(15px,1.3vw,19px);font-weight:700}.cxt-degrau small{color:var(--cx-tx2);font-size:12px}
+.cxt-logo{display:grid;place-items:center;width:34px;height:34px}.cxt-logo img{max-width:100%;max-height:100%;object-fit:contain}
+.cxt-degrau i{display:grid;place-items:center;align-self:stretch;margin-top:8px;background:var(--c);color:#fff;font:700 clamp(20px,2vw,30px)/1 var(--cx-f);font-style:normal;text-shadow:0 1px 3px #0007;box-shadow:inset 0 3px 0 #ffffff40}
+.cxt-degrau.p1 i{height:clamp(56px,8vh,78px)}.cxt-degrau.p2 i{height:clamp(40px,5.6vh,56px)}.cxt-degrau.p3 i{height:clamp(28px,4vh,40px)}
+.cxt-degrau.p1 b::before{content:"";display:inline-block;width:.8em;height:.8em;margin-right:6px;border-radius:50%;background:#d4a017;vertical-align:.02em}
+@media (max-width:1000px){.cxt .cxe-painel{align-self:stretch;min-width:0;max-height:none;overflow:visible;padding-top:14px}.cxt .cxe-ficha{margin-top:min(72vw,320px)}.cxt-degrau small{display:none}}
 @keyframes cxe-entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (max-width:1000px){
   .cxe{display:flex;flex-direction:column;padding-inline:16px}

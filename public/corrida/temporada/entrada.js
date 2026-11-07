@@ -93,5 +93,28 @@ function sala({ S, max, opcoes, url }) {
 }
 function ligarSala(equipe) { const C = root.Central; C.entrada(equipe); C.temaNaTela(); }
 
-root.EntradaCarreira = { inicial, ligarInicial, convite, ligarConvite, sala, ligarSala };
+// A Estante da galera (?estante=1, o item Estante do menu da Corrida): o mesmo molde da entrada, com o carro de quem lidera no estúdio,
+// o pódio dos três primeiros embaixo e, à direita, o ranking inteiro e as últimas conquistas. Os números vêm de /api/corrida/estante (estante.js).
+function estante(d) {
+  const r = d?.ranking || [], lider = r[0], eqDe = (t) => (t && root.F1Pilotos.EQUIPES[t.equipe] ? t.equipe : Object.keys(root.F1Pilotos.EQUIPES)[0]);
+  const equipe = eqDe(lider), nomeEq = (id) => root.F1Pilotos.EQUIPES[id]?.nome || "";
+  const conta = (t) => [t.titulos && `${t.titulos} ${t.titulos === 1 ? "título" : "títulos"}`, t.vitorias && `${t.vitorias} ${t.vitorias === 1 ? "vitória" : "vitórias"}`, `${t.podios} ${t.podios === 1 ? "pódio" : "pódios"}`].filter(Boolean).join(" · ");
+  const ordem = [[r[1], 2], [r[0], 1], [r[2], 3]].filter(([t]) => t);
+  const podio = r.length ? `<nav class="cxt-podio" aria-label="Os três primeiros">${ordem.map(([t, n]) => `<div class="cxt-degrau p${n}" style="--c:${h(t.cor || "#888")}"><span class="cxt-logo">${logo(eqDe(t))}</span><b>${h(t.piloto)}</b><small>${h(conta(t))}</small><i>${n}</i></div>`).join("")}</nav>` : "";
+  const linhas = r.map((t, i) => `<li style="--c:${h(t.cor || "#888")}"><span class="cxt-pos">${i + 1}</span><span class="cxt-quem"><b>${h(t.piloto)}</b><small>${h(t.equipeNome || nomeEq(t.equipe))}${t.construtores ? ` · ${t.construtores} ${t.construtores === 1 ? "título" : "títulos"} de construtores` : ""}</small></span><span class="cxt-n" title="Títulos de pilotos">${t.titulos}<small>T</small></span><span class="cxt-n" title="Vitórias em GP">${t.vitorias}<small>V</small></span><span class="cxt-n" title="Pódios em GP">${t.podios}<small>P</small></span></li>`).join("");
+  const quando = (ms) => { const m = Math.max(0, Date.now() - ms) / 60000; return m < 60 ? "agora há pouco" : m < 1440 ? `há ${Math.round(m / 60)} h` : m < 2880 ? "ontem" : `há ${Math.round(m / 1440)} dias`; };
+  const feito = (c) => c.tipo === "pilotos" ? `campeão da temporada ${c.ano} de ${h(c.equipeNome || nomeEq(c.equipe))}` : c.tipo === "construtores" ? `campeão de construtores com a ${h(c.equipeNome || nomeEq(c.equipe))}` : `venceu o ${h(c.gpNome || c.pista)} de ${h(c.equipeNome || nomeEq(c.equipe))}`;
+  const ultimas = (d?.ultimas || []).slice(0, 5).map((c) => `<li style="--c:${h(c.cor || "#888")}"><i></i><span><b>${h(c.piloto)}</b> ${feito(c)}</span><small>${quando(c.em)}</small></li>`).join("");
+  const painel = `<div class="cxe-corpo cxt-painel">
+      <section><header><h4>Ranking</h4><small>T títulos · V vitórias · P pódios</small></header>${linhas ? `<ol class="cxt-lista">${linhas}</ol>` : '<p class="cxe-dica">Ninguém ganhou nada ainda. A primeira vitória num GP com os amigos abre a estante.</p>'}</section>
+      ${ultimas ? `<section><header><h4>Últimas conquistas</h4></header><ul class="cxt-ultimas">${ultimas}</ul></section>` : ""}
+      <a class="cx-bt" href="/corrida/temporada/?amigos=1">Entrar para a estante ${SETA}</a>
+      <a class="cxe-link" href="/corrida/">Voltar ao menu da Corrida</a>
+    </div>`;
+  const texto = lider ? `${lider.piloto} lidera com ${conta(lider)}. Cada pódio e cada título das temporadas com os amigos fica aqui para sempre.` : "Cada pódio e cada título das temporadas com os amigos fica aqui para sempre.";
+  return { equipe, html: moldura({ equipe, faixa: "Estante da galera", rotulo: "F1 com os amigos · para sempre", titulo: "Estante<br><span>da galera</span>", texto, carro: "", equipes: podio, painel }).replace('class="cxe"', 'class="cxe cxt"') };
+}
+function ligarEstante(equipe) { const C = root.Central; C.entrada(equipe); C.temaNaTela(); ligarTema(); }
+
+root.EntradaCarreira = { inicial, ligarInicial, convite, ligarConvite, sala, ligarSala, estante, ligarEstante };
 })(window);

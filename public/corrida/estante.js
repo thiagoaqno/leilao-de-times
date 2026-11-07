@@ -1,5 +1,5 @@
 // A estante da F1 com os amigos (window.EstanteF1): lê /api/corrida/estante (bd.estanteCorrida) e desenha o selo de troféus ao lado do
-// nome de cada pessoa (sala, Central do grupo) e o painel com o ranking e as últimas conquistas (menu da Corrida e torre do Autódromo na Vila).
+// nome de cada pessoa (sala, Central do grupo); a tela inteira da estante é EntradaCarreira.estante (temporada/?estante=1).
 // Só desenha: as conquistas entram no servidor, no fim de cada GP das temporadas em grupo (corrida-temporada-grupo.js).
 (function (root) {
 "use strict";
@@ -30,20 +30,5 @@ function selo(nome) {
   const t = de(nome), p = partes(t); if (!p.length) return "";
   return `<span class="ef-selo${t.titulos ? " campeao" : ""}" title="Estante de ${h(t.piloto)}: ${h(p.join(", "))}">${TACA}${h(p.slice(0, 2).join(" · "))}</span>`;
 }
-const QUANDO = (ms) => { const d = Math.max(0, Date.now() - ms), m = d / 60000; return m < 60 ? "agora há pouco" : m < 1440 ? `há ${Math.round(m / 60)} h` : m < 2880 ? "ontem" : `há ${Math.round(m / 1440)} dias`; };
-function textoDa(c) {
-  if (c.tipo === "pilotos") return `campeão da temporada ${c.ano}${c.equipeNome ? ` de ${h(c.equipeNome)}` : ""}`;
-  if (c.tipo === "construtores") return `campeão de construtores com a ${h(c.equipeNome || c.equipe)}`;
-  return `venceu o ${h(c.gpNome || c.pista)}${c.equipeNome ? ` de ${h(c.equipeNome)}` : ""}`;
-}
-// o painel inteiro: o ranking e as últimas conquistas. `limite`: quantas linhas do ranking.
-function painel(d, { limite = 10, recentes = 6, vazio = "Ninguém ganhou nada ainda. A primeira vitória num GP com os amigos abre a estante." } = {}) {
-  if (!d) return '<p class="ef-vazio">A estante não abriu agora. Tente de novo daqui a pouco.</p>';
-  if (!d.ranking?.length) return `<p class="ef-vazio">${h(vazio)}</p>`;
-  const linhas = d.ranking.slice(0, limite).map((t, i) => `<li style="--c:${h(t.cor || "#888")}"><span class="ef-pos">${i + 1}</span><span class="ef-quem"><b>${h(t.piloto)}</b><small>${h(t.equipeNome || "")}${t.salas > 1 ? ` · ${t.salas} salas` : ""}</small></span><span class="ef-n" title="Títulos de pilotos">${TACA}${t.titulos}</span><span class="ef-n" title="Vitórias em GP"><em>V</em>${t.vitorias}</span><span class="ef-n" title="Pódios em GP"><em>P</em>${t.podios}</span></li>`).join("");
-  const ultimas = (d.ultimas || []).slice(0, recentes).map((c) => `<li style="--c:${h(c.cor || "#888")}"><i></i><span><b>${h(c.piloto)}</b> ${textoDa(c)}</span><small>${QUANDO(c.em)}</small></li>`).join("");
-  return `<ol class="ef-ranking">${linhas}</ol>${ultimas ? `<h4 class="ef-sub">Últimas conquistas</h4><ul class="ef-ultimas">${ultimas}</ul>` : ""}`;
-}
-
-root.EstanteF1 = { carregar, de, selo, painel, chave, dados: () => dados };
+root.EstanteF1 = { carregar, de, selo, chave, dados: () => dados };
 })(window);
