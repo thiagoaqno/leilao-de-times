@@ -1,11 +1,11 @@
 // Mônaco — o pit lane, refeito só com peças de Mônaco (o corredor, a mureta e os quadrados pintados continuam do kit/corredor-boxes.js, que manda na posição e na lógica: box.js e pistas.js):
-// o prédio permanente dos boxes de dois andares ao lado do Port Hercule, com as 10 garagens numeradas, na cor e com o nome de cada equipe, o friso colorido e as portas, o terraço de hospitalidade
+// o prédio permanente dos boxes de dois andares ao lado do Port Hercule, com as 11 garagens numeradas (uma por equipe), na cor e com o nome de cada equipe, o friso colorido e as portas, o terraço de hospitalidade
 // de cada garagem (vidro, guarda-corpo, toldo da equipe e a laje de cima), os mecânicos na frente, o pit wall com os toldos dos engenheiros e os monitores, a linha amarela do limitador e as placas de
 // entrada e saída. Tudo dentro do grupo do corredor (tr.boxesGP), que some e aparece com ele; as partes na cor da equipe acompanham o `colorir` do jogo.
 import * as THREE from "three";
 import { canvasTex } from "../../cena.js";
 
-const EQUIPES = [["McLaren", "#ff8700"], ["Ferrari", "#e8002d"], ["Mercedes", "#27f4d2"], ["Red Bull", "#3671c6"], ["Racing Bulls", "#6692ff"], ["Aston Martin", "#229971"], ["Williams", "#37bedd"], ["Audi", "#d7172f"], ["Alpine", "#ff87bc"], ["Haas", "#c6cbd0"]];
+const EQUIPES = [["McLaren", "#ff8700"], ["Ferrari", "#e8002d"], ["Mercedes", "#27f4d2"], ["Red Bull", "#3671c6"], ["Racing Bulls", "#6692ff"], ["Aston Martin", "#229971"], ["Williams", "#37bedd"], ["Audi", "#d7172f"], ["Alpine", "#ff87bc"], ["Haas", "#c6cbd0"], ["Cadillac", "#c9a227"]]; // (a ordem de F1Regras.EQUIPES_GARAGEM: cada carro para na garagem da sua equipe)
 
 export function boxesMonaco(tr, add) {
   const F = window.F1Regras, cor = F?.corredor(tr.t, tr.n, tr.W), grp = tr.boxesGP; if (!cor || !grp) return;

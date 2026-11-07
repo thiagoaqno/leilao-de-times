@@ -229,7 +229,7 @@ function montarAmbiente(R) {
   const S = E.S, m = me(), d = S.direcao;
   AMB.spec = carOf(m); AMB.manual = S.config.cambio === "manual"; AMB.dano = m.dano || 0; AMB.drsZona = m.drsZona ?? -1;
   AMB.safety = !!(d && d.safety); AMB.setorAmarelo = d && d.amarelo ? d.amarelo.setor : -1; AMB.ersAuto = S.config.ers !== "manual";
-  AMB.voltas = S.config.voltas; AMB.laps = m.laps || 0; AMB.paradas = m.paradas || 0; AMB.semente = S.semente; AMB.id = m.id; AMB.grid = m.grid;
+  AMB.voltas = S.config.voltas; AMB.laps = m.laps || 0; AMB.paradas = m.paradas || 0; AMB.semente = S.semente; AMB.id = m.id; AMB.grid = m.grid; AMB.equipe = m.equipe || null;
   AMB.finish = m.finish; AMB.dnf = !!m.dnf; AMB.quali = S.phase === "quali"; AMB.fantasma = m.finish != null; AMB.f1 = true;
   AMB.jogos = m.jogos || null; // (os jogos de pneu: a recomendação do menu do box)
   AMB.stopGo = m.stopGo ? m.stopGo.s : 0; // stop-and-go pendente: a próxima visita ao box é só ele (o servidor usa a mesma conta)
