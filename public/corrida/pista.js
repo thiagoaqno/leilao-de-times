@@ -544,7 +544,7 @@ function buildWorld(tr) {
     if (pts.every(q => Math.hypot(q.x - x, q.y - y) > W / 2 + 95)) stands.push({ x, y, h: hAt(x, y), s: 1, r: -Math.atan2(p.ny, p.nx) });
   }
   for (const s0 of stands) { // arquibancadas da reta dos boxes
-    const g = new THREE.Group(); g.position.set(s0.x, s0.h, s0.y); g.rotation.y = s0.r; add(g);
+    const g = new THREE.Group(); g.position.set(s0.x, s0.h, s0.y); g.rotation.y = s0.r; g.userData.torcida = true; add(g);
     if (PROPS.arquibancada) { // a arquibancada coberta do Kenney, de frente para a pista (o modelo olha para +z, a pista fica em +x)
       const { pecas, tam } = PROPS.arquibancada;
       for (const { geo, mat } of pecas) { const gg = geo.clone(); gg.scale(150 / tam.x, 70 / tam.y, 80 / tam.z); gg.rotateY(Math.PI / 2); gg.translate(-40, 0, 0); const m = new THREE.Mesh(gg, mat); m.castShadow = m.receiveShadow = true; g.add(m); }

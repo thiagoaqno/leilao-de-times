@@ -74,6 +74,7 @@ export function torcidaLaranja(tr, add, zonas, cfg = {}) {
   colorir(instancias(add, caixa, M(0xffffff, { roughness: 0.9 }), corpos, { sombra: false, nome: `${tr.id}-torcida-corpos` }), corpos);
   colorir(instancias(add, caixa, M(0xffffff, { roughness: 0.9 }), cabecas, { sombra: false, nome: `${tr.id}-torcida-cabecas` }), cabecas);
   bandeirasLaranja(tr, add, bandeiras);
+  for (const o of corpos) (tr.pontosTorcida ||= []).push([o.x, o.z]); // (o som da torcida: torcida-som.js)
   tr.torcidaZandvoort = (tr.torcidaZandvoort || 0) + corpos.length;
   return corpos.length;
 }

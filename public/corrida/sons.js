@@ -77,6 +77,61 @@ export const Sound = (() => {
     const t = c.currentTime;
     chuvaN.gc.gain.setTargetAtTime(on ? nivel * 0.028 : 0, t, 0.3); chuvaN.gp.gain.setTargetAtTime(on ? pneus * 0.04 * (0.4 + 0.6 * nivel) : 0, t, 0.2);
   }
+  // a zebra: o pneu batendo nas listras dá um "brrrr" grave, no ritmo das listras (uma a cada ~14 unidades: a frequência sobe com
+  // a velocidade), com o chiado da borracha por cima. `v`: a velocidade do carro na zebra (0 fora dela).
+  let zebraN = null;
+  function zebra(v) {
+    if (!zebraN && !(v > 1)) return;
+    const c = ctx(); if (!c) return;
+    if (!zebraN) {
+      const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), o2 = c.createOscillator(), g2 = c.createGain();
+      o.type = "square"; f.type = "lowpass"; f.frequency.value = 260; f.Q.value = 2; g.gain.value = 0;
+      o2.type = "sine"; g2.gain.value = 0; // o tranco de cada listra: um seno grave modulando o volume
+      o.connect(f).connect(g).connect(master); o2.connect(g2).connect(g.gain); o.start(); o2.start();
+      const len = c.sampleRate, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = c.createBufferSource(), fr = c.createBiquadFilter(), gr = c.createGain(); src.buffer = b; src.loop = true; fr.type = "bandpass"; fr.frequency.value = 1400; fr.Q.value = 0.9; gr.gain.value = 0;
+      src.connect(fr).connect(gr).connect(master); src.start();
+      zebraN = { o, f, g, o2, g2, gr };
+    }
+    const t = c.currentTime, a = Math.abs(v || 0), ligado = on && a > 8, hz = Math.min(90, Math.max(8, a / 14));
+    zebraN.o.frequency.setTargetAtTime(hz * 2, t, 0.03); zebraN.o2.frequency.setTargetAtTime(hz, t, 0.03);
+    zebraN.f.frequency.setTargetAtTime(180 + Math.min(400, a * 0.6), t, 0.05);
+    const vol = ligado ? Math.min(0.11, 0.05 + a * 0.00012) : 0;
+    zebraN.g.gain.setTargetAtTime(vol * 0.6, t, ligado ? 0.015 : 0.06); zebraN.g2.gain.setTargetAtTime(vol * 0.4, t, 0.02);
+    zebraN.gr.gain.setTargetAtTime(ligado ? Math.min(0.03, a * 0.00006) : 0, t, ligado ? 0.02 : 0.08);
+  }
+  // a torcida ao passar pela arquibancada (torcida-som.js diz o quanto ela está perto, de 0 a 1): o rumor da galera e as vozes
+  // crescem com a proximidade e com a velocidade, e ao chegar rápido perto de uma arquibancada a galera solta um "uuuh", com
+  // palmas e buzinas soltas.
+  let torcidaN = null, torcidaAntes = 0, uauAte = 0;
+  function torcida(nivel, v) {
+    if (!torcidaN && !(nivel > 0.01)) return;
+    const c = ctx(); if (!c) return;
+    if (!torcidaN) {
+      const len = c.sampleRate * 2, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (0.6 + 0.4 * Math.sin(i / c.sampleRate * 6.3 * (3 + Math.sin(i / c.sampleRate * 1.7))));
+      const src = c.createBufferSource(); src.buffer = b; src.loop = true;
+      const fr = c.createBiquadFilter(), gr = c.createGain(), fv = c.createBiquadFilter(), gv = c.createGain();
+      fr.type = "bandpass"; fr.frequency.value = 650; fr.Q.value = 0.6; gr.gain.value = 0; fv.type = "bandpass"; fv.frequency.value = 1900; fv.Q.value = 1.4; gv.gain.value = 0;
+      src.connect(fr).connect(gr).connect(master); src.connect(fv).connect(gv).connect(master); src.start();
+      torcidaN = { fr, gr, fv, gv, buf: b };
+    }
+    const t = c.currentTime, n = on ? Math.max(0, Math.min(1, nivel)) : 0, rapido = Math.min(1, Math.abs(v || 0) / 300);
+    const uau = t < uauAte ? Math.sin(((uauAte - t) / 1.8) * Math.PI) : 0; // o "uuuh" sobe e desce em 1,8 s
+    torcidaN.gr.gain.setTargetAtTime(n * (0.05 + 0.05 * rapido) + uau * 0.06 * n, t, 0.25);
+    torcidaN.gv.gain.setTargetAtTime(n * 0.025 + uau * 0.05 * n, t, 0.2);
+    torcidaN.fv.frequency.setTargetAtTime(1700 + uau * 700, t, 0.2);
+    if (n > 0.55 && torcidaAntes <= 0.55 && rapido > 0.35 && t > uauAte + 2) { // chegou numa arquibancada em velocidade
+      uauAte = t + 1.8;
+      if (Math.random() < 0.7) [0, 0.35].forEach((at, k) => tone(k ? 466 : 392, 0.28, { type: "sawtooth", vol: 0.035 * n, at: at + 0.2 })); // a buzina da galera
+    }
+    if (n > 0.3 && Math.random() < 0.06 * n) { // palmas soltas
+      const len = Math.floor(c.sampleRate * 0.03), b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+      const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = b; f.type = "highpass"; f.frequency.value = 1200; g.gain.value = 0.03 * n;
+      s.connect(f).connect(g).connect(master); s.start(t + Math.random() * 0.05);
+    }
+    torcidaAntes = n;
+  }
   // o engenheiro falando: os motores de F1 descem para ~35% e voltam devagar quando ele acaba
   function abafar(sim) { if (motorBus && ac) motorBus.gain.setTargetAtTime(sim ? 0.35 : 1, ac.currentTime, sim ? 0.08 : 0.35); }
   function crash(forca) {
@@ -98,7 +153,7 @@ export const Sound = (() => {
     volume(v) { volume = Math.max(0, Math.min(1, v)); store.set("corrida:volume", volume); if (master) master.gain.setTargetAtTime(volume, ac.currentTime, 0.05); }, get nivel() { return volume; },
     radioSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, abafar } : null; }, // o rádio do engenheiro usa o volume geral
     narradorSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, ligado: on } : null; }, // o narrador da transmissão: volume geral e som ligado
-    crash, chuva, prepararChuva() { chuva(0, 0, true); }, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
+    crash, chuva, zebra, torcida, prepararChuva() { chuva(0, 0, true); }, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
   };
 })();
 function renderSoundBtn() { Comum.iconeSom(Sound.on); for (const id of ["volume", "volCorrida"]) { const el = $(id); if (el) el.value = Math.round(Sound.nivel * 100); } }

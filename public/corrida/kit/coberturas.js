@@ -113,6 +113,6 @@ export function tribunaCoberta({ comprimento = 200, degraus = 8, altura = 5, fun
       m.caixa(S, [x, yb / 2 + 2, -D - 2.5], [1.4, yb + 4, 1.4], { cor: estrutura });
     }
   }
-  const g = m.montar("tribuna-coberta"); g.userData = { largura: L, profundidade: D, alto: yb + 2 };
+  const g = m.montar("tribuna-coberta"); g.userData = { largura: L, profundidade: D, alto: yb + 2, torcida: true }; // (torcida: o som de quem passa, torcida-som.js)
   return g;
 }

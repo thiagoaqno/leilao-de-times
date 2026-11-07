@@ -102,7 +102,7 @@ export function tribunaDoRaidillon({ comprimento = 200, degraus = 12, camisas, s
   }
   m.caixa(S, [0, 3, 3.4], [comprimento + 4, 6, 6], { cor: "#9d9fa0" }); // a base de concreto na frente
   const extra = m.montar("spa-raidillon-bloco"); g.add(extra);
-  g.userData.profundidade = D + 26; g.userData.alto = alto + 40;
+  g.userData.profundidade = D + 26; g.userData.alto = alto + 40; g.userData.torcida = true;
   return g;
 }
 

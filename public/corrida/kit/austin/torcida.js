@@ -47,6 +47,7 @@ export function torcidaNosGramados(tr, add, zonas, cfg = {}) {
   colorir(instancias(add, caixa, M(0xffffff, { roughness: 0.9 }), cabecas, { sombra: false, nome: `${tr.id}-torcida-cabecas` }), cabecas);
   colorir(instancias(add, geoChapeu(), M(0xffffff, { roughness: 0.9 }), chapeus, { sombra: false, nome: `${tr.id}-torcida-chapeus` }), chapeus);
   bandeirasEmHastes(tr, add, bandeiras);
+  for (const o of corpos) (tr.pontosTorcida ||= []).push([o.x, o.z]); // (o som da torcida: torcida-som.js)
   tr.torcidaAustin = corpos.length;
   return corpos.length;
 }

@@ -71,6 +71,7 @@ export function torcidaNasEncostas(tr, add, zonas, cfg = {}) {
   colorir(instancias(add, caixa, M(0xffffff, { roughness: 0.9 }), corpos, { sombra: false, nome: `${tr.id}-torcida-corpos` }), corpos);
   colorir(instancias(add, caixa, M(0xffffff, { roughness: 0.9 }), cabecas, { sombra: false, nome: `${tr.id}-torcida-cabecas` }), cabecas);
   bandeirasDaTorcida(tr, add, bandeiras);
+  for (const o of corpos) (tr.pontosTorcida ||= []).push([o.x, o.z]); // (o som da torcida: torcida-som.js)
   tr.torcidaAustria = (tr.torcidaAustria || 0) + corpos.length;
   return corpos.length;
 }
