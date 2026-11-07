@@ -116,6 +116,19 @@ function registrarRecordeCorrida(pista, tempo, carro, piloto) {
     return top.findIndex((x) => x.chave === chave) + 1;
   } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
+// o melhor de cada setor da pista (0 a 2): só troca se o tempo novo for menor. Devolve true se trocou
+function registrarSetorCorrida(pista, setor, tempo, piloto) {
+  if (!Number.isFinite(tempo) || !String(piloto).trim()) return false;
+  return bd().prepare(`INSERT INTO corrida_setores (pista, setor, piloto, tempo, feita_em) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(pista, setor) DO UPDATE SET piloto=excluded.piloto, tempo=excluded.tempo, feita_em=excluded.feita_em
+    WHERE excluded.tempo < corrida_setores.tempo`).run(pista, setor, piloto, tempo, Date.now()).changes > 0;
+}
+// { pista: [setor 0, setor 1, setor 2] }, cada um { piloto, tempo } ou null
+function setoresCorrida() {
+  const out = {};
+  for (const r of bd().prepare("SELECT pista, setor, piloto, tempo FROM corrida_setores").all()) (out[r.pista] ||= [null, null, null])[r.setor] = { piloto: r.piloto, tempo: r.tempo };
+  return out;
+}
 // o quadro de todas as pistas: { pista: [{ piloto, tempo, carro, em }] }, do mais rápido para o mais lento
 function recordesCorrida() {
   const out = {};
@@ -458,5 +471,5 @@ function nivelDeTodosAdmin(treinador, nivel, ator) {
 const historicoPokemon = (treinador, limite = 20) => bd().prepare("SELECT ator, tipo, captura, antes, depois, criado_em FROM moderacao_pokemon WHERE treinador = ? ORDER BY id DESC LIMIT ?").all(treinador, limite)
   .map((r) => ({ ator: r.ator, tipo: r.tipo, captura: r.captura, antes: JSON.parse(r.antes || "null"), depois: JSON.parse(r.depois || "null"), em: Number(r.criado_em) }));
 
-module.exports = { perfisPilotoCorrida, salvarPerfilPilotoCorrida, reporPerfilPilotoCorrida, melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
+module.exports = { registrarSetorCorrida, setoresCorrida, perfisPilotoCorrida, salvarPerfilPilotoCorrida, reporPerfilPilotoCorrida, melhorVoltaCorrida, melhoresTracadosCorrida, ritmoCorrida, salvarVoltaCorrida, registrarRecordeCorrida, recordesCorrida, treinadoresPokemon, capturaPorId, nomeDoTreinador, editarCapturaAdmin, darPokemonAdmin, tirarPokemonAdmin, nivelDeTodosAdmin, historicoPokemon, guardarCaptura, registrarNaPokedex, garantirIniciais, pokemonsDe, atualizarPokemon, pokedexDe, capturasDe, rankingCapturas, abrir, fechar, migrar, timesPokemonGinasio, salvarTimePokemonGinasio, reporTimePokemonGinasio, fotoJogador, guardarFotoJogador, criarCarreira, carreiraPorToken, recuperarCarreira, salvarCarreira, novoCodigoDe, excluirCarreira, salvarSalaCarreira, salvarEdicaoModeracao, listarCarreiras, carreiraPorId, salvarEdicaoCarreira, historicoModeracao, salasCarreira, apagarSalaCarreira, limparCodigo, cartasSaidas, marcarCarta, zerarCartas, chaveTecnico, guardarConquistas, estante };
 Object.assign(module.exports, { excluirTemporadaCorrida, criarTemporadaCorrida, temporadaCorridaPorToken, temporadaCorridaPorId, recuperarTemporadaCorrida, salvarTemporadaCorrida, novoCodigoTemporadaCorrida, salvarSalaTemporadaCorrida, salasTemporadaCorrida, apagarSalaTemporadaCorrida });
