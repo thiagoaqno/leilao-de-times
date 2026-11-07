@@ -37,6 +37,10 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
 
   // ---------- quem está na sala ----------
   const conexoes = (codigo, pid) => { const m = presentes.get(codigo); return m && m.get(pid) ? m.get(pid).size : 0; };
+  // aparece na lista de salas da Vila (lobby.js), que espera o formato padrão das salas: aberta enquanto se escolhem as equipes
+  require("./lobby.js").registrar("temporada-f1", { values: () => [...salas.values()].map((s) => ({ code: s.codigo, phase: s.fase === "sala" ? "lobby" : "jogo", t: s.t, sala: s })) }, {
+    jogadores: ({ sala }) => sala.ordem.filter((id) => sala.pessoas[id]).map((id) => ({ nome: sala.pessoas[id].nome, online: conexoes(sala.codigo, id) > 0, host: id === sala.host })),
+  });
   const online = (sala) => (pid) => conexoes(sala.codigo, pid) > 0;
   function ligar(socket, sala, pid) {
     desligar(socket);

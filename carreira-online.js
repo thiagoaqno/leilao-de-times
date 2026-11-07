@@ -307,7 +307,7 @@ module.exports = function ligarCarreiraOnline(io) {
     });
     socket.on("join", (d = {}, cb) => {
       const room = buscarSala(rooms, d.code);
-      if (!room) return falha(cb, "Sala não encontrada. Confira o código.");
+      if (!room) { const irPara = require("./lobby.js").enderecoDaTemporada(d.code); if (irPara && typeof cb === "function") return cb({ ok: false, irPara, error: "Esse código é de uma temporada da Corrida." }); return falha(cb, "Sala não encontrada. Confira o código."); }
       // voltando (recarregou, caiu ou fechou a aba): o id e o token batem
       const volta = d.id && room.players[d.id] && room.players[d.id].tokenHash === hash(d.token) ? room.players[d.id] : null;
       if (volta) { ligar(room, volta.id); ok(cb, { code: room.code, id: volta.id, token: d.token }); return broadcast(room); }

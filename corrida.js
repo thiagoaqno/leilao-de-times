@@ -575,7 +575,7 @@ module.exports = function attachCorrida(io) {
 
     socket.on("join", (data = {}, cb) => {
       const room = buscarSala(rooms, data.code);
-      if (!room) return fail(cb, "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu).");
+      if (!room) { const irPara = require("./lobby.js").enderecoDaTemporada(data.code); if (irPara && typeof cb === "function") return cb({ ok: false, irPara, error: "Esse código é de uma temporada." }); return fail(cb, "Sala não encontrada. Confira o código (se o servidor reiniciou, a sala se perdeu)."); }
       const back = quemVolta(room, data);
       if (back) { clearTimeout(room.abandonoTimer); clearTimeout(back.assumeTimer); bind(room, back.id); if (room.grupo && back.assumido) TRobo.devolver(room, back, (s) => log(room, s)); ok(cb, { code: room.code, id: back.id, token: back.token }); if (room.temporada && room.phase === "lobby") entrouNoGP(room); return broadcast(room); }
       if (room.privada && !(room.grupo && data.watch && room.espectadores.has(data.token))) return fail(cb, "GP privado da temporada. Entre pela sede.");
