@@ -3,7 +3,8 @@ test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorag
 
 test('o menu da Corrida abre os painéis, troca a equipe e larga o contrarrelógio', async ({ page }) => {
   await page.goto('/corrida/');
-  await expect(page.locator('#mnCarreiraT')).toHaveText('Nova carreira');
+  await expect(page.locator('#mnCarreiraT')).toHaveText('Carreira solo');
+  await expect(page.locator('#mnAmigos')).toHaveAttribute('href', '/corrida/temporada/?amigos=1');
   await expect(page.locator('a[href="/corrida/drag/"]')).toBeVisible();
   await page.locator('#mn [data-painel="garagem"]').click();
   await page.locator('[data-equipe-menu="mclaren"]').click();

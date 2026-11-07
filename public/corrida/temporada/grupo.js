@@ -91,30 +91,16 @@ function telaDoConvite(erro) {
 }
 
 // ---------- a sala antes da temporada ----------
-function cartaDaEquipe(id) {
-  const eq = equipe(id), ocupantes = S.pessoas.filter((p) => p.equipe === id), meu = S.minhaEquipe === id, cheia = ocupantes.length >= 2 && !meu;
-  return `<button class="eq-carta ${meu ? "minha" : ""}" style="--c:${h(eq.cor)}" data-equipe="${h(id)}" aria-pressed="${meu}" ${cheia ? "disabled" : ""}>${marca(id)}<b>${h(eq.nome)}</b><small>${Equipes.EQUIPES[id].orcamento} pontos de orçamento</small><span>${ocupantes.length ? ocupantes.map((p) => h(p.nome)).join(" + ") : "livre"}${ocupantes.length === 2 ? " · lotada" : ocupantes.length === 1 ? " · cabe mais um" : ""}</span></button>`;
-}
-function opcao(chave, rotulo, valores) {
-  const eh = S.eu === S.host;
-  return `<div><label>${rotulo}</label><div class="segmento">${valores.map(([v, t]) => `<button data-opcao="${chave}" data-valor="${h(v)}" aria-pressed="${String(S.opcoes[chave]) === String(v)}" ${eh ? "" : "disabled"}>${t}</button>`).join("")}</div></div>`;
-}
 function listaDePessoas() {
   const eh = S.eu === S.host;
   return `<ul class="pessoas">${S.pessoas.map((p) => `<li class="${p.online ? "on" : ""}"><i class="bolinha" title="${p.online ? "na sala" : "ausente"}"></i><b>${h(p.nome)}${p.id === S.eu ? " (você)" : ""}</b>${p.host ? `<em>anfitrião</em>` : ""}<span>${p.equipe ? `<i class="faixa" style="--c:${h(equipe(p.equipe).cor)}"></i>${h(equipe(p.equipe).nome)}${p.carro != null ? ` · carro ${p.carro + 1}` : ""}` : "sem equipe: só acompanha"}</span>${eh && p.id !== S.eu ? `<button class="small ghost" data-cargo="${h(p.id)}">Tornar anfitrião</button>` : ""}</li>`).join("")}</ul>`;
 }
 function telaDaSala() {
-  window.Central?.sair(); // (a sala de espera ainda tem o visual próprio; a entrada e o convite usam o estúdio da Central)
-  const eh = S.eu === S.host, alguem = S.pessoas.some((p) => p.equipe);
-  document.documentElement.style.setProperty("--eq", S.minhaEquipe ? equipe(S.minhaEquipe).cor : "#e10600");
-  atualizarTela(`<div class="cabecalho"><div class="identidade"><div><small>Temporada com os amigos</small><h1>Sala ${h(S.codigo)}</h1></div></div><div class="dinheiro"><small>${S.pessoas.length} de ${G.MAX_PESSOAS} pessoas</small><button id="gconvite" class="small">Copiar convite</button></div></div>
-    ${window.F1Garagem.vitrineHero({ equipe: S.minhaEquipe, etapa: "Antes da largada", titulo: S.minhaEquipe ? h(equipe(S.minhaEquipe).nome) : "Escolha sua equipe", sub: `Sala ${h(S.codigo)} · ${S.opcoes.tamanho} GPs · ${S.opcoes.voltas} voltas` })}
-    <p class="boxnota">Cada amigo escolhe uma equipe de 2026; dois podem dividir a mesma (um em cada carro, com o mesmo carro e um orçamento só). As equipes sem ninguém ficam com os robôs. Quem não escolher equipe acompanha a temporada e assiste aos GPs.</p>
-    <div class="duas"><section class="bloco"><header><h2>Quem está na sala</h2><small>${eh ? "você é o anfitrião" : "o anfitrião começa a temporada"}</small></header>${listaDePessoas()}
-      <div class="grupo-opcoes">${opcao("tamanho", "Calendário", [[4, "4 GPs · mini"], [8, "8 GPs"], [window.F1Temporada.PISTAS_TRABALHADAS.length, `${window.F1Temporada.PISTAS_TRABALHADAS.length} GPs · todas as pistas refeitas`]])}${opcao("voltas", "Voltas por GP", [[2, "2"], [3, "3"], [5, "5"], [10, "10"]])}${opcao("nivel", "Robôs", [["facil", "Fácil"], ["medio", "Médio"], ["dificil", "Difícil"]])}</div>
-      <div class="row" style="margin-top:16px"><button class="primary" id="gcomecar" ${eh && alguem ? "" : "disabled"}>${eh ? "Começar a temporada →" : "Aguardando o anfitrião"}</button><button class="ghost" id="gsair">Sair da sala</button></div>${eh && !alguem ? `<p class="boxnota">Escolha pelo menos uma equipe para começar.</p>` : ""}</section>
-      <section class="bloco"><header><h2>Escolha sua equipe</h2><small>${S.minhaEquipe ? "toque de novo para desistir" : "11 equipes de 2026"}</small></header><div class="eq-grade">${Object.keys(Pilotos.EQUIPES).map(cartaDaEquipe).join("")}</div></section></div>`);
-  window.F1Garagem.encaixar(S.minhaEquipe);
+  const todas = window.F1Temporada.PISTAS_TRABALHADAS.length;
+  const opcoes = [["tamanho", "Calendário", [[4, "4 GPs"], [8, "8 GPs"], [todas, `${todas} GPs`]]], ["voltas", "Voltas por GP", [[2, "2"], [3, "3"], [5, "5"], [10, "10"]]], ["nivel", "Robôs", [["facil", "Fácil"], ["medio", "Médio"], ["dificil", "Difícil"]]]];
+  const r = window.EntradaCarreira.sala({ S, max: G.MAX_PESSOAS, opcoes, url: `${location.origin}/corrida/temporada/?sala=${S.codigo}` });
+  atualizarTela(r.html);
+  window.EntradaCarreira.ligarSala(r.equipe);
 }
 
 // ---------- a temporada ----------

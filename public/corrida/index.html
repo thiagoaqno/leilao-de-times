@@ -184,7 +184,8 @@ window.timerPreparoCorrida = setTimeout(function () { document.getElementById("p
       </header>
 
       <nav class="mn-menu" id="mnMenu" aria-label="Menu principal">
-        <a class="mn-item mn-principal" id="mnCarreira" href="/corrida/temporada/"><span><b id="mnCarreiraT">Nova carreira</b><small id="mnCarreiraS">Escolha a equipe e dispute a temporada</small></span><i class="mn-seta" aria-hidden="true"></i></a>
+        <a class="mn-item mn-principal" id="mnCarreira" href="/corrida/temporada/"><span><b id="mnCarreiraT">Carreira solo</b><small id="mnCarreiraS">Escolha a equipe e dispute a temporada</small></span><i class="mn-seta" aria-hidden="true"></i></a>
+        <a class="mn-item mn-principal mn-amigos" id="mnAmigos" href="/corrida/temporada/?amigos=1"><span><b id="mnAmigosT">Com os amigos</b><small id="mnAmigosS">Temporada inteira, cada um na sua equipe</small></span><em class="mn-selo" id="mnAmigosSelo">Até 8</em><i class="mn-seta" aria-hidden="true"></i></a>
         <button type="button" class="mn-item" data-painel="rapida"><span><b>Corrida rápida</b></span><i class="mn-seta" aria-hidden="true"></i></button>
         <button type="button" class="mn-item" id="mnMulti" data-painel="multi"><span><b>Multiplayer</b></span><i class="mn-seta" aria-hidden="true"></i></button>
         <button type="button" class="mn-item" data-painel="contra"><span><b>Contrarrelógio</b></span><i class="mn-seta" aria-hidden="true"></i></button>
@@ -205,7 +206,7 @@ window.timerPreparoCorrida = setTimeout(function () { document.getElementById("p
             <div class="mn-campo"><span class="mn-rot">Salas abertas</span><div class="mn-salas" id="mnSalas"></div></div>
             <div class="mn-campo"><label for="hCode">Já tem sala? Digite o código</label><input id="hCode" class="codein" maxlength="5" placeholder="ABCDE" autocomplete="off"><div class="mn-duas"><button type="button" class="mn-bt" id="btnJoin">Entrar</button><button type="button" class="mn-bt mn-ghost" id="btnWatch">Só assistir</button></div></div>
             <button type="button" id="btnCreate" class="mn-acao"><span><b>Abrir sala nova</b><small>Você é o organizador</small></span><i class="mn-seta" aria-hidden="true"></i></button>
-            <a class="mn-link" href="/corrida/temporada/?amigos=1">Temporada inteira com os amigos</a>
+            
           </section>
           <section class="mn-sec" data-sec="garagem">
             <span class="mn-rot">Sua equipe</span>
