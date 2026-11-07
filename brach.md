@@ -1,35 +1,39 @@
-# Relevo real em mais seis pistas, e as 24 pistas na carreira
+# A sala da Corrida no estilo da carreira, e os setores na tela do GP
 
-## Pistas
+## A sala
 
-`ferramentas/pista-real.js` passou por mais seis pistas. O traçado e o tamanho não mudaram.
+A tela de criar sala ainda tinha o visual de outubro, de antes da Central nova. Agora segue a entrada da carreira:
 
-| Pista | Relevo real | Inclinação máxima | Barreiras |
-|---|---|---|---|
-| Baku | 86 unidades (antes 75) | 11,8% (antes 8%) | as que já tinha |
-| Zandvoort | 19 unidades | 2,7% | novas, por trecho |
-| Silverstone | 35 unidades | 3% | novas, por trecho |
-| Monza | 49 unidades | 5,8% | regra automática |
-| Xangai | 20 unidades | 5,1% | regra automática |
-| Melbourne | 21 unidades | 2,3% | regra automática |
+- Sem caixas: título grande e leve, carro solto no fundo com uma sombra suave, coluna fina à direita e os escudos em linha.
+- Abas sublinhadas e um só botão cheio, na cor da equipe à vista.
+- Modo claro e escuro, o mesmo da Central, com um botão na barra de cima.
+- Cada pista mostra a foto dela desfocada e escurecida, com o traçado em branco por cima. O hover clareia a foto. Pistas sem foto ficam com fundo escuro.
+- As dicas de teclado só aparecem para quem usa controle.
 
-Monza, Xangai e Melbourne seguem com a regra automática porque o OpenStreetMap mapeia poucas barreiras nelas (faltam em 49% a 90% da volta, conforme a pista e o lado). Com esses dados, a pista ficaria sem muro em quase toda a volta.
+As etapas, o teclado, o controle e as regras não mudaram.
 
-Baku já usava altitude real. Mudou a suavização, e o exagero saiu porque a escala agora é a do traçado. O terreno em volta se ajusta sozinho à altura da pista. Em Melbourne, o relevo foi mais suavizado, porque o SRTM conta as árvores do parque como ladeira.
+## Ao selecionar a pista
 
-A ferramenta agora procura o início da volta na volta inteira, o que corrigiu o encaixe de Silverstone.
+A etapa GP já mostra, sem abrir nada: o mapa com os três setores e o DRS, as curvas de cada setor, o perfil de altura, **o mais rápido de cada setor** e **o recorde da pista**, com o nome de quem fez.
 
-## Carreira
+O servidor agora guarda o melhor tempo de cada setor (`corrida_setores`, migração 027), medido por ele, com a regra do quadro de recordes: corrida com as regras de F1, robôs na pista e volta limpa. O histórico não existia, então os setores começam em "sem tempo ainda". O recorde da pista já tem histórico. `/api/recordes-corrida` passa a trazer os setores.
 
-As 24 pistas recriadas estão no calendário, na ordem do calendário real de 2026, e todas entram no sorteio de 4 e 8 GPs. A temporada completa passa de 15 para 24 GPs. Entram Xangai, Miami, Red Bull Ring, Hungaroring, Madri, Cidade do México, Catar, Abu Dhabi e Austin no sorteio.
+## Sobre o GP
 
-Temporadas já salvas continuam com o tamanho delas. O desafio semanal também usa essa lista, então as pistas dele mudam.
+A tela de detalhe ganhou o estilo novo e passa a mostrar:
+
+- os três setores no mapa, com as curvas de cada um (os mesmos terços da volta do cronômetro do jogo);
+- as zonas de DRS;
+- o perfil de altura da volta, quando a pista tem desnível.
+
+Ela também aparece na carreira, porque usa o mesmo código, mas lá os estilos novos de `sala-visual.css` não valem.
 
 ## Verificação
 
-- Conta da física nas seis pistas: nenhum trecho faz o carro sair do chão.
-- No jogo, com 21 robôs e sem erro no console: Baku, Zandvoort e Silverstone, por cerca de 40 s cada, com prints nos pontos da volta. Nenhuma volta completa dos robôs foi registrada nesse tempo. Monza, Xangai e Melbourne não foram abertas no jogo.
-- O calendário de 24 GPs foi criado pelas regras, mas nenhuma temporada foi jogada, nem as telas da carreira foram abertas com ele.
+- Prints das etapas Equipe, Carro e pneu, Câmera, GP e Grid, e da tela Sobre o GP. Modo claro e escuro conferidos em parte das telas, sem erro no console.
+- Não vi a tela no celular: a simulação foi desfeita sozinha quando o painel mudou de largura, então o CSS de celular não foi conferido.
+- A tela Sobre o GP não foi aberta na carreira, nem a gaveta de peças no visual novo.
+- A gravação dos setores foi conferida direto no banco, mas ninguém deu uma volta real para ver o setor aparecer na tela.
 - Só `node --check`; a suíte fica com o CI.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
