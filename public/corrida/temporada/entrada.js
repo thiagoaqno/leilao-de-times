@@ -74,7 +74,7 @@ function sala({ S, max, opcoes, url }) {
     const e = eq(id), ocup = S.pessoas.filter((p) => p.equipe === id), meu = minha === id, cheia = ocup.length >= 2 && !meu;
     return `<button type="button" class="cxs-eq${meu ? " on" : ""}${ocup.length ? " ocupada" : ""}" style="--c:${h(e.cor)}" data-equipe="${h(id)}" aria-pressed="${meu}" ${cheia ? "disabled" : ""} title="${h(e.nome)}${cheia ? " · lotada" : meu ? " · toque de novo para desistir" : ""}"><span class="cxs-logo">${logo(id)}</span><b>${h(e.nome)}</b><span class="cxs-vagas">${vaga(ocup[0])}${vaga(ocup[1])}</span></button>`;
   }).join("")}</nav>`;
-  const pessoas = S.pessoas.map((p) => `<li class="${p.online ? "on" : ""}"><i class="cxs-bola" title="${p.online ? "na sala" : "fora da sala"}"></i><span class="cxs-nome"><b>${h(p.nome)}${p.id === S.eu ? " <small>(você)</small>" : ""}</b><small>${p.equipe ? `<i class="cxs-cor" style="--c:${h(eq(p.equipe).cor)}"></i>${h(eq(p.equipe).nome)}` : "sem equipe: só acompanha"}</small></span>${p.host ? '<em class="cxs-host">anfitrião</em>' : eh ? `<button type="button" class="cxs-cargo" data-cargo="${h(p.id)}">Tornar anfitrião</button>` : ""}</li>`).join("");
+  const pessoas = S.pessoas.map((p) => `<li class="${p.online ? "on" : ""}"><i class="cxs-bola" title="${p.online ? "na sala" : "fora da sala"}"></i><span class="cxs-nome"><b>${h(p.nome)}${p.id === S.eu ? " <small>(você)</small>" : ""}${root.EstanteF1?.selo(p.nome) || ""}</b><small>${p.equipe ? `<i class="cxs-cor" style="--c:${h(eq(p.equipe).cor)}"></i>${h(eq(p.equipe).nome)}` : "sem equipe: só acompanha"}</small></span>${p.host ? '<em class="cxs-host">anfitrião</em>' : eh ? `<button type="button" class="cxs-cargo" data-cargo="${h(p.id)}">Tornar anfitrião</button>` : ""}</li>`).join("");
   const livres = max - S.pessoas.length;
   const opcao = (chave, rotulo, valores) => `<div class="cxs-op"><span>${rotulo}</span><div class="cxs-seg" role="group" aria-label="${rotulo}">${valores.map(([v, t]) => `<button type="button" data-opcao="${chave}" data-valor="${h(v)}" aria-pressed="${String(S.opcoes[chave]) === String(v)}" ${eh ? "" : "disabled"}>${t}</button>`).join("")}</div></div>`;
   const zap = `https://wa.me/?text=${encodeURIComponent(`Bora uma temporada de F1? Entra na minha sala: ${url}`)}`;
@@ -93,5 +93,28 @@ function sala({ S, max, opcoes, url }) {
 }
 function ligarSala(equipe) { const C = root.Central; C.entrada(equipe); C.temaNaTela(); }
 
-root.EntradaCarreira = { inicial, ligarInicial, convite, ligarConvite, sala, ligarSala };
+// A Estante da galera (?estante=1, o item Estante do menu da Corrida): o mesmo molde da entrada, com o carro de quem lidera no estúdio,
+// o pódio dos três primeiros embaixo e, à direita, o ranking inteiro e as últimas conquistas. Os números vêm de /api/corrida/estante (estante.js).
+function estante(d) {
+  const r = d?.ranking || [], lider = r[0], eqDe = (t) => (t && root.F1Pilotos.EQUIPES[t.equipe] ? t.equipe : Object.keys(root.F1Pilotos.EQUIPES)[0]);
+  const equipe = eqDe(lider), nomeEq = (id) => root.F1Pilotos.EQUIPES[id]?.nome || "";
+  const conta = (t) => [t.titulos && `${t.titulos} ${t.titulos === 1 ? "título" : "títulos"}`, t.vitorias && `${t.vitorias} ${t.vitorias === 1 ? "vitória" : "vitórias"}`, `${t.podios} ${t.podios === 1 ? "pódio" : "pódios"}`].filter(Boolean).join(" · ");
+  const ordem = [[r[1], 2], [r[0], 1], [r[2], 3]].filter(([t]) => t);
+  const podio = r.length ? `<nav class="cxt-podio" aria-label="Os três primeiros">${ordem.map(([t, n]) => `<div class="cxt-degrau p${n}" style="--c:${h(t.cor || "#888")}"><span class="cxt-logo">${logo(eqDe(t))}</span><b>${h(t.piloto)}</b><small>${h(conta(t))}</small><i>${n}</i></div>`).join("")}</nav>` : "";
+  const linhas = r.map((t, i) => `<li style="--c:${h(t.cor || "#888")}"><span class="cxt-pos">${i + 1}</span><span class="cxt-quem"><b>${h(t.piloto)}</b><small>${h(t.equipeNome || nomeEq(t.equipe))}${t.construtores ? ` · ${t.construtores} ${t.construtores === 1 ? "título" : "títulos"} de construtores` : ""}</small></span><span class="cxt-n" title="Títulos de pilotos">${t.titulos}<small>T</small></span><span class="cxt-n" title="Vitórias em GP">${t.vitorias}<small>V</small></span><span class="cxt-n" title="Pódios em GP">${t.podios}<small>P</small></span></li>`).join("");
+  const quando = (ms) => { const m = Math.max(0, Date.now() - ms) / 60000; return m < 60 ? "agora há pouco" : m < 1440 ? `há ${Math.round(m / 60)} h` : m < 2880 ? "ontem" : `há ${Math.round(m / 1440)} dias`; };
+  const feito = (c) => c.tipo === "pilotos" ? `campeão da temporada ${c.ano} de ${h(c.equipeNome || nomeEq(c.equipe))}` : c.tipo === "construtores" ? `campeão de construtores com a ${h(c.equipeNome || nomeEq(c.equipe))}` : `venceu o ${h(c.gpNome || c.pista)} de ${h(c.equipeNome || nomeEq(c.equipe))}`;
+  const ultimas = (d?.ultimas || []).slice(0, 5).map((c) => `<li style="--c:${h(c.cor || "#888")}"><i></i><span><b>${h(c.piloto)}</b> ${feito(c)}</span><small>${quando(c.em)}</small></li>`).join("");
+  const painel = `<div class="cxe-corpo cxt-painel">
+      <section><header><h4>Ranking</h4><small>T títulos · V vitórias · P pódios</small></header>${linhas ? `<ol class="cxt-lista">${linhas}</ol>` : '<p class="cxe-dica">Ninguém ganhou nada ainda. A primeira vitória num GP com os amigos abre a estante.</p>'}</section>
+      ${ultimas ? `<section><header><h4>Últimas conquistas</h4></header><ul class="cxt-ultimas">${ultimas}</ul></section>` : ""}
+      <a class="cx-bt" href="/corrida/temporada/?amigos=1">Entrar para a estante ${SETA}</a>
+      <a class="cxe-link" href="/corrida/">Voltar ao menu da Corrida</a>
+    </div>`;
+  const texto = lider ? `${lider.piloto} lidera com ${conta(lider)}. Cada pódio e cada título das temporadas com os amigos fica aqui para sempre.` : "Cada pódio e cada título das temporadas com os amigos fica aqui para sempre.";
+  return { equipe, html: moldura({ equipe, faixa: "Estante da galera", rotulo: "F1 com os amigos · para sempre", titulo: "Estante<br><span>da galera</span>", texto, carro: "", equipes: podio, painel }).replace('class="cxe"', 'class="cxe cxt"') };
+}
+function ligarEstante(equipe) { const C = root.Central; C.entrada(equipe); C.temaNaTela(); ligarTema(); }
+
+root.EntradaCarreira = { inicial, ligarInicial, convite, ligarConvite, sala, ligarSala, estante, ligarEstante };
 })(window);

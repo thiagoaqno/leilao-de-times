@@ -110,7 +110,8 @@ module.exports = function ligarTemporadaGrupo(io, corrida) {
         });
         let analise = null; // a análise é um extra: um erro nela nunca pode perder o resultado do GP
         try { analise = require("./corrida-analise.js").resumo(room, (p) => (p.pessoa ? G.idDoHumano(p.pessoa) : p.piloto.id)); } catch (e) { console.warn("temporada em grupo: análise do GP não salva:", e.message); }
-        G.registrarResultado(atual, linhas, analise);
+        const resultado = G.registrarResultado(atual, linhas, analise);
+        try { bd.guardarEstanteCorrida(G.conquistasDoGP(atual, resultado)); } catch (e) { console.warn("temporada em grupo: a estante não guardou o GP:", e.message); } // a estante nunca segura o GP
         ativos.delete(atual.codigo); guardar(atual); avisar(atual);
       } catch (e) { console.warn("temporada em grupo: GP não registrado:", e.message); }
     };

@@ -133,6 +133,13 @@ app.addEventListener("click", async (e) => {
 });
 socket.on("estado", (r) => { if (estado) { estado = r; renderizar(); } });
 const soAmigos = new URLSearchParams(location.search).has("amigos"); // o atalho "Temporada com os amigos" do menu mostra a porta de entrada mesmo com um save solo
-socket.on("connect", async () => { if (window.SedeGrupo.ativo) return; if (soAmigos) return telaInicial(); if (token) { const r = await pedir("abrir", { token }); if (r?.ok) guardar(r); else { token = null; localStorage.removeItem(chave); telaInicial(); } } else telaInicial(); });
-if (socket.connected && !window.SedeGrupo.ativo && !soAmigos) socket.emit("abrir", { token }, (r) => { if (r?.ok) guardar(r); else telaInicial(); });
+const soEstante = new URLSearchParams(location.search).has("estante"); // o item Estante do menu da Corrida: só a estante da galera, sem abrir carreira
+function telaDaEstante() {
+  const E = window.EntradaCarreira; document.title = "Estante da galera · Corrida da Galera"; window.F1Garagem?.fundoDoGP(null);
+  const pintar = (d) => { const r = E.estante(d); app.innerHTML = r.html; E.ligarEstante(r.equipe); };
+  const ja = window.EstanteF1?.dados(); if (ja) pintar(ja); window.EstanteF1?.carregar().then(pintar);
+}
+if (soEstante) telaDaEstante();
+socket.on("connect", async () => { if (window.SedeGrupo.ativo || soEstante) return; if (soAmigos) return telaInicial(); if (token) { const r = await pedir("abrir", { token }); if (r?.ok) guardar(r); else { token = null; localStorage.removeItem(chave); telaInicial(); } } else telaInicial(); });
+if (socket.connected && !window.SedeGrupo.ativo && !soAmigos && !soEstante) socket.emit("abrir", { token }, (r) => { if (r?.ok) guardar(r); else telaInicial(); });
 if (window.SedeGrupo.ativo) window.SedeGrupo.iniciar(); // ?sala=CÓDIGO: a temporada em grupo (grupo.js)

@@ -26,7 +26,7 @@ export function menuNaTela(sim) {
   ligarUmaVez();
   $("mnNomeTopo").textContent = nomePiloto() || "Piloto";
   $("hName").value = nomePiloto();
-  ligarGaragem(); carregarCarreira(); carregarGrupos(); pedirResumo(); desenharCartoes();
+  ligarGaragem(); carregarCarreira(); carregarGrupos(); pedirResumo(); desenharCartoes(); resumoDaEstante();
   timerResumo = setInterval(pedirResumo, 15000); timerPad = setInterval(lerControle, 90);
   if (!painel) requestAnimationFrame(() => { if (!document.activeElement || document.activeElement === document.body) itensDoMenu()[0]?.focus({ preventScroll: true }); });
 }
@@ -166,6 +166,14 @@ function desenharSecao(nome) {
       + `<button type="button" class="mn-acao" id="mnContraLargar"><span><b>Para a pista</b><small>${h(equipeNome())}</small></span>${seta}</button>`;
   } else if (nome === "multi") desenharSalas();
   else if (nome === "garagem") desenharGaragem();
+}
+// o subtítulo do item Estante: quem lidera a estante da galera (estante.js)
+function resumoDaEstante() {
+  window.EstanteF1?.carregar().then((d) => {
+    const s = $("mnEstanteS"); if (!s || !d) return;
+    const lider = d.ranking?.[0];
+    s.textContent = lider ? `${lider.piloto} lidera: ${lider.titulos} ${lider.titulos === 1 ? "título" : "títulos"}, ${lider.vitorias} ${lider.vitorias === 1 ? "vitória" : "vitórias"}` : "Os títulos e as vitórias da galera";
+  });
 }
 const equipeNome = () => FP()?.EQUIPES[equipeDoCarro()]?.nome || "Sua equipe";
 async function carregarRecordes() {

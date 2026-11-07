@@ -186,6 +186,7 @@ window.timerPreparoCorrida = setTimeout(function () { document.getElementById("p
       <nav class="mn-menu" id="mnMenu" aria-label="Menu principal">
         <a class="mn-item mn-principal" id="mnCarreira" href="/corrida/temporada/"><span><b id="mnCarreiraT">Carreira solo</b><small id="mnCarreiraS">Escolha a equipe e dispute a temporada</small></span><i class="mn-seta" aria-hidden="true"></i></a>
         <a class="mn-item mn-principal mn-amigos" id="mnAmigos" href="/corrida/temporada/?amigos=1"><span><b id="mnAmigosT">Com os amigos</b><small id="mnAmigosS">Temporada inteira, cada um na sua equipe</small></span><em class="mn-selo" id="mnAmigosSelo">Até 8</em><i class="mn-seta" aria-hidden="true"></i></a>
+        <a class="mn-item" id="mnEstanteItem" href="/corrida/temporada/?estante=1"><span><b>Estante</b><small id="mnEstanteS">Os títulos e as vitórias da galera</small></span><i class="mn-seta" aria-hidden="true"></i></a>
         <button type="button" class="mn-item" data-painel="rapida"><span><b>Corrida rápida</b></span><i class="mn-seta" aria-hidden="true"></i></button>
         <button type="button" class="mn-item" id="mnMulti" data-painel="multi"><span><b>Multiplayer</b></span><i class="mn-seta" aria-hidden="true"></i></button>
         <button type="button" class="mn-item" data-painel="contra"><span><b>Contrarrelógio</b></span><i class="mn-seta" aria-hidden="true"></i></button>
@@ -384,6 +385,7 @@ window.timerPreparoCorrida = setTimeout(function () { document.getElementById("p
 <script src="/corrida/f1-equipes.js"></script>
 <script src="/corrida/f1-pecas.js"></script>
 <script src="/corrida/temporada/garagem.js"></script>
+<script src="/corrida/estante.js"></script>
 <script src="/carreira/musica.js"></script>
 <script defer src="/corrida/gpu-aviso.js"></script>
 <script type="module" src="/corrida/jogo.js" onerror="falhaPreparoCorrida()"></script>

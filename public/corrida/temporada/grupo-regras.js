@@ -288,6 +288,23 @@ function proximaTemporada(sala, pid) {
   return sala;
 }
 
+// O que um GP que acabou de entrar deixa na estante (bd.guardarEstanteCorrida): o pódio das pessoas e, no último GP do calendário, o campeão e o
+// vice de pilotos e a equipe campeã e vice de construtores (cada pessoa da equipe leva). Robôs nunca entram.
+function conquistasDoGP(sala, resultado) {
+  const salaId = `${sala.codigo}:${sala.criadaEm || 0}`, nomeDe = (idPiloto) => { const pid = String(idPiloto).startsWith("h:") ? idPiloto.slice(2) : null; return pid && sala.pessoas[pid] ? sala.pessoas[pid].nome : null; };
+  const lista = [];
+  for (const r of resultado.linhas) {
+    const nome = nomeDe(r.piloto);
+    if (nome && !r.dnf && !r.nc && r.pos <= 3) lista.push({ sala: salaId, piloto: nome, equipe: r.equipe, tipo: "gp", pista: resultado.pista, colocacao: r.pos, ano: resultado.ano, gp: resultado.gp });
+  }
+  if (sala.gp >= sala.opcoes.tamanho && resultado.gp === sala.opcoes.tamanho - 1) {
+    const tab = tabelas(sala);
+    tab.pilotos.slice(0, 2).forEach((p, i) => { if (p.humano && p.pontos > 0) lista.push({ sala: salaId, piloto: p.nome, equipe: p.equipe, tipo: "pilotos", colocacao: i + 1, ano: resultado.ano }); });
+    tab.equipes.slice(0, 2).forEach((e, i) => { if (e.pontos > 0) for (const id of humanosDa(sala, e.id)) lista.push({ sala: salaId, piloto: sala.pessoas[id].nome, equipe: e.id, tipo: "construtores", colocacao: i + 1, ano: resultado.ano }); });
+  }
+  return lista;
+}
+
 // o que cada pessoa recebe: tudo menos o hash do token
 function vista(sala, pid, presente = () => false) {
   const { pessoas, ordem, equipes, ...resto } = sala;
@@ -297,7 +314,7 @@ function vista(sala, pid, presente = () => false) {
 }
 
 const api = { MAX_PESSOAS, GRID, OPCOES_PADRAO, TAMANHOS, VOLTAS, NIVEIS, criarSala, entrar, sair, dispensar, passarCargo, escolherEquipe, definirOpcoes, iniciar, montar, desenvolver, contratarPiloto, substituirPiloto, contratarEngenheiro, mercado,
-  gridDoGP, idDoHumano, idsEsperados, registrarResultado, tabelas, proximaTemporada, vista, humanosDa, custoDoPiloto, nomeDaEquipe };
+  gridDoGP, idDoHumano, idsEsperados, registrarResultado, conquistasDoGP, tabelas, proximaTemporada, vista, humanosDa, custoDoPiloto, nomeDaEquipe };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.F1TemporadaGrupo = api;
 })(typeof window !== "undefined" ? window : globalThis);

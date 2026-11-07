@@ -1,0 +1,5 @@
+/* A estante da F1 com os amigos (estante.js): herda a cor do texto de onde estiver (a sala e a Central, claras ou escuras). */
+.ef-taca{width:1em;height:1em;flex:none}
+.ef-selo{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 7px 1px 5px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle;opacity:.8}
+.ef-selo.campeao{border-color:#d4a017;background:#d4a0171f;color:#b7860b;opacity:1}
+body.cx-escuro .ef-selo.campeao,.mn .ef-selo.campeao{color:#f1c232}
