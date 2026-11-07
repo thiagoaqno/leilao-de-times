@@ -77,28 +77,29 @@ export const Sound = (() => {
     const t = c.currentTime;
     chuvaN.gc.gain.setTargetAtTime(on ? nivel * 0.028 : 0, t, 0.3); chuvaN.gp.gain.setTargetAtTime(on ? pneus * 0.04 * (0.4 + 0.6 * nivel) : 0, t, 0.2);
   }
-  // a zebra: o pneu batendo nas listras dá um "brrrr" grave, no ritmo das listras (uma a cada ~14 unidades: a frequência sobe com
-  // a velocidade), com o chiado da borracha por cima. `v`: a velocidade do carro na zebra (0 fora dela).
+  // a zebra: o pneu batendo nas listras é um ronco GRAVE, sem chiado: um tom de ~55 a 75 Hz (a carroceria vibrando) e um ruído só
+  // no grave (o pneu), os dois batendo a cada listra (uma a cada ~14 unidades: "tum-tum-tum" devagar, "brrrrm" rápido).
+  // `v`: a velocidade do carro na zebra (0 fora dela).
   let zebraN = null;
   function zebra(v) {
     if (!zebraN && !(v > 1)) return;
     const c = ctx(); if (!c) return;
     if (!zebraN) {
-      const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), o2 = c.createOscillator(), g2 = c.createGain();
-      o.type = "square"; f.type = "lowpass"; f.frequency.value = 260; f.Q.value = 2; g.gain.value = 0;
-      o2.type = "sine"; g2.gain.value = 0; // o tranco de cada listra: um seno grave modulando o volume
-      o.connect(f).connect(g).connect(master); o2.connect(g2).connect(g.gain); o.start(); o2.start();
+      const tom = c.createOscillator(), lfo = c.createOscillator(), prof = c.createGain(), pulso = c.createGain(), passa = c.createBiquadFilter(), saida = c.createGain();
+      tom.type = "triangle"; tom.frequency.value = 60; lfo.type = "square"; lfo.frequency.value = 20; prof.gain.value = 0; pulso.gain.value = 0;
+      passa.type = "lowpass"; passa.frequency.value = 170; passa.Q.value = 0.9; saida.gain.value = 0;
       const len = c.sampleRate, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-      const src = c.createBufferSource(), fr = c.createBiquadFilter(), gr = c.createGain(); src.buffer = b; src.loop = true; fr.type = "bandpass"; fr.frequency.value = 1400; fr.Q.value = 0.9; gr.gain.value = 0;
-      src.connect(fr).connect(gr).connect(master); src.start();
-      zebraN = { o, f, g, o2, g2, gr };
+      const ruido = c.createBufferSource(), fr = c.createBiquadFilter(), gr = c.createGain(); ruido.buffer = b; ruido.loop = true; fr.type = "lowpass"; fr.frequency.value = 110; fr.Q.value = 0.7; gr.gain.value = 0.8;
+      tom.connect(pulso); ruido.connect(fr).connect(gr).connect(pulso); lfo.connect(prof).connect(pulso.gain); // (o volume pulsa a cada listra)
+      pulso.connect(passa).connect(saida).connect(master); tom.start(); lfo.start(); ruido.start();
+      zebraN = { tom, lfo, prof, pulso, passa, saida };
     }
-    const t = c.currentTime, a = Math.abs(v || 0), ligado = on && a > 8, hz = Math.min(90, Math.max(8, a / 14));
-    zebraN.o.frequency.setTargetAtTime(hz * 2, t, 0.03); zebraN.o2.frequency.setTargetAtTime(hz, t, 0.03);
-    zebraN.f.frequency.setTargetAtTime(180 + Math.min(400, a * 0.6), t, 0.05);
-    const vol = ligado ? Math.min(0.11, 0.05 + a * 0.00012) : 0;
-    zebraN.g.gain.setTargetAtTime(vol * 0.6, t, ligado ? 0.015 : 0.06); zebraN.g2.gain.setTargetAtTime(vol * 0.4, t, 0.02);
-    zebraN.gr.gain.setTargetAtTime(ligado ? Math.min(0.03, a * 0.00006) : 0, t, ligado ? 0.02 : 0.08);
+    const t = c.currentTime, a = Math.abs(v || 0), ligado = on && a > 8, hz = Math.min(70, Math.max(6, a / 14));
+    zebraN.lfo.frequency.setTargetAtTime(hz, t, 0.03); zebraN.tom.frequency.setTargetAtTime(55 + Math.min(20, a * 0.05), t, 0.08);
+    zebraN.passa.frequency.setTargetAtTime(150 + Math.min(90, a * 0.15), t, 0.08);
+    const vol = ligado ? Math.min(0.32, 0.16 + a * 0.0004) : 0;
+    zebraN.pulso.gain.setTargetAtTime(vol * 0.55, t, 0.02); zebraN.prof.gain.setTargetAtTime(vol * 0.45, t, 0.02);
+    zebraN.saida.gain.setTargetAtTime(ligado ? 1 : 0, t, ligado ? 0.012 : 0.05);
   }
   // a torcida ao passar pela arquibancada (torcida-som.js diz o quanto ela está perto, de 0 a 1): o rumor da galera e as vozes
   // crescem com a proximidade e com a velocidade, e ao chegar rápido perto de uma arquibancada a galera solta um "uuuh", com
