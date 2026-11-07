@@ -72,7 +72,9 @@ const CURVA_AGUA = {
   medio: [[0, 1], [0.15, 0.84], [0.45, 0.66], [1, 0.38]],
   duro: [[0, 1], [0.15, 0.86], [0.45, 0.7], [1, 0.42]],
   chuva: [[0, 1], [0.15, 0.97], [0.45, 1.0], [1, 1.12]],
-  intermediario: [[0, 1], [0.15, 1.02], [0.45, 1.12], [1, 1.0]],
+  // o intermediário é o pneu da pista úmida: passa os secos por volta de 20% de água, é o melhor em toda a garoa (até ~0,45) e perde para o de chuva na chuva de verdade; nunca chega perto
+  // de um seco em pista seca (lá ele ainda superaquece, `esquenta`)
+  intermediario: [[0, 0.97], [0.15, 1.0], [0.35, 1.03], [0.6, 1.0], [1, 0.75]],
 };
 function fatorAgua(composto, agua) {
   const c = CURVA_AGUA[composto] || CURVA_AGUA[COMPOSTO_PADRAO], a = limite(agua || 0, 0, 1);
@@ -216,7 +218,7 @@ function recomendarParada({ atual, jogos, agua = 0, voltasRestantes = 99, fator 
     const cands = SECOS_ORDEM.filter((c) => tem(c) && c !== atual); if (!cands.length) return SECOS_ORDEM.includes(atual) ? atual : (SECOS_ORDEM.find(tem) || "medio");
     return cands.find((c) => vida(c) >= voltasRestantes) || cands.slice().sort((a, b) => vida(b) - vida(a))[0];
   };
-  if (agua > 0.3) {
+  if (agua > 0.2) { // (de 20% de água para cima o intermediário já passa os secos)
     const molhados = ["chuva", "intermediario"].filter((c) => jogos ? jogos[c] > 0 : true);
     if (molhados.length) return compostoPorAgua(null, agua, molhados);
   }
