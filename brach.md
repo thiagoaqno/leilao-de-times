@@ -12,6 +12,12 @@ A tela de criar sala ainda tinha o visual de outubro, de antes da Central nova. 
 
 As etapas, o teclado, o controle e as regras não mudaram.
 
+## Ao selecionar a pista
+
+A etapa GP já mostra, sem abrir nada: o mapa com os três setores e o DRS, as curvas de cada setor, o perfil de altura, **o mais rápido de cada setor** e **o recorde da pista**, com o nome de quem fez.
+
+O servidor agora guarda o melhor tempo de cada setor (`corrida_setores`, migração 027), medido por ele, com a regra do quadro de recordes: corrida com as regras de F1, robôs na pista e volta limpa. O histórico não existia, então os setores começam em "sem tempo ainda". O recorde da pista já tem histórico. `/api/recordes-corrida` passa a trazer os setores.
+
 ## Sobre o GP
 
 A tela de detalhe ganhou o estilo novo e passa a mostrar:
@@ -27,6 +33,7 @@ Ela também aparece na carreira, porque usa o mesmo código, mas lá os estilos 
 - Prints das etapas Equipe, Carro e pneu, Câmera, GP e Grid, e da tela Sobre o GP. Modo claro e escuro conferidos em parte das telas, sem erro no console.
 - Não vi a tela no celular: a simulação foi desfeita sozinha quando o painel mudou de largura, então o CSS de celular não foi conferido.
 - A tela Sobre o GP não foi aberta na carreira, nem a gaveta de peças no visual novo.
+- A gravação dos setores foi conferida direto no banco, mas ninguém deu uma volta real para ver o setor aparecer na tela.
 - Só `node --check`; a suíte fica com o CI.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
