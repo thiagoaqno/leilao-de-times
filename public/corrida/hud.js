@@ -252,20 +252,8 @@ function objetivoDaCorrida() {
   if (!o || !(o.gp >= 1) || Date.now() - o.em > 3 * 60 * 60 * 1000) return;
   window.Radio?.frase?.(o.gp === 1 ? ["objetivovencer", "objetivofim"] : ["objetivo", `top-${Math.min(20, o.gp)}`], "objetivo", { forcar: true });
 }
-// O observador: carro emparelhado à esquerda ou à direita, e "livre" quando ele sai.
-function observador(now) {
-  const c = race.car; if (!c || c.v < 60 || !race.ghosts) return;
-  const O = race.spot || (race.spot = { lado: 0, em: 0, conta: 0 }), fx = Math.cos(c.a), fy = Math.sin(c.a); let lado = 0, perto = Infinity;
-  for (const gh of race.ghosts.values()) {
-    const dx = gh.x - c.x, dy = gh.y - c.y, fr = dx * fx + dy * fy, la = -dx * fy + dy * fx, d = Math.abs(la);
-    if (Math.abs(fr) < 48 && d > 14 && d < 62 && d < perto) { perto = d; lado = la > 0 ? 1 : -1; }
-  }
-  if (lado === O.lado || now - O.em < 1800) return;
-  const antes = O.lado; O.lado = lado; O.em = now;
-  if (lado) radioF1(lado > 0 ? "spotdir" : "spotesq", { forcar: true }); else if (antes) radioF1("spotlivre");
-}
 function hudF1(m, st, now) {
-  estrategistaDaChuva(m); observador(now);
+  estrategistaDaChuva(m);
   const t0 = performance.now(); if (t0 - (race.hudF1T || 0) < 100) return; race.hudF1T = t0;
   avisoDeChuva(m);
   if (race.pneu && m && m.finish == null && m.started && race.pneu.desgaste > window.F1Regras.PENHASCO * 0.75 && race.pneu.desgaste <= window.F1Regras.PENHASCO) radioF1("pneu");
