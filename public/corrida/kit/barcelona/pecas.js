@@ -171,7 +171,7 @@ export function tribunaPrincipal({ comprimento: L = 1500, publico = 0.42, sement
   }
   const g = m.montar("barcelona-tribuna-principal");
   const gente = torcidaNosDegraus(fileiras, x0, x1, { publico, semente }); g.add(gente);
-  g.userData = { largura: L, profundidade: -zFundo + 30, alto: 262, pessoas: gente.userData.pessoas || 0, fileiras, yTopo };
+  g.userData = { largura: L, profundidade: -zFundo + 30, alto: 262, pessoas: gente.userData.pessoas || 0, fileiras, yTopo, torcida: true };
   return g;
 }
 

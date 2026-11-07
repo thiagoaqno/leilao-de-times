@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { E, PISTAS, SECTORS, COLORS, CARROS, carOf, socket, $, sNow, me, P, act, checkpoint } from "./estado.js";
 import { Sound } from "./sons.js";
+import { montarMapaDaTorcida, nivelDaTorcida } from "./torcida-som.js";
 import { atualizarClima } from "./clima.js";
 import { passoClima, limparClima, exercitarChuva } from "./clima-visual.js";
 import { updateGhosts } from "./rede.js";
@@ -158,7 +159,7 @@ export function startRace(st) {
   if (!raf) raf = requestAnimationFrame(loop);
 }
 function clearRace() { if (!race) return; soltarRecorte(race.tr); race.linhaFreio?.parar(); stopItems(); limparEfeitos(); dropKart(race.kart); dropKart(race.bestKart); dropKart(race.safetyKart); for (const gh of race.ghosts.values()) dropKart(gh.kart); }
-export function stopRace() { clearRace(); race = null; Sound.engine(0, false); limparClima(); }
+export function stopRace() { clearRace(); race = null; Sound.engine(0, false); Sound.zebra(0); Sound.torcida(0, 0); limparClima(); }
 function resize() {
   const w = window.innerWidth, hh = window.innerHeight;
   renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); ajustarTela(w, hh);
@@ -217,6 +218,11 @@ function loop(t) {
   Sound.engine(race.car.v, ativo() && sNow() >= race.startAt - 300 && !!me(), keys.gas, race.marcha || 1, race.rpm || 0, somF1 ? { cam: somDaCamera(camEstado.modo || camMode), lim: race.box?.fase === "entra" ? 0.45 : keys.gas && (race.rpm || 0) >= 0.985 ? 1 : 0, ers: !!race.ersAtivo, freio: !!keys.brake } : null);
   Sound.outros(OUTROS_SOM, somF1 && me() && !(race.tvAte && sNow() < race.tvAte) ? outrosParaSom() : 0); // (na transmissão de TV o grid parado em marcha lenta soava como uma buzina)
   Sound.skid(me() && ativo() && race.car.slip > 45 ? race.car.slip : 0);
+  // o pneu na zebra (race.naZebra, medido no desenho) e a torcida de quem passa perto das arquibancadas (torcida-som.js)
+  const correndo = !!me() && ativo() && sNow() >= race.startAt;
+  Sound.zebra(correndo && race.naZebra && !race.car.air ? race.car.v : 0);
+  if (!race.tr.mapaTorcida) montarMapaDaTorcida(race.tr, scene);
+  Sound.torcida(correndo ? nivelDaTorcida(race.tr, race.car.x, race.car.y) : 0, race.car.v);
   draw(dt);
   medirQuadro();
   hud();
@@ -240,7 +246,7 @@ function draw(dt) {
     const spec = CARS3[me()?.car] || CARS3.equilibrado, inc = inclinacao(tr, c.x, c.y, c.a, race.idx, spec.L * KS, spec.W * KS, c.vz, c.air, c.v);
     race.pitch = inc.pitch;
     const turbo = race.boostUntil > now || race.sling > 0, rodando = race.spinUntil > now, bala = race.balaUntil > now;
-    poseKart(race.kart, c.x, c.y, c.z, c.a + (race.net ? 0 : slide * 0.25), c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { drs: !!race.drsAtivo, turbo, rodando, bala, pneu: race.pneu ? race.pneu.composto : null, zebra: (!tr.zebras || !!tr.zebras[race.idx]) && Math.abs(Math.abs((c.x - tr.pts[race.idx].x) * tr.pts[race.idx].nx + (c.y - tr.pts[race.idx].y) * tr.pts[race.idx].ny) - tr.W / 2) < 9, derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
+    poseKart(race.kart, c.x, c.y, c.z, c.a + (race.net ? 0 : slide * 0.25), c.v, c.steer, fr, dt, -c.steer * 0.04 + inc.roll, inc.pitch, fxDe(me(), now, { drs: !!race.drsAtivo, turbo, rodando, bala, pneu: race.pneu ? race.pneu.composto : null, zebra: (race.naZebra = (!tr.zebras || !!tr.zebras[race.idx]) && Math.abs(Math.abs((c.x - tr.pts[race.idx].x) * tr.pts[race.idx].nx + (c.y - tr.pts[race.idx].y) * tr.pts[race.idx].ny) - tr.W / 2) < 9), derrapa: c.slip > 45 ? (c.slip > 110 ? 2 : 1) : 0 }));
     // derrapagem: fumaça branca saindo dos pneus de trás, mais grossa quanto mais o carro escorrega
     if (c.slip > 40 && !c.air) { const forte = Math.min(1, (c.slip - 40) / 120); for (const s of [-1, 1]) if (Math.random() < 0.55 + forte * 0.45) puff(c.x - Math.cos(c.a) * 15 + -Math.sin(c.a) * s * 9, c.z + 3, c.y - Math.sin(c.a) * 15 + Math.cos(c.a) * s * 9, "#eeeeee", 3.2 + forte * 3, 0.8 + forte * 0.6, 1.7, 0.3 + forte * 0.22); }
     if (race.offroad && Math.random() < 0.5) puff(c.x - Math.cos(c.a) * 18, c.z + 2, c.y - Math.sin(c.a) * 18, tr.id === "interlagos" ? "#b39c66" : "#9a9a9a", 2.5);

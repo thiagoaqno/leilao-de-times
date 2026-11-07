@@ -12,7 +12,18 @@ const criarMotorF1 = motorEscolhido === "v10" ? criarMotorV10 : criarMotorV6;
 export const Sound = (() => {
   let ac = null, on = store.get("corrida:sound") !== false, eng = null, skidG = null, master = null, volume = Math.max(0, Math.min(1, store.get("corrida:volume") ?? 0.7));
   // todo som passa pelo volume geral (o deslizante do cabeçalho e da corrida)
-  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = volume; master.connect(ac.destination); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; }
+  function ctx() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = volume; master.connect(ac.destination); carregarAmostras(ac); } catch { return null; } } if (ac.state === "suspended") ac.resume(); return ac; }
+  // os sons gravados da pista (public/corrida/sons/<id>.mp3, gerados por GERAR-SONS-PISTA.bat com a ElevenLabs): quando existem, a zebra
+  // e a torcida tocam eles; sem o arquivo, continua o som sintetizado de cada uma
+  const amostras = {};
+  function carregarAmostras(c) {
+    for (const id of ["zebra", "torcida", "torcida-uau", "buzina"]) {
+      fetch(`/corrida/sons/${id}.mp3`).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => b && c.decodeAudioData(b)).then((buf) => { if (buf) amostras[id] = buf; }).catch(() => {});
+    }
+  }
+  // um som gravado em laço, com volume e velocidade próprios
+  function laco(c, buf) { const src = c.createBufferSource(), g = c.createGain(); src.buffer = buf; src.loop = true; g.gain.value = 0; src.connect(g).connect(master); src.start(); return { src, g }; }
+  function umaVez(id, vol, rate = 1) { const c = ac, buf = amostras[id]; if (!c || !buf || !on) return false; const src = c.createBufferSource(), g = c.createGain(); src.buffer = buf; src.playbackRate.value = rate; g.gain.value = vol; src.connect(g).connect(master); src.start(); return true; }
   function tone(f, dur, { type = "square", vol = 0.12, at = 0 } = {}) {
     const c = ctx(); if (!c || !on) return; const t = c.currentTime + at;
     const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f;
@@ -77,6 +88,82 @@ export const Sound = (() => {
     const t = c.currentTime;
     chuvaN.gc.gain.setTargetAtTime(on ? nivel * 0.028 : 0, t, 0.3); chuvaN.gp.gain.setTargetAtTime(on ? pneus * 0.04 * (0.4 + 0.6 * nivel) : 0, t, 0.2);
   }
+  // a zebra: o pneu batendo nas listras é um ronco GRAVE, sem chiado: um tom de ~55 a 75 Hz (a carroceria vibrando) e um ruído só
+  // no grave (o pneu), os dois batendo a cada listra (uma a cada ~14 unidades: "tum-tum-tum" devagar, "brrrrm" rápido).
+  // `v`: a velocidade do carro na zebra (0 fora dela).
+  let zebraN = null;
+  let zebraA = null;
+  function zebra(v) {
+    if (!zebraN && !zebraA && !(v > 1)) return;
+    const c = ctx(); if (!c) return;
+    if (amostras.zebra) { // o som gravado: mais rápido e um pouco mais agudo com a velocidade
+      if (!zebraA) { zebraA = laco(c, amostras.zebra); if (zebraN) zebraN.saida.gain.value = 0; }
+      const t = c.currentTime, a = Math.abs(v || 0), ligado = on && a > 8;
+      zebraA.src.playbackRate.setTargetAtTime(Math.min(1.5, 0.75 + a / 500), t, 0.05);
+      zebraA.g.gain.setTargetAtTime(ligado ? Math.min(0.9, 0.45 + a * 0.0012) : 0, t, ligado ? 0.015 : 0.06);
+      return;
+    }
+    if (!zebraN) {
+      const tom = c.createOscillator(), lfo = c.createOscillator(), prof = c.createGain(), pulso = c.createGain(), passa = c.createBiquadFilter(), saida = c.createGain();
+      tom.type = "triangle"; tom.frequency.value = 60; lfo.type = "square"; lfo.frequency.value = 20; prof.gain.value = 0; pulso.gain.value = 0;
+      passa.type = "lowpass"; passa.frequency.value = 170; passa.Q.value = 0.9; saida.gain.value = 0;
+      const len = c.sampleRate, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const ruido = c.createBufferSource(), fr = c.createBiquadFilter(), gr = c.createGain(); ruido.buffer = b; ruido.loop = true; fr.type = "lowpass"; fr.frequency.value = 110; fr.Q.value = 0.7; gr.gain.value = 0.8;
+      tom.connect(pulso); ruido.connect(fr).connect(gr).connect(pulso); lfo.connect(prof).connect(pulso.gain); // (o volume pulsa a cada listra)
+      pulso.connect(passa).connect(saida).connect(master); tom.start(); lfo.start(); ruido.start();
+      zebraN = { tom, lfo, prof, pulso, passa, saida };
+    }
+    const t = c.currentTime, a = Math.abs(v || 0), ligado = on && a > 8, hz = Math.min(70, Math.max(6, a / 14));
+    zebraN.lfo.frequency.setTargetAtTime(hz, t, 0.03); zebraN.tom.frequency.setTargetAtTime(55 + Math.min(20, a * 0.05), t, 0.08);
+    zebraN.passa.frequency.setTargetAtTime(150 + Math.min(90, a * 0.15), t, 0.08);
+    const vol = ligado ? Math.min(0.32, 0.16 + a * 0.0004) : 0;
+    zebraN.pulso.gain.setTargetAtTime(vol * 0.55, t, 0.02); zebraN.prof.gain.setTargetAtTime(vol * 0.45, t, 0.02);
+    zebraN.saida.gain.setTargetAtTime(ligado ? 1 : 0, t, ligado ? 0.012 : 0.05);
+  }
+  // a torcida ao passar pela arquibancada (torcida-som.js diz o quanto ela está perto, de 0 a 1): o rumor da galera e as vozes
+  // crescem com a proximidade e com a velocidade, e ao chegar rápido perto de uma arquibancada a galera solta um "uuuh", com
+  // palmas e buzinas soltas.
+  let torcidaN = null, torcidaAntes = 0, uauAte = 0;
+  let torcidaA = null;
+  function torcida(nivel, v) {
+    if (!torcidaN && !torcidaA && !(nivel > 0.01)) return;
+    const c = ctx(); if (!c) return;
+    if (amostras.torcida) { // o som gravado: o rumor em laço, o "uuuh" e a buzina quando o carro chega rápido
+      if (!torcidaA) { torcidaA = laco(c, amostras.torcida); if (torcidaN) { torcidaN.gr.gain.value = 0; torcidaN.gv.gain.value = 0; } }
+      const t = c.currentTime, n = on ? Math.max(0, Math.min(1, nivel)) : 0, rapido = Math.min(1, Math.abs(v || 0) / 300);
+      torcidaA.g.gain.setTargetAtTime(n * (0.35 + 0.35 * rapido), t, 0.25);
+      if (n > 0.55 && torcidaAntes <= 0.55 && rapido > 0.35 && t > uauAte + 2) {
+        uauAte = t + 2;
+        umaVez("torcida-uau", 0.7 * n, 0.95 + Math.random() * 0.1);
+        if (Math.random() < 0.6) setTimeout(() => umaVez("buzina", 0.35 * n, 0.9 + Math.random() * 0.2), 250 + Math.random() * 500);
+      }
+      torcidaAntes = n; return;
+    }
+    if (!torcidaN) {
+      const len = c.sampleRate * 2, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (0.6 + 0.4 * Math.sin(i / c.sampleRate * 6.3 * (3 + Math.sin(i / c.sampleRate * 1.7))));
+      const src = c.createBufferSource(); src.buffer = b; src.loop = true;
+      const fr = c.createBiquadFilter(), gr = c.createGain(), fv = c.createBiquadFilter(), gv = c.createGain();
+      fr.type = "bandpass"; fr.frequency.value = 650; fr.Q.value = 0.6; gr.gain.value = 0; fv.type = "bandpass"; fv.frequency.value = 1900; fv.Q.value = 1.4; gv.gain.value = 0;
+      src.connect(fr).connect(gr).connect(master); src.connect(fv).connect(gv).connect(master); src.start();
+      torcidaN = { fr, gr, fv, gv, buf: b };
+    }
+    const t = c.currentTime, n = on ? Math.max(0, Math.min(1, nivel)) : 0, rapido = Math.min(1, Math.abs(v || 0) / 300);
+    const uau = t < uauAte ? Math.sin(((uauAte - t) / 1.8) * Math.PI) : 0; // o "uuuh" sobe e desce em 1,8 s
+    torcidaN.gr.gain.setTargetAtTime(n * (0.05 + 0.05 * rapido) + uau * 0.06 * n, t, 0.25);
+    torcidaN.gv.gain.setTargetAtTime(n * 0.025 + uau * 0.05 * n, t, 0.2);
+    torcidaN.fv.frequency.setTargetAtTime(1700 + uau * 700, t, 0.2);
+    if (n > 0.55 && torcidaAntes <= 0.55 && rapido > 0.35 && t > uauAte + 2) { // chegou numa arquibancada em velocidade
+      uauAte = t + 1.8;
+      if (Math.random() < 0.7) [0, 0.35].forEach((at, k) => tone(k ? 466 : 392, 0.28, { type: "sawtooth", vol: 0.035 * n, at: at + 0.2 })); // a buzina da galera
+    }
+    if (n > 0.3 && Math.random() < 0.06 * n) { // palmas soltas
+      const len = Math.floor(c.sampleRate * 0.03), b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+      const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = b; f.type = "highpass"; f.frequency.value = 1200; g.gain.value = 0.03 * n;
+      s.connect(f).connect(g).connect(master); s.start(t + Math.random() * 0.05);
+    }
+    torcidaAntes = n;
+  }
   // o engenheiro falando: os motores de F1 descem para ~35% e voltam devagar quando ele acaba
   function abafar(sim) { if (motorBus && ac) motorBus.gain.setTargetAtTime(sim ? 0.35 : 1, ac.currentTime, sim ? 0.08 : 0.35); }
   function crash(forca) {
@@ -98,7 +185,7 @@ export const Sound = (() => {
     volume(v) { volume = Math.max(0, Math.min(1, v)); store.set("corrida:volume", volume); if (master) master.gain.setTargetAtTime(volume, ac.currentTime, 0.05); }, get nivel() { return volume; },
     radioSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, abafar } : null; }, // o rádio do engenheiro usa o volume geral
     narradorSaida() { const c = ctx(); return c && master ? { ac: c, saida: master, ligado: on } : null; }, // o narrador da transmissão: volume geral e som ligado
-    crash, chuva, prepararChuva() { chuva(0, 0, true); }, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
+    crash, chuva, zebra, torcida, prepararChuva() { chuva(0, 0, true); }, engine, outros, ambiente: barramento, eco(v) { if (ecoG) ecoG.gain.setTargetAtTime(on ? v : 0, ac.currentTime, 0.25); }, troca(d) { tone(d > 0 ? 180 : 120, 0.05, { type: "square", vol: 0.05 }); }, toggle() { on = !on; store.set("corrida:sound", on); if (!on) { engine(0, false); if (window.Narrador) window.Narrador.parar(); } }, get on() { return on; }, unlock() { ctx(); },
   };
 })();
 function renderSoundBtn() { Comum.iconeSom(Sound.on); for (const id of ["volume", "volCorrida"]) { const el = $(id); if (el) el.value = Math.round(Sound.nivel * 100); } }
