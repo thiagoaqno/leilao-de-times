@@ -371,7 +371,7 @@ function passoBox(c, ent, amb, tr, p, ev) {
     // `B.parada`/`B.t`: a parada em si (no stop-and-go, os segundos dele); `B.troca = { parada, t }`: a troca de pneu que vem logo depois (null se não troca)
     const stopGo = amb.stopGo > 0, decidir = B.pedido === "decidir", atual = c.pneu ? c.pneu.composto : (decidir ? "medio" : B.pedido), tempoTroca = F1.tempoDeParada(amb.semente, amb.id, n);
     const voltasRest = Math.max(0, (amb.voltas || 1) - ((amb.laps || 0) + 1)), rec = decidir ? F1.recomendarParada({ atual, jogos: amb.jogos, agua: amb.agua || 0, voltasRestantes: voltasRest, fator: spec.desgaste }) : null;
-    const uEntrada = rel + 0.5, garagem = F1.garagemDe(cor, amb.grid || 0);
+    const uEntrada = rel + 0.5, garagem = F1.garagemDe(cor, amb.grid || 0, amb.equipe);
     const desvioEntrada = direto ? lado - cor.latParada(uEntrada, garagem, lado) : 0;
     Object.assign(B, { fase: "entra", u: uEntrada, uEntrada, desvioEntrada, lat0: lado, t: 0, composto: decidir ? null : B.pedido, escolher: decidir, rec, tt: tempoTroca, manter: false, stopGo, troca: !decidir && stopGo && B.pedido !== atual ? { parada: tempoTroca, t: 0 } : null, sg: stopGo ? amb.stopGo : 0, volta: (amb.laps || 0) + 1, n, parada: stopGo ? amb.stopGo : tempoTroca, garagem, tick0: c.tick });
     if (ev) ev.push({ t: "box", fase: "entra", volta: B.volta, n, stopGo: stopGo || undefined });

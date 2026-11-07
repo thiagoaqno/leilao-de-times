@@ -81,7 +81,7 @@ function ambiente(room, p, S, agora = Date.now()) {
   amb.agua = F1.climaEm(room.clima, agora).agua; // a água na pista agora (o relógio do roteiro do clima: f1-regras.js)
   amb.spec = specDoPiloto(p); amb.manual = room.config.cambio === "manual"; amb.dano = p.dano || 0; amb.drsZona = p.drsZona ?? -1;
   amb.safety = !!(d && d.safety); amb.setorAmarelo = d && d.amarelo ? d.amarelo.setor : -1; amb.ersAuto = room.config.ers !== "manual";
-  amb.voltas = room.config.voltas; amb.laps = p.laps || 0; amb.paradas = (p.paradas || []).length; amb.semente = room.semente; amb.id = p.id; amb.grid = p.grid;
+  amb.voltas = room.config.voltas; amb.laps = p.laps || 0; amb.paradas = (p.paradas || []).length; amb.semente = room.semente; amb.id = p.id; amb.grid = p.grid; amb.equipe = p.equipe || null;
   amb.finish = p.finish; amb.dnf = !!p.dnf; amb.quali = quali; amb.fantasma = p.finish != null; amb.f1 = true;
   amb.jogos = F1.jogosRestantes(p); // (os jogos de pneu: a recomendação do menu do box usa os mesmos nos dois lados)
   amb.stopGo = p.stopGo ? p.stopGo.s : 0; // stop-and-go pendente: a próxima visita ao box é só ele (segundos parado, sem trocar o pneu)

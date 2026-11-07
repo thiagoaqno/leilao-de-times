@@ -129,12 +129,8 @@ export function startRace(st) {
   if (tr.gridGalera) tr.gridGalera.visible = !tr.mostrarBoxes; if (tr.gridF1) tr.gridF1.visible = tr.mostrarBoxes;
   if (tr.portico) { tr.faixaGalera.visible = !tr.mostrarBoxes; tr.portico.topF1.visible = tr.portico.grupo.visible = tr.mostrarBoxes; tr.luzes.set(0); }
   if (tr.boxesGP) {
-    const cores = Object.values(window.EQUIPES_F1 || {}).map((e) => e.cor);
-    for (const p of st.players) {
-      const equipe = window.Pistas.MODS.pintura[(p.mods || window.Pistas.MODS_PADRAO).pintura]?.equipe;
-      cores[p.grid % window.F1Regras.GARAGENS] = window.EQUIPES_F1?.[equipe]?.cor || p.color;
-    }
-    tr.boxesGP.userData.colorir(cores);
+    // cada garagem é de uma equipe (F1Regras.EQUIPES_GARAGEM), sempre na cor dela
+    tr.boxesGP.userData.colorir(window.F1Regras.EQUIPES_GARAGEM.map((id) => window.EQUIPES_F1?.[id]?.cor));
   }
   const spot = gridSpot(tr.pts, mine ? mine.grid : 0, tr.W, st.config.regras === "f1");
   if (race) clearRace();

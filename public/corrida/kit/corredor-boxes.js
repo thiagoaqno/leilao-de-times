@@ -1,23 +1,51 @@
 // Kit de pista — o corredor dos boxes (regras de F1): a faixa de asfalto ao lado da reta, com a linha branca da entrada e a
-// vermelha da saída, a mureta entre ela e a pista, o quadrado pintado onde cada carro para e as 10 garagens com a cor
-// de cada equipe. O traçado do corredor vem de `boxes` em ../pistas.js (frações da volta) e da conta de
+// vermelha da saída, a mureta entre ela e a pista, o quadrado pintado onde cada carro para e as 11 garagens, uma por equipe,
+// com a cor e o logo dela na fachada e no fundo. O traçado do corredor vem de `boxes` em ../pistas.js (frações da volta) e da conta de
 // `F1Regras.corredor` (f1-regras.js), a mesma que o carro e os robôs usam para andar nele. Só pintura e cenário: quem
 // segura o carro no corredor é box.js. Aparece só quando a sala usa as regras de F1 (`tr.mostrarBoxes`).
 //
 // cfg (tudo opcional):
 //   asfalto: "#46484d"  — a cor do asfalto do corredor
-//   cores: ["#e8002d", …] — a cor de cada garagem (10); sem isso elas ficam cinzas até o jogo pintar (grp.userData.colorir)
+//   cores: ["#e8002d", …] — a cor de cada garagem (11, uma por equipe); sem isso elas ficam cinzas até o jogo pintar (grp.userData.colorir)
 //   mureta: true | false — a mureta entre a pista e o corredor (padrão: sim, menos onde a pista já tem muro de rua)
 //   garagens: false — só o corredor e os quadrados pintados, sem as garagens (Mônaco)
 import * as THREE from "three";
 import { canvasTex } from "../cena.js";
 import { lotes } from "./comum.js";
 
+// uma garagem por equipe, na ordem de F1Regras.EQUIPES_GARAGEM (é por ela que cada carro acha a sua): [id, nome, cor]
 const EQUIPES = [
-  ["McLaren", "#ff8700"], ["Ferrari", "#e8002d"], ["Mercedes", "#27f4d2"], ["Red Bull", "#3671c6"],
-  ["Racing Bulls", "#6692ff"], ["Aston Martin", "#229971"], ["Williams", "#37bedd"],
-  ["Audi", "#d7172f"], ["Alpine", "#ff87bc"], ["Haas", "#c6cbd0"],
+  ["mclaren", "McLaren", "#ff8700"], ["ferrari", "Ferrari", "#e8002d"], ["mercedes", "Mercedes", "#27f4d2"], ["red-bull", "Red Bull", "#3671c6"],
+  ["racing-bulls", "Racing Bulls", "#6692ff"], ["aston-martin", "Aston Martin", "#229971"], ["williams", "Williams", "#37bedd"],
+  ["audi", "Audi", "#d7172f"], ["alpine", "Alpine", "#ff87bc"], ["haas", "Haas", "#c6cbd0"], ["cadillac", "Cadillac", "#c9a227"],
 ];
+const equipeDa = (k) => EQUIPES[k % EQUIPES.length];
+// o logo da equipe (o mesmo do resto do jogo, /api/corrida/logo/:id) desenhado num canvas: a fachada e o painel do fundo da garagem.
+// O desenho sai na hora com o nome e é refeito quando a imagem chega (no Node dos testes não há Image, e fica só o nome).
+function placaDaEquipe(id, nome, cor, w, h, comNome) {
+  const pintar = (ctx, img) => {
+    ctx.clearRect(0, 0, w, h);
+    const g = ctx.createLinearGradient(0, 0, w, 0); g.addColorStop(0, cor); g.addColorStop(1, "#111418"); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "#ffffff22"; ctx.fillRect(0, 0, w, h * 0.08); ctx.fillStyle = "#00000040"; ctx.fillRect(0, h * 0.92, w, h * 0.08);
+    const lado = h * 0.78, x0 = comNome ? h * 0.12 : (w - lado * 1.6) / 2;
+    if (img) {
+      const r = Math.min((lado * (comNome ? 1.4 : 1.6)) / img.width, lado / img.height), iw = img.width * r, ih = img.height * r;
+      ctx.shadowColor = "#0008"; ctx.shadowBlur = h * 0.06; ctx.drawImage(img, x0 + ((comNome ? lado * 1.4 : lado * 1.6) - iw) / 2, (h - ih) / 2, iw, ih); ctx.shadowBlur = 0;
+    }
+    if (comNome || !img) {
+      ctx.fillStyle = "#ffffff"; ctx.font = `900 ${Math.round(h * 0.42)}px Arial, sans-serif`; ctx.textBaseline = "middle";
+      ctx.textAlign = comNome ? "left" : "center"; ctx.fillText(nome.toUpperCase(), comNome ? x0 + lado * 1.4 + h * 0.15 : w / 2, h / 2, comNome ? w - (x0 + lado * 1.4 + h * 0.3) : w - 20);
+    }
+  };
+  let ctx2 = null;
+  const tex = canvasTex(w, h, (ctx) => { ctx2 = ctx; pintar(ctx, null); }, false);
+  if (typeof Image !== "undefined" && ctx2) {
+    const img = new Image(); img.decoding = "async";
+    img.onload = () => { pintar(ctx2, img); tex.needsUpdate = true; };
+    img.src = `/api/corrida/logo/${encodeURIComponent(id)}`;
+  }
+  return tex;
+}
 
 export function boxesGP(tr, add, cfg = {}) {
   const F = window.F1Regras, cor = F.corredor(tr.t, tr.n, tr.W); if (!cor) return;
@@ -102,20 +130,30 @@ export function boxesGP(tr, add, cfg = {}) {
   const garagemLivre = (ref, tx, ty, nx, ny, largura) => [0, fundo + 3].every((b) => [-1, 0, 1].every((s) => tr.distAt(ref.x + nx * b + tx * s * largura / 2, ref.y + ny * b + ty * s * largura / 2) >= Math.abs(cor.garagemLat) + meia / 2 + b - 4));
   cor.garagens.forEach((u, k) => {
     const i = cor.i0 + Math.floor(u), p = pts[i % n], tx = p.tx, ty = p.ty, nx = p.nx * lado, ny = p.ny * lado;
-    const largura = Math.max(18, cor.gap * 6 * 0.92), q = em(u, cor.garagemLat), c = cfg.cores?.[k % cfg.cores.length] || EQUIPES[k][1];
+    const largura = Math.max(18, cor.gap * 6 * 0.92), q = em(u, cor.garagemLat), [idEq, nomeEq, corEq] = equipeDa(k), c = cfg.cores?.[k % cfg.cores.length] || corEq;
     const ref = { x: q.x + nx * (meia / 2), y: q.y + ny * (meia / 2), h: q.h }; // a borda externa da faixa das garagens
     if (comGaragem && garagemLivre(ref, tx, ty, nx, ny, largura)) {
-      caixa(ref, tx, ty, nx, ny, 0, fundo - 0.7, -9, largura, 1.4, 9 + alt, c, k); // o fundo, na cor da equipe
-      for (const s of [-1, 1]) caixa(ref, tx, ty, nx, ny, s * (largura / 2 - 0.4), fundo / 2, -9, 0.8, fundo, 9 + alt, "#cfcdc6"); // as laterais
-      caixa(ref, tx, ty, nx, ny, 0, fundo / 2 - 1.5, alt, largura + 1.4, fundo + 3, 1.2, "#dcdad4"); // o teto, saindo para o corredor
-      caixa(ref, tx, ty, nx, ny, 0, -2.4, alt - 5.5, largura + 1.4, 1.2, 5.5, c, k); // a faixa grande na frente, na cor da equipe
-      const nome = cfg.nomes?.[k] || EQUIPES[k][0];
-      const letreiro = new THREE.Mesh(new THREE.PlaneGeometry(largura - 2, 4.8), new THREE.MeshBasicMaterial({
-        map: canvasTex(512, 96, (ctx, w, h) => { ctx.fillStyle = "#ffffff"; ctx.font = "900 58px Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(nome.toUpperCase(), w / 2, h / 2, w - 20); }, false), transparent: true, side: THREE.DoubleSide,
-      }));
-      letreiro.position.set(ref.x - nx * 3.1, ref.h + alt - 2.7, ref.y - ny * 3.1);
-      letreiro.rotation.y = Math.atan2(nx, ny);
-      grp.add(letreiro);
+      caixa(ref, tx, ty, nx, ny, 0, fundo - 0.7, -9, largura, 1.4, 9 + alt, "#2b2e34"); // o fundo, escuro, onde fica o painel com o logo
+      caixa(ref, tx, ty, nx, ny, 0, fundo - 1.5, alt - 3, largura, 0.4, 1.2, c, k); // o friso na cor da equipe no alto do fundo
+      for (const s of [-1, 1]) caixa(ref, tx, ty, nx, ny, s * (largura / 2 - 0.4), fundo / 2, -9, 0.8, fundo, 9 + alt, "#d9d7d0"); // as laterais
+      for (const s of [-1, 1]) caixa(ref, tx, ty, nx, ny, s * (largura / 2 - 1.2), fundo / 2, 0, 0.6, fundo - 1, 1.6, c, k); // o rodapé na cor da equipe
+      caixa(ref, tx, ty, nx, ny, 0, fundo / 2, 0.62, largura - 1.6, fundo - 1.4, 0.1, "#c9ccd2"); // o piso de resina
+      caixa(ref, tx, ty, nx, ny, 0, fundo / 2, 0.74, 1.2, fundo - 2, 0.04, c, k); // a faixa no piso
+      caixa(ref, tx, ty, nx, ny, 0, fundo / 2 - 1.5, alt, largura + 1.4, fundo + 3, 1.2, "#e4e2dc"); // o teto, saindo para o corredor
+      caixa(ref, tx, ty, nx, ny, 0, -2.4, alt - 6, largura + 1.4, 1.2, 6, "#15181d"); // a fachada (o painel com o logo vai na frente)
+      // os pneus empilhados dos dois lados, com a faixa do composto, e a bancada de ferramentas no fundo
+      for (const s of [-1, 1]) for (let j = 0; j < 4; j++) {
+        caixa(ref, tx, ty, nx, ny, s * (largura / 2 - 3.2), fundo - 4, 0.7 + j * 1.5, 3.2, 3.2, 1.4, "#1a1a1c");
+        caixa(ref, tx, ty, nx, ny, s * (largura / 2 - 3.2), fundo - 4, 0.7 + j * 1.5 + 0.55, 3.3, 3.3, 0.3, ["#e8202a", "#ffd100", "#f4f4f4", "#39c85a"][(j + (s > 0 ? 1 : 0)) % 4]);
+      }
+      caixa(ref, tx, ty, nx, ny, 0, fundo - 2.6, 0.7, largura * 0.45, 2.4, 3.6, "#5d6168"); caixa(ref, tx, ty, nx, ny, 0, fundo - 2.6, 4.3, largura * 0.45, 2.6, 0.3, c, k);
+      // o painel da fachada (logo e nome) e o do fundo (só o logo, grande): o logo de verdade da equipe
+      const fachada = new THREE.Mesh(new THREE.PlaneGeometry(largura, 5.2), new THREE.MeshBasicMaterial({ map: placaDaEquipe(idEq, nomeEq, c, 640, 104, true), side: THREE.DoubleSide }));
+      fachada.position.set(ref.x - nx * 3.05, ref.h + alt - 3, ref.y - ny * 3.05); fachada.rotation.y = Math.atan2(-nx, -ny); // virada para o corredor (quem passa lê o nome) fachada.name = `${tr.id}-garagem-${idEq}`;
+      grp.add(fachada);
+      const fundoLogo = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(largura - 4, 16), 7), new THREE.MeshBasicMaterial({ map: placaDaEquipe(idEq, nomeEq, c, 384, 168, false), side: THREE.DoubleSide }));
+      const pf = fundo - 1.45; fundoLogo.position.set(ref.x + nx * pf, ref.h + alt - 6.5, ref.y + ny * pf); fundoLogo.rotation.y = Math.atan2(-nx, -ny);
+      grp.add(fundoLogo);
       caixa(ref, tx, ty, nx, ny, 0, fundo + 0.2, alt + 1.2, 7, 1, 6, c, k); caixa(ref, tx, ty, nx, ny, 0, fundo + 0.2, alt + 6.8, 9, 1, 1.4, "#f4f4f4"); // a placa da garagem em cima do teto
       // os mecânicos da equipe: macacão da cor dela e capacete, em fila na frente da garagem
       for (const s of [-1.5, -0.5, 0.5, 1.5]) {
@@ -134,7 +172,7 @@ export function boxesGP(tr, add, cfg = {}) {
   // pinta as partes da equipe de cada garagem: cores[k] (ou cinza) vale para a garagem k
   grp.userData.colorir = (cores) => {
     const atr = g.attributes.color;
-    faixas.forEach((lista, k) => { const col = cor3(cores[k] || cfg.cores?.[k] || EQUIPES[k][1]); for (const [v0, v1] of lista) for (let v = v0; v < v1; v++) atr.setXYZ(v, col.r, col.g, col.b); });
+    faixas.forEach((lista, k) => { const col = cor3(cores[k] || cfg.cores?.[k] || equipeDa(k)[2]); for (const [v0, v1] of lista) for (let v = v0; v < v1; v++) atr.setXYZ(v, col.r, col.g, col.b); });
     atr.needsUpdate = true;
   };
   // os balizadores que ficariam no meio do corredor saem de cena enquanto ele aparece (as regras de F1)

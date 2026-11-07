@@ -722,7 +722,7 @@ function entrarNoBox(room, p, ia, pf) {
     return;
   }
   const n = (p.paradas || []).length + 1;
-  ia.box = { fase: "entra", u: rel + (ia.s - Math.floor(ia.s)), lat0: ia.lat, garagem: F1.garagemDe(cor, p.grid), parada: F1.tempoDeParada(room.semente, p.id, n), composto: prox.composto, volta: p.laps + 1, tempo: 0, t: 0 };
+  ia.box = { fase: "entra", u: rel + (ia.s - Math.floor(ia.s)), lat0: ia.lat, garagem: F1.garagemDe(cor, p.grid, p.equipe), parada: F1.tempoDeParada(room.semente, p.id, n), composto: prox.composto, volta: p.laps + 1, tempo: 0, t: 0 };
   p.box = ia.box;
 }
 // um passo dentro do corredor: freia até o limitador, para na garagem, espera a parada e sai no limitador
