@@ -1,4 +1,4 @@
-// Corrida da Galera — o palco 3D da sala: o carro da equipe girando devagar num palco escuro, com a luz e o anel na cor da equipe.
+// Corrida da Galera — o palco 3D da sala: o carro da equipe girando devagar, solto no fundo da página, com o contraluz na cor da equipe.
 // Usa o mesmo carro da corrida e da garagem (`makeKart`, de carros.js, com a pintura da equipe de f1-pintura.js) num renderizador
 // só dele, ao vivo, que roda enquanto o palco está na tela (a sala escondida não desenha nada). Com "reduzir movimento" o carro
 // fica parado, de três quartos. Sem WebGL, `palco.ok` é falso e a sala mostra a foto parada de `carPreview`.
@@ -6,12 +6,12 @@ import * as THREE from "three";
 import { makeKart, dropKart, vitrinePiloto } from "./carros.js";
 
 const reduz = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
-let renderer = null, cena = null, cam = null, anel = null, rim1 = null, rim2 = null, carro = null, chave = "", host = null, ro = null, raf = 0, ultimo = 0, sujo = true, tam = "";
+let renderer = null, cena = null, cam = null, rim1 = null, rim2 = null, carro = null, chave = "", host = null, ro = null, raf = 0, ultimo = 0, sujo = true, tam = "";
 const ANGULO_INICIAL = Math.PI * 0.78; // de três quartos, mostrando a frente (como a foto da garagem)
 let angulo = ANGULO_INICIAL;
 export const palco = { ok: true, montarEm, parar, mostrar };
 
-function piscina() { // a mancha de luz no chão, sem luz de verdade (o resultado não depende da escala do jogo)
+function piscina() { // a mancha suave da sombra no chão (o resultado não depende da escala do jogo)
   const c = document.createElement("canvas"); c.width = c.height = 256; const x = c.getContext("2d");
   const g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, "#ffffffcc"); g.addColorStop(0.55, "#ffffff40"); g.addColorStop(1, "#ffffff00");
   x.fillStyle = g; x.fillRect(0, 0, 256, 256); return new THREE.CanvasTexture(c);
@@ -28,14 +28,9 @@ function iniciar() {
   const sol = new THREE.DirectionalLight(0xffffff, 2.6); sol.position.set(-40, 70, -30); cena.add(sol);
   rim1 = new THREE.DirectionalLight(0xffffff, 2.2); rim1.position.set(50, 25, 40); cena.add(rim1); // o contraluz na cor da equipe
   rim2 = new THREE.DirectionalLight(0xffffff, 1.4); rim2.position.set(-60, 18, 50); cena.add(rim2);
-  const disco = new THREE.Mesh(new THREE.CylinderGeometry(31, 32.5, 1.6, 72), new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.38, metalness: 0.65 }));
-  disco.position.y = -0.8; cena.add(disco);
-  anel = new THREE.Mesh(new THREE.RingGeometry(27.6, 28.6, 96), new THREE.MeshBasicMaterial({ color: 0xe10600, toneMapped: false, side: THREE.DoubleSide }));
-  anel.rotation.x = -Math.PI / 2; anel.position.y = 0.04; cena.add(anel);
-  const fino = new THREE.Mesh(new THREE.RingGeometry(30.2, 30.6, 96), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, toneMapped: false, side: THREE.DoubleSide }));
-  fino.rotation.x = -Math.PI / 2; fino.position.y = 0.04; cena.add(fino);
-  const luz = new THREE.Mesh(new THREE.CircleGeometry(30, 64), new THREE.MeshBasicMaterial({ map: piscina(), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-  luz.rotation.x = -Math.PI / 2; luz.position.y = 0.06; cena.add(luz);
+  // sem disco nem anel: o carro fica solto no fundo da página, só com a sombra suave no chão
+  const sombra = new THREE.Mesh(new THREE.CircleGeometry(19, 64), new THREE.MeshBasicMaterial({ map: piscina(), color: 0x000000, transparent: true, opacity: 0.4, depthWrite: false, toneMapped: false }));
+  sombra.rotation.x = -Math.PI / 2; sombra.position.y = 0.02; sombra.scale.set(1, 0.62, 1); cena.add(sombra);
   if (window.ResizeObserver) ro = new ResizeObserver(() => ajustar());
   return true;
 }
@@ -46,7 +41,7 @@ function ajustar() {
   if (t === tam) return; tam = t; // (setSize limpa o quadro: só quando o tamanho muda)
   renderer.setPixelRatio(pr); renderer.setSize(w, hh, false);
   const asp = w / hh; cam.aspect = asp; // o carro tem de caber também numa vitrine mais alta que larga (celular)
-  const d = 58 * Math.min(1.7, Math.max(1, 1.7 / asp));
+  const d = 56 * Math.min(1.7, Math.max(1, 1.7 / asp));
   cam.position.set(-0.62 * d, 0.2 * d + 3, -0.76 * d); cam.lookAt(0, 4, 0); cam.updateProjectionMatrix(); sujo = true;
 }
 
@@ -69,11 +64,11 @@ function parar() {
   if (ro && host) ro.unobserve(host);
   host = null; tam = "";
 }
-// o carro da vitrine: refaz só quando a pintura, a cor, o modelo ou o carregamento mudam; o anel e a luz seguem a cor da equipe
+// o carro da vitrine: refaz só quando a pintura, a cor, o modelo ou o carregamento mudam; o contraluz segue a cor da equipe
 function mostrar({ cor, modelo, mods, corEquipe, prontoF1 }) {
   if (!renderer) return;
   const nova = [cor, modelo, JSON.stringify(mods || {}), prontoF1 ? 1 : 0].join("|"), c = new THREE.Color(corEquipe || "#e10600");
-  anel.material.color.copy(c); rim1.color.copy(c); rim2.color.set(0xffffff).lerp(c, 0.45);
+  rim1.color.copy(c); rim2.color.set(0xffffff).lerp(c, 0.45);
   if (nova !== chave) {
     if (carro) { dropKart(carro); carro = null; }
     chave = nova;

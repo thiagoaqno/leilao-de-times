@@ -95,8 +95,8 @@ app.get("/api/corrida/drag/musicas", (req, res) => {
 // os recordes de volta da Corrida (os 5 melhores de cada pista, para sempre): o placar do Autódromo na Vila
 app.get("/api/recordes-corrida", (req, res) => {
   try {
-    const T = require("./public/corrida/pistas.js"), rec = require("./bd.js").recordesCorrida();
-    res.json({ pistas: Object.entries(T.PISTAS).map(([id, p]) => ({ id, nome: p.name, top: rec[id] || [] })) });
+    const T = require("./public/corrida/pistas.js"), rec = require("./bd.js").recordesCorrida(), set = require("./bd.js").setoresCorrida();
+    res.json({ pistas: Object.entries(T.PISTAS).map(([id, p]) => ({ id, nome: p.name, top: rec[id] || [], setores: set[id] || [null, null, null] })) });
   } catch (e) { res.status(500).json({ erro: "O placar não abriu." }); }
 });
 // a tela inicial da Corrida: quem está online, as salas abertas e o desafio da semana

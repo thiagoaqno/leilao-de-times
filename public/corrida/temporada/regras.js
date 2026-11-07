@@ -4,14 +4,14 @@ const Pilotos = root.F1Pilotos || require("../f1-pilotos-2026.js");
 const Equipes = root.F1Equipes || require("../f1-equipes.js");
 const Pecas = root.F1Pecas || require("../f1-pecas.js");
 const PONTOS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-// Seleção curta, em ordem do calendário real de 2026, só com pistas presentes no jogo.
+// Todas as pistas recriadas do jogo, na ordem do calendário real de 2026.
 const CALENDARIO = [
-  ["melbourne", "Austrália"], ["suzuka", "Japão"], ["bahrein", "Bahrein"], ["jeddah", "Arábia Saudita"], ["montreal", "Canadá"], ["monaco", "Mônaco"], ["barcelona", "Barcelona"],
-  ["silverstone", "Grã-Bretanha"], ["spa", "Bélgica"], ["zandvoort", "Holanda"], ["monza", "Itália"], ["baku", "Azerbaijão"], ["singapura", "Singapura"], ["austin", "Estados Unidos"], ["interlagos", "São Paulo"], ["lasvegas", "Las Vegas"],
+  ["melbourne", "Austrália"], ["xangai", "China"], ["suzuka", "Japão"], ["bahrein", "Bahrein"], ["jeddah", "Arábia Saudita"], ["miami", "Miami"], ["montreal", "Canadá"], ["monaco", "Mônaco"],
+  ["barcelona", "Barcelona"], ["redbullring", "Áustria"], ["silverstone", "Grã-Bretanha"], ["spa", "Bélgica"], ["hungaroring", "Hungria"], ["zandvoort", "Holanda"], ["monza", "Itália"], ["madri", "Madri"],
+  ["baku", "Azerbaijão"], ["singapura", "Singapura"], ["austin", "Estados Unidos"], ["mexico", "Cidade do México"], ["interlagos", "São Paulo"], ["lasvegas", "Las Vegas"], ["catar", "Catar"], ["abudhabi", "Abu Dhabi"],
 ];
-// As pistas "mais trabalhadas" (as que já têm cenário próprio): o sorteio do calendário sai só daqui. Quando uma pista
-// ganhar cenário, é só incluir a chave (a mesma de `pistas.js` e do CALENDARIO acima) nesta lista.
-const PISTAS_TRABALHADAS = ["interlagos", "monaco", "melbourne", "bahrein", "silverstone", "suzuka", "jeddah", "monza", "spa", "barcelona", "montreal", "zandvoort", "baku", "singapura", "lasvegas"];
+// As pistas do sorteio dos calendários de 4 e 8 GPs e da temporada completa: hoje, todas as do CALENDARIO (a chave é a mesma de `pistas.js`).
+const PISTAS_TRABALHADAS = CALENDARIO.map(([pista]) => pista);
 // mulberry32 sobre o hash do texto (a mesma família de f1-regras.js `sorteio`, sem depender dele aqui)
 function gerador(semente) {
   let a = 2166136261; for (const c of String(semente)) { a ^= c.charCodeAt(0); a = Math.imul(a, 16777619); } a = (a >>> 0) || 1;

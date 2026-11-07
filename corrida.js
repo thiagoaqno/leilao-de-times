@@ -360,6 +360,10 @@ module.exports = function attachCorrida(io) {
     log(room, pos === 1 ? `🏆 Recorde de ${pista}! ${p.name} fez ${lap.toFixed(3)} s.` : `🏆 ${p.name} entrou no quadro de ${pista}: ${pos}º, ${lap.toFixed(3)} s.`);
     nsp.to(room.code).emit("recorde", { piloto: p.name, pos, tempo: lap, pista: room.config.pista });
   }
+  // o melhor de cada setor da pista (bd.js), da volta limpa que acabou de fechar
+  function registrarSetores(room, p, ms) {
+    try { ms.forEach((m, i) => bd.registrarSetorCorrida(room.config.pista, i, m / 1000, p.name)); } catch (e) { console.warn("Corrida: setor não guardado", e.message); }
+  }
   // ---------- o pit stop (regras de F1) ----------
   // A parada acabou (o navegador diz ao sair do corredor; o robô, aqui mesmo): guarda volta, tempo e composto novo,
   // confere o limitador pelo tempo que ficou no corredor (rápido demais: RAPIDO s de acréscimo) e avisa no log.
@@ -415,18 +419,22 @@ module.exports = function attachCorrida(io) {
   function fecharSetor(room, p, s, now) {
     if (p.finish != null) return false;
     p.sector = s;
-    if (s !== 0) { Analise.setor(p, s, now); return true; }
-    if (!p.started) { p.started = true; p.lapStart = room.startAt; return true; }
+    if (s !== 0) {
+      Analise.setor(p, s, now);
+      if (s % (T.SECTORS / 3) === 0) { const q = (p.parciais ||= []); if (q.length === s / (T.SECTORS / 3) - 1) q.push(now); } // a hora em que fechou o 1º e o 2º setor de tempo
+      return true;
+    }
+    if (!p.started) { p.started = true; p.lapStart = room.startAt; p.parciais = []; return true; }
     const lap = (now - p.lapStart) / 1000;
     if (lap < T.PISTAS[room.config.pista].minLap) return false; // rápido demais: atalho (a volta não conta, mas o setor segue o do navegador, senão a volta seguinte morria)
     // a volta é "suja" se o carro bateu (no muro ou em outro carro: `p.batidas`, corrida-f1-direcao.js) ou ficou fantasma nela (batida,
     // muro ou recolocado na pista: `p.fantAte`): essa não ensina os robôs (o "volta" abaixo recusa)
     p.voltaSuja = (p.batidas || 0) > (p.batidasNaVolta || 0) || (p.fantAte || 0) > p.lapStart; p.batidasNaVolta = p.batidas || 0;
-    const inicioDaVolta = p.lapStart;
+    const inicioDaVolta = p.lapStart, parciais = p.parciais || []; p.parciais = [];
     p.laps++; p.last = lap; p.best = p.best == null ? lap : Math.min(p.best, lap); p.lapStart = now;
     if (room.config.regras === "f1") Analise.volta(room, p, lap, inicioDaVolta);
     // o quadro de recordes da Vila só leva volta de corrida com as regras de F1 e com robôs na pista
-    if (!p.bot && room.config.regras === "f1" && room.order.some((id) => room.players[id]?.bot)) registrarRecorde(room, p, lap);
+    if (!p.bot && room.config.regras === "f1" && room.order.some((id) => room.players[id]?.bot)) { registrarRecorde(room, p, lap); if (!p.voltaSuja && parciais.length === 2) registrarSetores(room, p, [parciais[0] - inicioDaVolta, parciais[1] - parciais[0], now - parciais[1]]); }
     // stop-and-go pendente: sem voltas para cumprir vira +20 s; passou das 3 voltas sem cumprir, bandeira preta (desclassificado)
     if (room.config.regras === "f1" && Direcao.voltaFechada(room, p, (s) => log(room, s))) {
       if (!room.order.some((id) => { const q = room.players[id]; return q.finish == null && !q.dnf && (q.sockets.size || q.bot); })) endRace(room);
