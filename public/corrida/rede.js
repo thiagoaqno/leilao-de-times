@@ -13,6 +13,7 @@ const urlCode = new URLSearchParams(location.search).get("sala");
 $("hName").value = store.get("galera:name") || "";
 if (urlCode) $("hCode").value = urlCode.toUpperCase();
 export function enter(r) {
+  if (r && r.irPara) { location.href = r.irPara; return; } // o código era de uma temporada em grupo
   if (!r.ok) { $("hErr").textContent = r.error; return; }
   E.ME = { code: r.code, id: r.id, token: r.token };
   if (r.id) store.set("corrida:" + r.code, E.ME);

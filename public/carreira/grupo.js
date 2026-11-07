@@ -20,6 +20,7 @@ function telaGrupo() {
 }
 async function entrarNaSala(dados) {
   const r = await new Promise((ok) => socket.emit(dados.code ? "join" : "create", dados, (x) => ok(x || { ok: false, error: "Sem resposta do servidor." })));
+  if (r.irPara) { location.href = r.irPara; return r; } // o código era de uma temporada de F1
   if (!r.ok) { $("gErro").textContent = r.error; return false; }
   $("gErro").textContent = "";
   MEU_ID = r.id;

@@ -4,16 +4,16 @@
 const { JOGOS } = require("./noite.js");
 
 const MESA = ["banco", "uno", "sinuca", "truco", "domino", "bloqueio", "ludo", "botao"]; // o endereço usa ?mesa= em vez de ?sala=
-const URLS = { rocket: "/rocket/", carreira: "/carreira/", drag: "/corrida/drag/" };
+const URLS = { rocket: "/rocket/", carreira: "/carreira/", drag: "/corrida/drag/", "temporada-f1": "/corrida/temporada/" };
 const registros = new Map(); // jogo -> { rooms, max, jogadores, config }
 
 // opcoes.max: número ou função(sala); opcoes.jogadores(sala): [{ nome, online, host }] quando a sala não é do formato padrão
 function registrar(jogo, rooms, opcoes = {}) { registros.set(jogo, { rooms, ...opcoes }); }
 
-const nomeDe = (jogo) => (jogo === "carreira" ? "Carreira em grupo" : JOGOS[jogo] || jogo);
+const nomeDe = (jogo) => (jogo === "carreira" ? "Carreira em grupo" : jogo === "temporada-f1" ? "Temporada de F1" : JOGOS[jogo] || jogo);
 const enderecoDe = (jogo, code) => {
   const base = URLS[jogo] || `/${jogo}/`;
-  if (jogo === "carreira") return `${base}?sala=${code}`;
+  if (jogo === "carreira" || jogo === "temporada-f1") return `${base}?sala=${code}`;
   return `${base}?${MESA.includes(jogo) ? "mesa" : "sala"}=${code}&entrar=1`;
 };
 const padrao = (r) => r.order.map((id) => r.players[id]).filter(Boolean).map((p) => ({ nome: p.name, online: !!(p.sockets && p.sockets.size), host: false }));
@@ -44,6 +44,14 @@ function listar() {
   return out.sort((a, b) => peso[a.estado] - peso[b.estado] || b.t - a.t);
 }
 
+// o endereço da temporada de F1 em grupo com este código, ou null: quem digita o código dela na Corrida ou na Carreira é levado até lá
+function enderecoDaTemporada(codigo) {
+  const reg = registros.get("temporada-f1"), code = String(codigo || "").trim().toUpperCase();
+  if (!reg || !code) return null;
+  for (const r of reg.rooms.values()) if (r.code === code) return enderecoDe("temporada-f1", code);
+  return null;
+}
+
 function attach(io) {
   const nsp = io.of("/lobby");
   let ultima = "[]";
@@ -56,4 +64,4 @@ function attach(io) {
   return nsp;
 }
 
-module.exports = { registrar, attach, listar };
+module.exports = { registrar, attach, listar, enderecoDaTemporada };
