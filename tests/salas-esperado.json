@@ -751,6 +751,8 @@
       "config",
       "direcao",
       "endAt",
+
+      "estrategistas",
       "finishOrder",
       "host",
       "log",

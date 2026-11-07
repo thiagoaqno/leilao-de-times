@@ -11,4 +11,4 @@ O nível vai do save para a sala (`room.estrategistas`, por equipe) e daí para 
 
 ## Verificação
 
-Só sintaxe conferida: não houve corrida de teste com chuva nem GP de carreira com cada nível. O CI confere a suíte.
+Só sintaxe conferida: não houve corrida de teste com chuva nem GP de carreira com cada nível. O CI confere a suíte. O contrato das salas (`tests/salas-esperado.json`) ganhou o campo novo, `estrategistas`. Este branch já inclui o #569, que corrige o teste do rádio.
