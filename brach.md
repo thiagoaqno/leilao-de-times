@@ -1,44 +1,31 @@
-# GP da Áustria com cenário próprio: Red Bull Ring, em Spielberg
+# Austin ganhou cenário próprio: a torre vermelha, Big Red e a paisagem seca do Texas
 
-O Red Bull Ring usava só o kit genérico. Agora tem cenário feito para ele, no nível de Mônaco e de Spa, e o relevo e as barreiras vêm de dados reais. O traçado e o tamanho não mudaram.
+O GP dos Estados Unidos (Circuit of the Americas) usava só o cenário genérico do kit. Agora tem peças só dele, no nível de Mônaco e Spa, tudo feito em código (sem modelo baixado e sem marca registrada: os painéis são nomes de lugar e de comida do Texas).
 
-## O que tem no cenário
+## O que mudou na pista
 
-Tudo é feito em código, sem modelo baixado e sem marca registrada: os painéis levam nomes de lugar e de comida da Estíria (Spielberg, Murtal, Zeltweg, Knittelfeld, Seckau, óleo de semente de abóbora, frango empanado, strudel, vinho Schilcher). Só as curvas têm os nomes que têm de verdade.
+- **A subida até a curva 1 ("Big Red"):** a pista agora tem o relevo real. Sobe 10,6% da linha de chegada até o topo da curva 1 (a real é de 11%), desce pelos S rápidos e sobe de novo até a curva 9. No topo do morro, a arquibancada vermelha, a colina de torcida, a bandeira dos Estados Unidos gigante e o nome "BIG RED" pintado no asfalto de escape.
+- **A Torre de Observação vermelha**, com o véu de 18 tubos de aço, a escada em dupla hélice e o mirante de vidro. Aos pés dela, o anfiteatro (palco coberto, bancos vermelhos e brancos, gramado em rampa). Perto, a Grande Praça, com o espelho d'água e a aleia de treliça, e as duas passarelas, sobre as curvas 3 e 16.
+- **A reta dos boxes:** prédio das garagens com a torre de controle e a tribuna principal coberta de membrana branca, de frente uma para a outra, com as tendas do paddock atrás.
+- **O resto da volta:** arquibancadas nas curvas 4, 12, 15 e 19, o palco do miolo na reta de trás, as tendas do Fan Zone, placas com o número de algumas curvas, galera de chapéu de vaqueiro e bandeiras dos Estados Unidos e do Texas.
+- **A paisagem do Texas:** chão de capim dourado e terra clara, carvalhos-vivos, cedros, mesquites, nopais, pedras de calcário, manchas de bluebonnet e os morros baixos do Hill Country no horizonte.
+- **O escape** agora é de asfalto liso, com brita só na curva 11. O traçado e o tamanho da pista não mudaram.
 
-- **Reta dos boxes:** o prédio das garagens (as portas, o vidro, os brises brancos e a torre de controle) de um lado; do outro, a tribuna principal coberta e, atrás dela, no alto, a asa de aço: o prédio em forma de aerofólio de carro de corrida, com o centro de imprensa de vidro sob a lâmina inclinada. O paddock com as carretas fica atrás dos boxes.
-- **O touro de aço:** no miolo do circuito, perto da curva 7. É feito de chapas de aço corten (marrom de ferrugem), com chifres de folha de ouro, em cima de um arco e de uma sapata de concreto.
-- **As curvas:** placa com o número e o nome de cada uma (1 Niki Lauda, 3 Remus, 4 Schlossgold, 6 Rauch, 7 Würth, 9 Rindt; as outras só com o número). A tela "Sobre o GP" agora lista as 10 curvas.
-- **Tribunas e torcida:** tribunas cobertas na curva 1, na reta de Schönberg (entre a 3 e a 4) e na curva 10; a galera de pé e sentada nas encostas, de laranja, vermelho e branco, com bandeiras da Áustria e da Estíria; acampamentos atrás das curvas 3, 4 e 10.
-- **Paisagem:** uma bacia de morros verdes que fecha três lados e se abre para o vale do lado dos boxes; mata de abetos em manchas, com bétulas e lariços na borda e pastos limpos com fardos de feno; sítios e casas da Estíria (paredes brancas, madeira, telhado de duas águas), uma capela de aldeia com cúpula em cebola; torres de câmera; e as montanhas ao fundo.
-- Nada fica dentro da pista nem entre a pista e a barreira.
+## Relevo e barreiras
 
-## Relevo e barreiras reais
+Rodei `node ferramentas/pista-real.js us-2012 austin --dem srtm30m --raio 4`. Com `--raio 4` a inclinação máxima ficou em 10,6%, plausível (o SRTM contando árvore como ladeira não apareceu). Apliquei `hills`, `hillsSuave: true`, `flat: 60` e `fall: 380`. A curvatura da altura é suave (sem lombada que faça o carro decolar). A ferramenta achou barreira mapeada nos dois lados quase a volta toda (lado 1 sem barreira em 0% e lado -1 em 3%, bem abaixo de 30%), então usei os `muros` dela, sem mexer.
 
-Rodei `node ferramentas/pista-real.js at-1969 redbullring --dem eudem25m --raio 3` e apliquei `hills`, `hillsSuave: true`, `flat: 60` e `fall: 380` em `pistas.js`.
+## O que ficou de fora de propósito
 
-- **Barreiras (`muros`):** a ferramenta achou a volta sem barreira em 24% de um lado e 22% do outro, abaixo dos 30%. Por isso usei os `muros`. Medido na pista montada, a matriz da barreira fica sem nada em 35% e 33% da volta, porque o gerador tira a barreira onde ela cortaria outro trecho da pista.
-- **Inclinação:** a subida mais forte (antes da curva 3, em 26% da volta) chega a 16% no jogo; a real, segundo as fontes, é de no máximo 12%. A variação da inclinação entre pontos vizinhos é de no máximo 0,5 ponto percentual, sem lombada. O carro só sai do chão se o terreno cair mais de 2,5 unidades num passo, e aqui a queda máxima por passo fica bem abaixo disso.
-- A brita e as zebras continuam as de antes (`SUPERFICIES_ESCAPE`), porque a física lê a mesma tabela e um teste exige brita nas curvas 9 e 10.
+- **O asfalto de escape pintado de vermelho e azul não entrou.** Procurei e não achei fonte que confirme as cores nem os lugares. A única pintura que confirmei foi o nome "Big Red" no escape da curva 1; a cor das letras não está nas fontes, então escolhi branco com contorno vermelho.
+- **Suzuka:** só confirmei a referência a Silverstone (curvas 3 a 6); não confirmei a de Suzuka, então ela só aparece no comentário do cabeçalho como "S rápidos".
+- O que não achei fonte (a fachada do prédio dos boxes, por exemplo) usa as peças genéricas do kit.
 
-## O que não entrou porque não consegui confirmar
+## Como foi conferido
 
-- **Asfalto de escape colorido:** não achei fonte de que o Red Bull Ring tenha. Não pintei.
-- **Brita só nas curvas 4, 6, 7 e 8** (uma fonte diz que a curva 10 é de asfalto): não mudei, para não mexer na física e no teste que já existe.
-- **Direção das montanhas:** as fontes dizem só que os morros fecham três lados. Deixei o vale aberto do lado dos boxes por escolha minha, e não nomeei nenhum pico.
-- **Posição exata do touro, da asa e da torre:** a fonte diz que o touro fica no miolo e que a asa olha a arquibancada principal e a reta, mas não dá a posição. Pus onde faz sentido no traçado.
-- **Curvas 2, 5, 8 e 10 sem nome:** as fontes discordam dos nomes.
-
-## O que foi conferido
-
-- Montei a cena no Node: sem erro, a conferência de invasão acusa 0 e a medida do desempenho dá 252 malhas, 141 chamadas de desenho e cerca de 340 mil triângulos na vista do jogo (Spa: 194 chamadas e 426 mil triângulos).
-- No navegador (Chrome, renderização por software, `/corrida/#debug`), larguei no Red Bull Ring e tirei prints da largada, da curva 1, da curva 3 (Remus), das curvas 9 e 10, do touro, da asa e de uma vista das encostas. Conferi um a um e corrigi uma placa de curva que tocava a pista.
-- Nos prints, os erros que apareceram no console foram de conexão do WebSocket, porque o teste teleportava o carro com o navegador lento. Não houve erro de JavaScript da pista.
-
-## O que não foi conferido
-
-- A suíte de testes não foi rodada aqui: o CI confere.
-- Não joguei uma volta inteira: os prints são de pontos da pista com a câmera posta à mão.
-- O desempenho foi medido no Node, não em placa de vídeo de verdade.
+- `node --check` em todos os arquivos que mudaram.
+- A cena monta no Node sem erro. Medido com `node tests/ajuda-cena/medir.mjs austin`: 381 malhas, ~210 chamadas de desenho e ~515 mil triângulos na vista do jogo (Spa: 194 chamadas e 426 mil). A conferência de invasão (`tests/ajuda-cena/invasao.mjs`, rodada só para o Austin) acusa 0.
+- No navegador (`/corrida/#debug`, placa de vídeo de verdade), prints da largada, da subida da curva 1, do nome pintado, da torre, dos S, do anfiteatro, da praça, do palco, do estádio e de uma vista geral, sem erro no console.
+- **Não rodei a suíte de testes:** o CI faz isso. **Não conferi** uma volta jogada de ponta a ponta nem os robôs com os `muros` novos.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
