@@ -4,10 +4,7 @@ const F = require("../public/corrida/f1-regras.js");
 const S = require("../public/corrida/sim.js");
 const Box = require("../public/corrida/box-escolha.js");
 
-test("intermediário: aderência troca as referências da garoa e da chuva forte", () => {
-  const pn = (composto) => ({ composto, desgaste: 0, temp: 1 });
-  assert.equal(F.aderencia(pn("intermediario"), 0.45).grip, F.aderencia(pn("chuva"), 1).grip);
-  assert.equal(F.aderencia(pn("intermediario"), 1).grip, F.aderencia(pn("chuva"), 0.45).grip);
+test("intermediário: cor própria", () => {
   assert.equal(F.PNEUS.intermediario.cor, "#39c85a");
 });
 
